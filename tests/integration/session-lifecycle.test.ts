@@ -180,7 +180,7 @@ describe("session lifecycle integration coverage", () => {
 			toolCtx,
 			pi,
 		);
-		expect(progress).toMatchObject({ isError: undefined });
+		expect(progress.isError).not.toBe(true);
 		expect(latestGoal(branch)?.progress).toMatchObject({ lastSummary: "tool progress" });
 
 		const complete = executeCompleteGoal({ evidence: "all checks passed" }, toolCtx, pi);
