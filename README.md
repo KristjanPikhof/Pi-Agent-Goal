@@ -17,10 +17,17 @@ In Pi, run:
 /goal
 ```
 
-You should see usage when no goal exists yet. Create one with:
+You should see usage when no goal exists yet. Store a goal, then start it when you are ready:
 
 ```text
 /goal Ship the onboarding cleanup
+/goal start
+```
+
+For non-interactive runs that should begin work immediately, opt in with `--start`:
+
+```bash
+pi -e npm:pi-goal -p "/goal Ship the onboarding cleanup --start"
 ```
 
 ## Install
@@ -55,12 +62,13 @@ The package uses the same source-extension shape as `pi-agents-team`: the root e
 | Command                       | Behavior                                                                                                                                                                                                                                                                                                                                                                               |
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/goal`                       | Show usage when no goal exists, otherwise show the current goal summary.                                                                                                                                                                                                                                                                                                               |
-| `/goal <objective>`           | Create an active goal. Recognized flags such as `--replace` are stripped from the objective even when they appear before the text. If a goal already exists, interactive Pi asks for confirmation. In non-interactive mode, use `--replace`.                                                                                                                                           |
+| `/goal <objective> [--start]` | Store an active goal. Interactive Pi asks whether to start work now; without that handoff the command only saves context. Recognized flags such as `--replace` and `--start` are stripped from the objective even when they appear before the text. If a goal already exists, interactive Pi asks for confirmation. In non-interactive mode, use `--replace` to replace and `--start` to begin immediately.                                                    |
+| `/goal start`                 | Start the current active goal with a one-shot follow-up handoff. This is user-requested agent work, not automatic idle continuation. Paused or complete goals must be resumed, cleared, or replaced first.                                                                                                                                                                                                  |
 | `/goal status`                | Show objective, status, criteria, constraints, source docs, progress, blockers, and next commands.                                                                                                                                                                                                                                                                                     |
-| `/goal import <path> [--yes]` | Import a markdown/text PRD file or docs folder. Stores source paths plus compact briefs. With no current goal, creates an active goal. With an existing active goal, imports merge source docs, constraints, and criteria instead of replacing the objective. Paused or complete goals reject import without mutation. Use `--yes` in non-interactive mode after reviewing the source. |
+| `/goal import <path> [--yes] [--start]` | Import a markdown/text PRD file or docs folder. Stores source paths plus compact briefs. With no current goal, creates an active goal. With an existing active goal, imports merge source docs, constraints, and criteria instead of replacing the objective. Paused or complete goals reject import without mutation. Use `--yes` in non-interactive mode after reviewing the source, and add `--start` when that non-interactive import should begin work immediately. |
 | `/goal edit`                  | Edit the objective through the interactive UI editor. Non-interactive mode should use `/goal <objective> --replace`.                                                                                                                                                                                                                                                                   |
 | `/goal pause`                 | Pause the goal, which stops hidden active-goal context, continuation, completion, and progress updates until resumed.                                                                                                                                                                                                                                                                  |
-| `/goal resume`                | Resume a paused goal as active. Complete goals are terminal until cleared or replaced.                                                                                                                                                                                                                                                                                                 |
+| `/goal resume [--start]`      | Resume a paused goal as active. Complete goals are terminal until cleared or replaced. Add `--start` when a non-interactive resume should immediately hand the active goal to the agent.                                                                                                                                                                                               |
 | `/goal complete [--yes]`      | Mark an active goal complete. Use `--yes` when there is no interactive confirmation UI.                                                                                                                                                                                                                                                                                                |
 | `/goal clear [--yes]`         | Clear the current goal and hide goal UI. Use `--yes` when there is no interactive confirmation UI.                                                                                                                                                                                                                                                                                     |
 
@@ -79,7 +87,9 @@ Canonical state is stored as Pi custom session entries with custom type `goal-st
 
 Active goals inject a short hidden `goal-context` message before agent turns. Compaction uses `session_before_compact` to preserve the active goal objective, criteria, source doc briefs, and progress in the compaction summary details. Full imported docs are not repeatedly pasted into model context.
 
-Automatic continuation is opt-in. Start Pi with:
+Starting a goal and automatic continuation are separate controls. `/goal start` and `--start` queue a single, explicit handoff for the current active goal. They do not enable background work after that turn.
+
+Automatic continuation is a separate opt-in. Start Pi with:
 
 ```bash
 pi -e npm:pi-goal --goal-continuation
@@ -106,8 +116,8 @@ Continuation only queues when the goal is active, Pi is idle, and no pending use
 | Symptom                                                  | What to do                                                                                                                                                                                                                   |
 | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/goal import` says the path is outside the workspace    | The requested path or its realpath resolved outside the workspace, including symlink escapes. Run from the workspace root or move/copy the source file inside it.                                                            |
-| `/goal import` requires `--yes`                          | Non-interactive mode cannot show confirmation. Review the source docs, then rerun with `--yes`. Directory imports fail if supported docs exceed the configured `maxFiles`; narrow the path or raise the limit in code/tests. |
-| Replacing a goal fails in non-interactive mode           | Rerun `/goal <objective> --replace`.                                                                                                                                                                                         |
+| `/goal import` requires `--yes`                          | Non-interactive mode cannot show confirmation. Review the source docs, then rerun with `--yes`. Add `--start` only when the import should also start a one-shot agent handoff. Directory imports fail if supported docs exceed the configured `maxFiles`; narrow the path or raise the limit in code/tests. |
+| Replacing a goal fails in non-interactive mode           | Rerun `/goal <objective> --replace`. Add `--start` too if the replacement should begin immediately.                                                                                                                                                                                         |
 | `/goal edit` fails                                       | The editor is interactive-only. Use `/goal <objective> --replace` instead.                                                                                                                                                   |
 | Hidden context or UI looks stale after branch navigation | Run `/goal status`; state is reconstructed from the selected branch. If it is wrong, inspect recent `goal-state` custom entries in the session.                                                                              |
 | Continuation does not start                              | Confirm Pi was launched with `--goal-continuation`, the goal is active, Pi is idle, and there are no pending user messages.                                                                                                  |

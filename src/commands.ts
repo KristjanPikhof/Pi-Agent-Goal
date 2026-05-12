@@ -107,9 +107,11 @@ export async function handleGoalCommand(
 			case "pause":
 				mutateExistingGoal(pi, ctx, current, "pause", "Goal paused.");
 				return;
-			case "resume":
-				mutateExistingGoal(pi, ctx, current, "resume", "Goal resumed.");
+			case "resume": {
+				const next = mutateExistingGoal(pi, ctx, current, "resume", "Goal resumed.");
+				if (next) await offerGoalStartHandoff(pi, ctx, next.goalId, parsed.start);
 				return;
+			}
 			case "clear":
 				await confirmThenMutate(pi, ctx, current, "clear", parsed.confirmed, "Clear goal?", "Goal cleared.");
 				return;
@@ -252,6 +254,7 @@ async function importGoal(
 				);
 		updateGoalUi(ctx, next);
 		ctx.ui.notify(latest ? "Goal docs imported." : "Goal created from import.", "success");
+		await offerGoalStartHandoff(pi, ctx, next.goalId, parsed.start);
 	} catch (error) {
 		ctx.ui.notify(error instanceof Error ? error.message : String(error), "error");
 	}
@@ -305,7 +308,25 @@ async function createOrReplaceGoal(
 	);
 	updateGoalUi(ctx, next);
 	ctx.ui.notify(action === "replace" ? "Goal replaced." : "Goal created.", "success");
-	if (parsed.start && next) await startActiveGoal(pi, ctx, next.goalId);
+	await offerGoalStartHandoff(pi, ctx, next.goalId, parsed.start);
+}
+
+async function offerGoalStartHandoff(
+	api: Partial<GoalStartAPI>,
+	ctx: GoalCommandContext,
+	expectedGoalId: string,
+	startImmediately: boolean,
+): Promise<void> {
+	if (startImmediately) {
+		await startActiveGoal(api, ctx, expectedGoalId);
+		return;
+	}
+	if (!ctx.hasUI) return;
+
+	const latest = loadGoalState(ctx);
+	const ok = await ctx.ui.confirm("Start working on this goal now?", latest?.objective ?? "");
+	if (!ok) return;
+	await startActiveGoal(api, ctx, expectedGoalId);
 }
 
 export async function startActiveGoal(
@@ -373,27 +394,28 @@ function mutateExistingGoal(
 	current: GoalState | null,
 	action: "pause" | "resume",
 	message: string,
-): void {
+): GoalState | null {
 	if (!current) {
 		ctx.ui.notify(noGoalMessage(action), "error");
-		return;
+		return null;
 	}
 	const latest = loadGoalState(ctx);
 	if (!latest || latest.goalId !== current.goalId) {
 		ctx.ui.notify("Goal changed before saving. Re-run the command.", "error");
-		return;
+		return null;
 	}
 	if (action === "pause" && latest.status !== "active") {
 		ctx.ui.notify("Only active goals can be paused.", "error");
-		return;
+		return null;
 	}
 	if (action === "resume" && latest.status !== "paused") {
 		ctx.ui.notify("Only paused goals can be resumed.", "error");
-		return;
+		return null;
 	}
 	const next = saveGoalState(pi, { action, goalId: latest.goalId, now: Date.now() }, latest);
 	updateGoalUi(ctx, next);
 	ctx.ui.notify(message, "success");
+	return next;
 }
 
 async function confirmThenMutate(

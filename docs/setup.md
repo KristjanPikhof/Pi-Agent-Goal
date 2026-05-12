@@ -36,6 +36,27 @@ After installation, start Pi and run:
 
 You should see the `/goal` command help if no goal exists yet.
 
+## Starting a goal
+
+Setting a goal stores context first. In an interactive Pi session, the goal flow asks whether to start work now. If you choose not to start yet, the active goal still appears in status/widgets and supplies context to later turns.
+
+```text
+/goal Ship the onboarding cleanup
+/goal start
+```
+
+Use `/goal start` when an active goal already exists and you want a one-shot handoff to the agent. This is different from automatic idle continuation; it queues one explicit follow-up turn.
+
+For non-interactive mode, add `--start` to the command that creates, imports, or resumes the goal when you need work to begin immediately:
+
+```bash
+pi -e npm:pi-goal -p "/goal Ship the onboarding cleanup --start"
+pi -e npm:pi-goal -p "/goal import docs/prd.md --yes --start"
+pi -e npm:pi-goal -p "/goal resume --start"
+```
+
+Without `--start`, non-interactive create/import/resume commands only update goal state.
+
 ## Settings.json form
 
 If you prefer editing settings directly, add the package source to `packages`.
@@ -114,6 +135,7 @@ For local verification:
 ```bash
 npm run typecheck
 npm run lint
+npm run format
 npm test
 npm pack --dry-run
 ```

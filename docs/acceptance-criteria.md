@@ -15,8 +15,11 @@ Status key:
 | `/goal` shows usage when no goal exists.                                                                                    | Automated                                      |
 | `/goal` shows current objective, status, source docs, progress, and next actions when a goal exists.                        | Automated                                      |
 | `/goal <objective>` creates an active goal with a new `goalId`.                                                             | Automated                                      |
-| `/goal <objective>` strips recognized flags such as `--replace` from the saved objective wherever they appear in the input. | Automated                                      |
+| `/goal <objective>` stores context first and interactive Pi asks whether to start work now.                                | Manual smoke pending                           |
+| `/goal <objective>` strips recognized flags such as `--replace` and `--start` from the saved objective wherever they appear in the input. | Automated                                      |
 | `/goal <objective>` asks before replacing an existing goal.                                                                 | Automated with harness confirmation            |
+| `/goal start` starts the current active goal with a one-shot follow-up handoff.                                             | Automated                                      |
+| `--start` opts create, import, and resume flows into immediate start, and is required for non-interactive immediate start.  | Partial automated parser coverage; implementation review pending |
 | `/goal edit` requires an existing goal and persists user-confirmed edits.                                                   | Automated with harness editor                  |
 | `/goal clear` removes the goal and hides status/widget UI.                                                                  | Automated                                      |
 | `/goal pause` stops hidden context injection, continuation eligibility, completion, and progress updates.                   | Automated                                      |
@@ -78,6 +81,7 @@ Status key:
 | Auto-compaction preserves the same state.                                                                                                                                | Hook automated, live auto-compaction is manual smoke            |
 | After compaction, `/goal status` still works from canonical entries.                                                                                                     | Automated by state reconstruction, live command is manual smoke |
 | After compaction, the next model turn receives a correct short goal context.                                                                                             | Automated by hook/context tests, live turn is manual smoke      |
+| Explicit start handoff (`/goal start` or `--start`) remains separate from automatic idle continuation and does not enable background work.                              | Source review                                                    |
 | Runtime continuation only runs when the goal is active, Pi is idle, and no pending user messages exist.                                                                  | Automated                                                       |
 | Continuation re-checks `goalId` before queuing and before starting work.                                                                                                 | Automated                                                       |
 | Continuation stops on no progress, completion, pause, clear, user interrupt, replacement, duplicate queue, pending messages, busy state, disabled flag, or max-turn cap. | Automated                                                       |
@@ -116,13 +120,14 @@ Automation covers reducer, command parsing, import safety and merge behavior, to
    ```
 
 2. Run `/goal` and confirm usage renders without starting an agent turn.
-3. Run `/goal Ship a multi-turn verification goal`, then confirm footer shows `goal: active` and the active-goal widget appears.
-4. Run `/goal status`, `/goal pause`, `/goal resume`, `/goal complete --yes`, and `/goal clear --yes`; confirm status/widget update or disappear at each step.
-5. Create `docs/prd.md`, run `/goal import docs/prd.md`, review the confirmation, and confirm `/goal status` shows source docs and extracted criteria. Then import a second doc into the same goal and confirm source docs, constraints, and criteria merge without replacing the objective.
-6. Trigger `/compact`; confirm `/goal status` still shows objective, criteria, source brief, and progress, then send a normal prompt and verify hidden goal context is regenerated for the active goal.
-7. Run `/reload` or restart/resume the session; confirm footer/widget and `/goal status` reconstruct from current branch custom entries.
-8. Use `/fork` or `/tree` to navigate between branches with different goal mutations; confirm the selected branch shows its own goal state and stale context from the other branch is absent.
-9. Start Pi with continuation enabled:
+3. Run `/goal Ship a multi-turn verification goal`, confirm the goal is stored, and confirm the interactive flow asks whether to start now. Decline the start handoff, then confirm footer shows `goal: active` and the active-goal widget appears without an agent turn.
+4. Run `/goal start` and confirm one follow-up agent turn is queued for the active goal.
+5. Run `/goal status`, `/goal pause`, `/goal resume --start`, `/goal complete --yes`, and `/goal clear --yes`; confirm status/widget update or disappear at each step and that `--start` on resume queues only the explicit handoff.
+6. Create `docs/prd.md`, run `/goal import docs/prd.md`, review the confirmation, and confirm `/goal status` shows source docs and extracted criteria. Then import a second doc into the same goal and confirm source docs, constraints, and criteria merge without replacing the objective. Repeat a non-interactive import with `--yes --start` and confirm it starts immediately.
+7. Trigger `/compact`; confirm `/goal status` still shows objective, criteria, source brief, and progress, then send a normal prompt and verify hidden goal context is regenerated for the active goal.
+8. Run `/reload` or restart/resume the session; confirm footer/widget and `/goal status` reconstruct from current branch custom entries.
+9. Use `/fork` or `/tree` to navigate between branches with different goal mutations; confirm the selected branch shows its own goal state and stale context from the other branch is absent.
+10. Start Pi with continuation enabled:
 
    ```bash
    pi --no-extensions -e ./extensions/index.ts --goal-continuation --goal-continuation-max-turns 3
@@ -130,7 +135,9 @@ Automation covers reducer, command parsing, import safety and merge behavior, to
 
    Update progress through `update_goal_progress`, then let an idle continuation queue. Confirm it stops after no progress or the max-turn cap and does not duplicate the queue.
 
-10. Run quick non-interactive load checks:
+11. Confirm this automatic continuation path is distinct from `/goal start` and `--start`: it should only queue while Pi is idle and the continuation flag is enabled.
+
+12. Run quick non-interactive load checks:
 
     ```bash
     pi --no-session --no-extensions -e ./extensions/index.ts -p /goal
@@ -139,6 +146,6 @@ Automation covers reducer, command parsing, import safety and merge behavior, to
 
 ## Definition of done status
 
-The rollout acceptance is met when automated checks pass and the docs accurately mark live TUI lifecycle checks as manual smoke rather than automated proof. Release readiness also requires recorded live TUI smoke evidence, or an explicit blocked status for that evidence. The extension currently supports starting a long-running goal from a prompt or docs folder, preserving state through branch-aware session entries and compaction hooks, exposing narrow tools, and optionally continuing while idle behind explicit opt-in.
+The rollout acceptance is met when automated checks pass and the docs accurately mark live TUI lifecycle checks as manual smoke rather than automated proof. Release readiness also requires recorded live TUI smoke evidence, or an explicit blocked status for that evidence. The extension currently supports storing a long-running goal from a prompt or docs folder, starting it through an explicit one-shot handoff, preserving state through branch-aware session entries and compaction hooks, exposing narrow tools, and optionally continuing while idle behind a separate explicit opt-in.
 
 Remaining future work is Codex-exact compatibility: app-server RPC, SQLite persistence, exact token/time budgets, and exact Codex goal menu UI.
