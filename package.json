@@ -59,7 +59,6 @@
 	"files": [
 		"extensions",
 		"src",
-		"docs",
 		"README.md",
 		"LICENSE"
 	],
