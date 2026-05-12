@@ -2,6 +2,8 @@
 
 Pi Agent Goal adds Codex-style `/goal` support to Pi as an installable package. It lets a user set a long-running objective, import goal context from docs, preserve state through branch-aware session history and compaction, expose narrow model tools, and optionally continue work when Pi is idle.
 
+Repository: [`KristjanPikhof/Pi-Agent-Goal`](https://github.com/KristjanPikhof/Pi-Agent-Goal)
+
 ## Quick start
 
 Install the package, then start Pi:
@@ -43,6 +45,8 @@ pi -e npm:pi-agent-goal           # one-off run, nothing written to settings
 For local checkout development:
 
 ```bash
+git clone git@github.com:KristjanPikhof/Pi-Agent-Goal.git
+cd Pi-Agent-Goal
 npm install
 pi --no-extensions -e ./extensions/index.ts
 ```
