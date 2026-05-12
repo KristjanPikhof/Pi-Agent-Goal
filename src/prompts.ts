@@ -2,6 +2,46 @@ import type { GoalSourceDoc, GoalState } from "./types.js";
 
 export const GOAL_CONTEXT_CUSTOM_TYPE = "goal-context";
 
+export interface GoalDraftingPromptOptions {
+	start?: boolean;
+	replacingExistingGoal?: boolean;
+}
+
+export function renderGoalAgentDraftingPrompt(
+	plainObjective: string,
+	options: GoalDraftingPromptOptions = {},
+): string {
+	return [
+		"You are drafting a user-reviewable /goal proposal from the user's plain request.",
+		"Do not answer in prose. Call the propose_goal_draft tool exactly once with the draft fields.",
+		"This is a proposal step only: propose_goal_draft opens user review and does not persist the goal by itself.",
+		"Do not call create_goal for this drafting flow; create_goal is only for already-approved, explicit persistence requests.",
+		"",
+		"Draft requirements:",
+		"- Preserve the user's meaning and boundaries exactly; do not add unrelated scope, remove requested scope, or reinterpret intent.",
+		"- Write a concise objective that keeps the same deliverable and constraints.",
+		"- Include a concise description only when it helps explain context, boundaries, or rationale from the user request.",
+		"- Create editable acceptanceCriteria that are concrete checks directly implied by the user's request.",
+		"- Acceptance criteria must be useful for completion review; avoid vague criteria and do not leave the draft criteria-free.",
+		"- If details are ambiguous, keep the ambiguity visible in the objective or criteria instead of inventing implementation scope.",
+		"- Include sourcePaths only for paths the user explicitly mentioned.",
+		"- Set start to true only if the user asked to start immediately or the command context says to start after review.",
+		"",
+		"Example boundary: if the user asks for a deep branch review, draft criteria for reviewing the branch, reporting findings, and noting risks/tests; do not expand into fixing issues unless the user asked for fixes.",
+		options.replacingExistingGoal
+			? "This request is replacing an existing goal; preserve the new user request and let the review flow confirm replacement."
+			: "This request is for a new draft unless the review flow later decides otherwise.",
+		options.start ? "Command context: user requested start after review; pass start: true." : undefined,
+		"",
+		"User request:",
+		"<goal_request>",
+		escapeXml(plainObjective),
+		"</goal_request>",
+	]
+		.filter((line): line is string => line !== undefined)
+		.join("\n");
+}
+
 export function renderGoalProposalPrompt(objective: string): string {
 	return [
 		"Draft a structured /goal proposal from the user's plain objective.",

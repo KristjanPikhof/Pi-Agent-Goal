@@ -43,6 +43,18 @@ export const updateGoalProgressParams = Type.Object(
 	{ additionalProperties: false },
 );
 
+export const proposeGoalDraftPromptSnippet =
+	"Draft a reviewable /goal proposal and call propose_goal_draft exactly once; do not persist it directly.";
+
+export const proposeGoalDraftPromptGuidelines = [
+	"Use propose_goal_draft for plain /goal drafting turns that need user review before anything is saved.",
+	"Preserve the user's meaning and boundaries; do not invent unrelated scope or silently drop constraints.",
+	"Provide objective, optional concise description, and editable acceptanceCriteria with concrete completion checks directly implied by the request.",
+	"Do not leave acceptanceCriteria empty for the drafting flow; if details are uncertain, make the uncertainty explicit rather than creating unrelated checks.",
+	"Call propose_goal_draft exactly once instead of replying with the draft in prose.",
+	"Do not use create_goal for this flow: create_goal persists an already-approved goal after explicit authorization, while propose_goal_draft only opens review.",
+] as const;
+
 export type CreateGoalToolInput = Static<typeof createGoalParams>;
 export type CompleteGoalToolInput = Static<typeof completeGoalParams>;
 export type UpdateGoalProgressToolInput = Static<typeof updateGoalProgressParams>;
@@ -81,7 +93,8 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 			"Create a goal only when explicitly requested by the user or system/developer instructions. Fails if a goal exists.",
 		promptSnippet: "Create a user-approved /goal only when no goal exists.",
 		promptGuidelines: [
-			"Use create_goal only when the user or system/developer instructions explicitly ask to start a goal; do not infer goals from ordinary tasks.",
+			"Use create_goal only when the user or system/developer instructions explicitly ask to persist an already-approved goal; do not infer goals from ordinary tasks.",
+			"Do not use create_goal for agent-drafted /goal proposals; use propose_goal_draft so the user can review objective, description, and acceptance criteria first.",
 			"create_goal fails if a goal already exists; do not use it to rewrite an existing objective.",
 		],
 		parameters: createGoalParams,

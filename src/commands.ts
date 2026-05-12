@@ -35,11 +35,9 @@ export interface ParsedGoalCommand {
 	start: boolean;
 }
 
-interface GoalCommandContext {
-	cwd: string;
+export interface GoalWorkflowContext {
 	hasUI: boolean;
 	sessionManager: { getBranch(): Array<{ type: string; customType?: string; data?: unknown }> };
-	waitForIdle(): Promise<void>;
 	ui: {
 		notify(message: string, level?: "info" | "success" | "warning" | "error"): void;
 		confirm(title: string, message: string): Promise<boolean>;
@@ -50,8 +48,27 @@ interface GoalCommandContext {
 	};
 }
 
-interface GoalStartAPI {
+interface GoalCommandContext extends GoalWorkflowContext {
+	cwd: string;
+	waitForIdle(): Promise<void>;
+}
+
+export interface GoalStartAPI {
 	sendUserMessage(message: string, options?: { deliverAs?: "followUp" | "steer" }): unknown;
+}
+
+export interface GoalProposalReviewResult {
+	proposal: GoalDraftProposal;
+	start: boolean;
+}
+
+export interface SaveReviewedGoalOptions {
+	current: GoalState | null;
+	proposal: GoalDraftProposal;
+	action: "create" | "replace";
+	start: boolean;
+	successMessage?: string;
+	staleMessage?: string;
 }
 
 const CONTROL_COMMANDS = new Set([
@@ -282,34 +299,14 @@ async function createOrReplaceGoal(
 	let proposal = prepared.proposal;
 	let proposedObjective = validateObjective(proposal.objective);
 	let startAfterSave = parsed.start;
-	let action: "create" | "replace" = "create";
-
-	if (current) {
-		if (!parsed.replace) {
-			if (!ctx.hasUI) {
-				ctx.ui.notify(
-					"A goal already exists. Re-run with --replace to replace it in non-interactive mode.",
-					"error",
-				);
-				return;
-			}
-			const ok = await ctx.ui.confirm(
-				"Replace current goal?",
-				`Current: ${current.objective}\n\nNew: ${proposedObjective}`,
-			);
-			if (!ok) {
-				ctx.ui.notify("Goal replacement cancelled.", "info");
-				return;
-			}
-		}
-		action = "replace";
-	}
+	const action = await confirmGoalReplacement(ctx, current, parsed.replace, proposedObjective);
+	if (!action) return;
 
 	if (prepared.warning) {
 		ctx.ui.notify(prepared.warning, "warning");
 	}
 	if (ctx.hasUI && ctx.ui.select) {
-		const review = await reviewGeneratedGoalProposal(ctx, proposal);
+		const review = await reviewGoalProposal(ctx, proposal);
 		if (!review) return;
 		proposal = review.proposal;
 		proposedObjective = validateObjective(proposal.objective);
@@ -324,26 +321,13 @@ async function createOrReplaceGoal(
 		ctx.ui.notify(renderGoalProposalReview(proposal), "info");
 	}
 
-	const latest = loadGoalState(ctx);
-	if (current?.goalId !== latest?.goalId) {
-		ctx.ui.notify("Goal changed before saving. Re-run /goal with your objective.", "error");
-		return;
-	}
-	const next = saveGoalState(
-		pi,
-		{
-			action: latest ? "replace" : action,
-			goalId: crypto.randomUUID(),
-			objective: proposedObjective,
-			acceptanceCriteria: proposal.acceptanceCriteria,
-			now: Date.now(),
-			owner: "user",
-		},
-		latest,
-	);
-	updateGoalUi(ctx, next);
-	ctx.ui.notify(action === "replace" ? "Goal replaced." : "Goal created.", "success");
-	if (next) await offerGoalStartHandoff(pi, ctx, next.goalId, startAfterSave);
+	await saveReviewedGoalAndOfferStart(pi, ctx, {
+		current,
+		proposal: { ...proposal, objective: proposedObjective },
+		action,
+		start: startAfterSave,
+		staleMessage: "Goal changed before saving. Re-run /goal with your objective.",
+	});
 }
 
 async function offerGoalStartHandoff(
