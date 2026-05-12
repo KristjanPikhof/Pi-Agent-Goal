@@ -37,16 +37,15 @@ For local checkout development:
 
 ```bash
 npm install
-npm run build
 pi --no-extensions -e ./extensions/index.ts
 ```
 
-Published package installs load the built extension entry:
+The package uses the same source-extension shape as `pi-agents-team`: the root extension shim loads `extensions/pi-goal/index.ts`, and the package manifest points Pi at `./extensions/index.ts`:
 
 ```json
 {
 	"pi": {
-		"extensions": ["./dist/extensions/index.js"]
+		"extensions": ["./extensions/index.ts"]
 	}
 }
 ```
@@ -120,7 +119,6 @@ npm run typecheck
 npm run lint
 npm run format
 npm test
-npm run build:publish
 ```
 
 Related docs:

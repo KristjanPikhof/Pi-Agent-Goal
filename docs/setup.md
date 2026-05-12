@@ -66,7 +66,6 @@ Use a local checkout when you are editing this repository or testing unreleased 
 git clone <pi-goal-repo-url>
 cd pi-goal
 npm install
-npm run build
 ```
 
 Then load the source shim directly for a one-off run:
@@ -91,25 +90,24 @@ ln -s "$PWD/extensions/index.ts" /path/to/project/.pi/extensions/pi-goal.ts
 
 ## Package entry points
 
-Published installs load the built extension entry:
+Published and local installs load the source extension entry:
 
 ```json
 {
 	"pi": {
-		"extensions": ["./dist/extensions/index.js"]
+		"extensions": ["./extensions/index.ts"]
 	}
 }
 ```
 
-The package also exposes its library entry from `./dist/index.js` for tests or embedding:
+The extension folder mirrors the Pi Agents Team layout:
 
-```ts
-import goalExtension from "pi-goal";
+```text
+extensions/index.ts
+extensions/pi-goal/index.ts
 ```
 
-## Build before packing
-
-`npm pack` and `npm publish` run `prepack`, which calls `npm run build:publish`. That removes `dist`, compiles the TypeScript sources with `tsconfig.publish.json`, and writes the built Pi extension shim to `dist/extensions/index.js`.
+`extensions/index.ts` is the public package entry and re-exports the plugin from `extensions/pi-goal/index.ts`. The nested entry imports the implementation from `src/index.ts`.
 
 For local verification:
 
@@ -117,6 +115,5 @@ For local verification:
 npm run typecheck
 npm run lint
 npm test
-npm run build:publish
 npm pack --dry-run
 ```

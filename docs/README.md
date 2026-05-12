@@ -1,6 +1,6 @@
 # Pi `/goal` extension docs
 
-The `/goal` extension is implemented in `src/index.ts` and published through the built Pi extension entry at `dist/extensions/index.js`. These docs describe the shipped behavior, acceptance status, and remaining rollout checks.
+The `/goal` package follows the Pi Agents Team source-extension shape: `extensions/index.ts` loads `extensions/pi-goal/index.ts`, which wires the implementation from `src/index.ts`. These docs describe the shipped behavior, acceptance status, and remaining rollout checks.
 
 Read in this order:
 
@@ -31,7 +31,6 @@ npm run typecheck
 npm run lint
 npm run format
 npm test
-npm run build:publish
 pi --no-session --no-extensions -e ./extensions/index.ts -p /goal
 pi --no-session --no-extensions -e ./extensions/index.ts --goal-continuation -p /goal
 ```
