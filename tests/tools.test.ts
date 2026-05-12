@@ -9,6 +9,8 @@ import {
 	formatGoalToolCall,
 	formatGoalToolResult,
 	getGoalParams,
+	proposeGoalDraftPromptGuidelines,
+	proposeGoalDraftPromptSnippet,
 	registerGoalTools,
 	updateGoalProgressParams,
 } from "../src/tools.js";
@@ -20,7 +22,13 @@ function createHarness() {
 	const branch: Array<{ type: string; customType?: string; data?: unknown }> = [];
 	const tools = new Map<
 		string,
-		{ name: string; parameters: unknown; execute: (...args: never[]) => Promise<unknown> }
+		{
+			name: string;
+			parameters: unknown;
+			promptSnippet?: string;
+			promptGuidelines?: string[];
+			execute: (...args: never[]) => Promise<unknown>;
+		}
 	>();
 	const pi = {
 		registerTool: vi.fn((tool) => tools.set(tool.name, tool)),
@@ -57,6 +65,28 @@ describe("goal tool schemas and registration", () => {
 		registerGoalTools(pi);
 		expect([...tools.keys()]).toEqual(["get_goal", "create_goal", "complete_goal", "update_goal_progress"]);
 		expect(pi.registerTool).toHaveBeenCalledTimes(4);
+	});
+
+	it("documents propose_goal_draft as the review-only drafting path separate from create_goal", () => {
+		expect(proposeGoalDraftPromptSnippet).toContain("call propose_goal_draft exactly once");
+		expect(proposeGoalDraftPromptSnippet).toContain("do not persist");
+		expect(proposeGoalDraftPromptGuidelines).toEqual(
+			expect.arrayContaining([
+				expect.stringContaining("Use propose_goal_draft for plain /goal drafting turns"),
+				expect.stringContaining("Preserve the user's meaning and boundaries"),
+				expect.stringContaining("editable acceptanceCriteria"),
+				expect.stringContaining("Do not leave acceptanceCriteria empty"),
+				expect.stringContaining("Call propose_goal_draft exactly once"),
+				expect.stringContaining("create_goal persists an already-approved goal"),
+			]),
+		);
+
+		const { pi, tools } = createHarness();
+		registerGoalTools(pi);
+		const createGoalGuidance = tools.get("create_goal")?.promptGuidelines?.join("\n") ?? "";
+		expect(createGoalGuidance).toContain("persist an already-approved goal");
+		expect(createGoalGuidance).toContain("Do not use create_goal for agent-drafted /goal proposals");
+		expect(createGoalGuidance).toContain("use propose_goal_draft");
 	});
 });
 

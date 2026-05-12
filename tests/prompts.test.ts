@@ -58,7 +58,7 @@ describe("goal prompt rendering", () => {
 		expect(prompt).toContain("Preserve the user's meaning and boundaries exactly");
 		expect(prompt).toContain("do not add unrelated scope");
 		expect(prompt).toContain("acceptanceCriteria");
-		expect(prompt).toContain("concrete completion checks directly implied by the request");
+		expect(prompt).toContain("concrete checks directly implied by the user's request");
 		expect(prompt).toContain("do not leave the draft criteria-free");
 		expect(prompt).toContain("deep branch review");
 		expect(prompt).toContain("do not expand into fixing issues unless the user asked for fixes");
