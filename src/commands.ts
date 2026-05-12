@@ -39,7 +39,7 @@ export interface GoalWorkflowContext {
 	hasUI: boolean;
 	sessionManager: { getBranch(): Array<{ type: string; customType?: string; data?: unknown }> };
 	ui: {
-		notify(message: string, level?: "info" | "success" | "warning" | "error"): void;
+		notify(message: string, level?: "info" | "warning" | "error"): void;
 		confirm(title: string, message: string): Promise<boolean>;
 		select?(title: string, options: string[]): Promise<string | undefined>;
 		editor(title: string, initialValue: string): Promise<string | undefined>;
@@ -282,7 +282,7 @@ async function importGoal(
 					null,
 				);
 		updateGoalUi(ctx, next);
-		ctx.ui.notify(latest ? "Goal docs imported." : "Goal created from import.", "success");
+		ctx.ui.notify(latest ? "Goal docs imported." : "Goal created from import.", "info");
 		if (next) await offerGoalStartHandoff(pi, ctx, next.goalId, parsed.start);
 	} catch (error) {
 		ctx.ui.notify(error instanceof Error ? error.message : String(error), "error");
@@ -310,7 +310,7 @@ async function createOrReplaceGoal(
 			currentGoal: current ?? undefined,
 		}),
 	);
-	ctx.ui.notify("Goal draft queued for review.", "success");
+	ctx.ui.notify("Goal draft queued for review.", "info");
 }
 
 export async function confirmGoalReplacement(
@@ -423,7 +423,7 @@ export async function startActiveGoal(
 	}
 
 	api.sendUserMessage(renderGoalStartPrompt(latest), { deliverAs: "followUp" });
-	ctx.ui.notify("Goal start queued.", "success");
+	ctx.ui.notify("Goal start queued.", "info");
 	return true;
 }
 
@@ -468,7 +468,7 @@ async function editGoal(pi: ExtensionAPI, ctx: GoalCommandContext, current: Goal
 		latest,
 	);
 	updateGoalUi(ctx, next);
-	ctx.ui.notify("Goal updated.", "success");
+	ctx.ui.notify("Goal updated.", "info");
 }
 
 function mutateExistingGoal(
@@ -497,7 +497,7 @@ function mutateExistingGoal(
 	}
 	const next = saveGoalState(pi, { action, goalId: latest.goalId, now: Date.now() }, latest);
 	updateGoalUi(ctx, next);
-	ctx.ui.notify(message, "success");
+	ctx.ui.notify(message, "info");
 	return next;
 }
 
@@ -545,7 +545,7 @@ async function confirmThenMutate(
 		latest,
 	);
 	updateGoalUi(ctx, next);
-	ctx.ui.notify(message, "success");
+	ctx.ui.notify(message, "info");
 }
 
 function updateGoalUi(ctx: GoalWorkflowContext, goal: GoalState | null): void {
