@@ -1,34 +1,52 @@
-# Pi Goal Extension
+# Pi Goal
 
-Pi Goal adds Codex-style `/goal` support to Pi as a local TypeScript extension. It lets a user set a long-running objective, import goal context from docs, preserve state through branch-aware session history and compaction, expose narrow model tools, and optionally continue work when Pi is idle.
+Pi Goal adds Codex-style `/goal` support to Pi as an installable package. It lets a user set a long-running objective, import goal context from docs, preserve state through branch-aware session history and compaction, expose narrow model tools, and optionally continue work when Pi is idle.
 
-## Install and load locally
+## Quick start
 
-From this repository:
+Install the package, then start Pi:
+
+```bash
+pi install npm:pi-goal
+pi
+```
+
+In Pi, run:
+
+```text
+/goal
+```
+
+You should see usage when no goal exists yet. Create one with:
+
+```text
+/goal Ship the onboarding cleanup
+```
+
+## Install
+
+The full install reference, including settings.json edits, project-local installs, one-off runs, and local-checkout symlinks, lives in [`docs/setup.md`](./docs/setup.md). The short version:
+
+```bash
+pi install npm:pi-goal      # recommended global install
+pi install -l npm:pi-goal   # project-local install
+pi -e npm:pi-goal           # one-off run, nothing written to settings
+```
+
+For local checkout development:
 
 ```bash
 npm install
-pi --no-extensions -e ./src/index.ts
+npm run build
+pi --no-extensions -e ./extensions/index.ts
 ```
 
-For a quick non-interactive load check:
-
-```bash
-pi --no-session --no-extensions -e ./src/index.ts -p /goal
-```
-
-For project-local auto-discovery, copy or symlink this repository into a Pi project extension location such as:
-
-```text
-.pi/extensions/pi-goal/
-```
-
-The package declares Pi extension metadata:
+Published package installs load the built extension entry:
 
 ```json
 {
 	"pi": {
-		"extensions": ["./src/index.ts"]
+		"extensions": ["./dist/extensions/index.js"]
 	}
 }
 ```
@@ -65,13 +83,13 @@ Active goals inject a short hidden `goal-context` message before agent turns. Co
 Automatic continuation is opt-in. Start Pi with:
 
 ```bash
-pi --no-extensions -e ./src/index.ts --goal-continuation
+pi -e npm:pi-goal --goal-continuation
 ```
 
 Optional cap:
 
 ```bash
-pi --no-extensions -e ./src/index.ts --goal-continuation --goal-continuation-max-turns 3
+pi -e npm:pi-goal --goal-continuation --goal-continuation-max-turns 3
 ```
 
 Continuation only queues when the goal is active, Pi is idle, and no pending user messages exist. It rechecks the goal ID before starting and stops on no progress, completion, pause, clear, replacement, user interrupt, duplicate queue, busy state, disabled flag, pending messages, or max-turn cap.
@@ -102,6 +120,7 @@ npm run typecheck
 npm run lint
 npm run format
 npm test
+npm run build:publish
 ```
 
 Related docs:

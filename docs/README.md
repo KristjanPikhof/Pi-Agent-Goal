@@ -1,12 +1,13 @@
 # Pi `/goal` extension docs
 
-The `/goal` extension is implemented as a Pi extension in `src/index.ts`. These docs describe the shipped behavior, acceptance status, and remaining rollout checks.
+The `/goal` extension is implemented in `src/index.ts` and published through the built Pi extension entry at `dist/extensions/index.js`. These docs describe the shipped behavior, acceptance status, and remaining rollout checks.
 
 Read in this order:
 
-1. [`../README.md`](../README.md), install, loading, command reference, model tools, autonomy opt-in, and troubleshooting.
-2. [`implementation.md`](implementation.md), implementation details for state, commands, import, tools, context, compaction, continuation, UI, and Codex parity gaps.
-3. [`acceptance-criteria.md`](acceptance-criteria.md), acceptance checklist with automated and manual verification status.
+1. [`../README.md`](../README.md), quick start, command reference, model tools, autonomy opt-in, and troubleshooting.
+2. [`setup.md`](setup.md), package install, project-local install, one-off runs, local-checkout development, and package entry points.
+3. [`implementation.md`](implementation.md), implementation details for state, commands, import, tools, context, compaction, continuation, UI, and Codex parity gaps.
+4. [`acceptance-criteria.md`](acceptance-criteria.md), acceptance checklist with automated and manual verification status.
 
 ## What shipped
 
@@ -30,8 +31,9 @@ npm run typecheck
 npm run lint
 npm run format
 npm test
-pi --no-session --no-extensions -e ./src/index.ts -p /goal
-pi --no-session --no-extensions -e ./src/index.ts --goal-continuation -p /goal
+npm run build:publish
+pi --no-session --no-extensions -e ./extensions/index.ts -p /goal
+pi --no-session --no-extensions -e ./extensions/index.ts --goal-continuation -p /goal
 ```
 
 For live TUI lifecycle verification, use the manual checklist in [`acceptance-criteria.md`](acceptance-criteria.md#manual-session-lifecycle-smoke-checklist). Those checks cover interactive UI and session manager behavior that is not fully proven by the current test harness. Record the smoke evidence before release, or mark the release blocked.
