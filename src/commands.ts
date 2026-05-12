@@ -1,7 +1,7 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { preparePlainGoalDraft, type GoalDraftProposal } from "./goal-prep.js";
+import type { GoalDraftProposal } from "./goal-prep.js";
 import { importGoalSources, parseEditableGoalDraft, renderEditableGoalDraft } from "./import.js";
-import { renderGoalStartPrompt } from "./prompts.js";
+import { renderGoalAgentDraftingPrompt, renderGoalStartPrompt } from "./prompts.js";
 import { loadGoalState, saveGoalState, validateObjective } from "./state.js";
 import {
 	applyGoalUi,
@@ -296,39 +296,21 @@ async function createOrReplaceGoal(
 	current: GoalState | null,
 ): Promise<void> {
 	const objective = validateObjective(parsed.objective ?? "");
-	const prepared = await preparePlainGoalDraft(objective);
-	let proposal = prepared.proposal;
-	let proposedObjective = validateObjective(proposal.objective);
-	let startAfterSave = parsed.start;
-	const action = await confirmGoalReplacement(ctx, current, parsed.replace, proposedObjective);
+	const action = await confirmGoalReplacement(ctx, current, parsed.replace, objective);
 	if (!action) return;
-
-	if (prepared.warning) {
-		ctx.ui.notify(prepared.warning, "warning");
-	}
-	if (ctx.hasUI && ctx.ui.select) {
-		const review = await reviewGoalProposal(ctx, proposal);
-		if (!review) return;
-		proposal = review.proposal;
-		proposedObjective = validateObjective(proposal.objective);
-		startAfterSave = review.start;
-	} else if (!prepared.warning && ctx.hasUI && !parsed.confirmed) {
-		const ok = await ctx.ui.confirm("Use generated goal proposal?", renderGoalProposalReview(proposal));
-		if (!ok) {
-			ctx.ui.notify("Goal proposal cancelled.", "info");
-			return;
-		}
-	} else if (!prepared.warning || !ctx.hasUI) {
-		ctx.ui.notify(renderGoalProposalReview(proposal), "info");
+	if (!pi.sendUserMessage) {
+		ctx.ui.notify("Cannot draft goal: follow-up messaging API is unavailable.", "error");
+		return;
 	}
 
-	await saveReviewedGoalAndOfferStart(pi, ctx, {
-		current,
-		proposal: { ...proposal, objective: proposedObjective },
-		action,
-		start: startAfterSave,
-		staleMessage: "Goal changed before saving. Re-run /goal with your objective.",
-	});
+	pi.sendUserMessage(
+		renderGoalAgentDraftingPrompt(objective, {
+			start: parsed.start,
+			replacingExistingGoal: action === "replace",
+			currentGoal: current ?? undefined,
+		}),
+	);
+	ctx.ui.notify("Goal draft queued for review.", "success");
 }
 
 export async function confirmGoalReplacement(
@@ -596,12 +578,3 @@ export async function reviewGoalProposal(
 	}
 }
 
-function renderGoalProposalReview(proposal: { objective: string; acceptanceCriteria: string[] }): string {
-	return [
-		`Objective: ${proposal.objective}`,
-		"Acceptance criteria:",
-		...(proposal.acceptanceCriteria.length > 0
-			? proposal.acceptanceCriteria.map((item) => `- ${item}`)
-			: ["- none"]),
-	].join("\n");
-}

@@ -52,6 +52,29 @@ function latestGoalEntry(branch: Array<{ data?: unknown }>): GoalStateEntry {
 	return branch.at(-1)?.data as GoalStateEntry;
 }
 
+function seedGoal(
+	branch: Array<{ type: string; customType?: string; data?: unknown }>,
+	overrides: Partial<NonNullable<GoalStateEntry["state"]>> = {},
+): NonNullable<GoalStateEntry["state"]> {
+	const now = Date.now();
+	const state: NonNullable<GoalStateEntry["state"]> = {
+		version: 1,
+		goalId: "goal-1",
+		objective: "ship",
+		status: "active",
+		sourceDocs: [],
+		constraints: [],
+		acceptanceCriteria: ["Done is verifiable"],
+		progress: { done: [], blocked: [], lastSummary: "" },
+		createdAt: now,
+		updatedAt: now,
+		owner: "user",
+		...overrides,
+	};
+	branch.push({ type: "custom", customType: GOAL_CUSTOM_TYPE, data: { action: "create", state } });
+	return state;
+}
+
 describe("parseGoalCommand", () => {
 	it("parses show, status, control commands, import, flags, and objectives", () => {
 		expect(parseGoalCommand("   ")).toMatchObject({ kind: "show" });
@@ -101,47 +124,37 @@ describe("/goal command lifecycle", () => {
 		expect(ctx.ui.notify).toHaveBeenCalledWith(expect.stringContaining("Usage:"), "info");
 	});
 
-	it("creates an active goal after waiting for idle", async () => {
+	it("queues a plain goal drafting turn after waiting for idle without saving state", async () => {
 		const { pi, ctx, branch } = createHarness({ confirm: false });
 		await handleGoalCommand(pi, "  ship the feature  ", ctx);
 
 		expect(ctx.waitForIdle).toHaveBeenCalledOnce();
-		expect(pi.appendEntry).toHaveBeenCalledWith(
-			GOAL_CUSTOM_TYPE,
-			expect.objectContaining({ action: "create" }),
+		expect(pi.appendEntry).not.toHaveBeenCalled();
+		expect(branch).toHaveLength(0);
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(
+			expect.stringContaining("Call the propose_goal_draft tool exactly once"),
 		);
-		expect(latestGoalEntry(branch).state).toMatchObject({ objective: "ship the feature", status: "active" });
-		expect(ctx.ui.setStatus).toHaveBeenLastCalledWith("goal", "goal: active");
-		expect(ctx.ui.confirm).toHaveBeenCalledWith("Start working on this goal now?", "ship the feature");
-		expect(pi.sendUserMessage).not.toHaveBeenCalled();
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("ship the feature"));
+		expect(ctx.ui.notify).toHaveBeenCalledWith("Goal draft queued for review.", "success");
 	});
 
-	it("offers start handoff after create and queues it when accepted", async () => {
+	it("carries --start intent into the agent drafting prompt", async () => {
 		const { pi, ctx } = createHarness({ confirm: true });
-		await handleGoalCommand(pi, "ship interactively", ctx);
+		await handleGoalCommand(pi, "ship interactively --start", ctx);
 
-		expect(ctx.ui.confirm).toHaveBeenCalledWith("Start working on this goal now?", "ship interactively");
+		expect(ctx.ui.confirm).not.toHaveBeenCalledWith("Start working on this goal now?", "ship interactively");
 		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
-		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("ship interactively"), {
-			deliverAs: "followUp",
-		});
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("pass start: true"));
 	});
 
-	it("uses a real-Pi supported criteria-free draft when no proposal API exists", async () => {
+	it("queues the same review-only drafting flow in non-interactive mode", async () => {
 		const { pi, ctx, branch } = createHarness({ hasUI: false });
 
 		await handleGoalCommand(pi, "ship fallback --start", ctx);
 
-		expect(ctx.ui.notify).toHaveBeenCalledWith(
-			expect.stringContaining("No acceptance criteria were provided"),
-			"warning",
-		);
-		expect(ctx.ui.notify).toHaveBeenCalledWith(expect.stringContaining("Objective: ship fallback"), "info");
-		expect(latestGoalEntry(branch).state).toMatchObject({
-			objective: "ship fallback",
-			acceptanceCriteria: [],
-		});
-		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
+		expect(branch).toHaveLength(0);
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("ship fallback"));
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("pass start: true"));
 	});
 
 	it("reviews criteria-free drafts with Start/Edit/Cancel select flow and starts edited criteria", async () => {
