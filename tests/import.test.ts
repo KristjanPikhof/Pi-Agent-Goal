@@ -176,6 +176,39 @@ describe("/goal import command", () => {
 		]);
 	});
 
+	it("rejects import into paused or complete goals without mutating state", async () => {
+		const cwd = await makeWorkspace();
+		await writeFile(path.join(cwd, "prd.md"), prd);
+
+		const paused = createHarness(cwd, { confirm: true });
+		await handleGoalCommand(paused.pi, "Paused objective", paused.ctx);
+		await handleGoalCommand(paused.pi, "pause", paused.ctx);
+		const pausedEntries = paused.branch.length;
+
+		await handleGoalCommand(paused.pi, "import prd.md --yes", paused.ctx);
+
+		expect(paused.branch).toHaveLength(pausedEntries);
+		expect(latestGoalEntry(paused.branch).state?.status).toBe("paused");
+		expect(paused.ctx.ui.notify).toHaveBeenLastCalledWith(
+			expect.stringContaining("Cannot import docs into a paused goal"),
+			"error",
+		);
+
+		const complete = createHarness(cwd, { confirm: true });
+		await handleGoalCommand(complete.pi, "Complete objective", complete.ctx);
+		await handleGoalCommand(complete.pi, "complete --yes", complete.ctx);
+		const completeEntries = complete.branch.length;
+
+		await handleGoalCommand(complete.pi, "import prd.md --yes", complete.ctx);
+
+		expect(complete.branch).toHaveLength(completeEntries);
+		expect(latestGoalEntry(complete.branch).state?.status).toBe("complete");
+		expect(complete.ctx.ui.notify).toHaveBeenLastCalledWith(
+			expect.stringContaining("Cannot import docs into a complete goal"),
+			"error",
+		);
+	});
+
 	it("requires --yes for import in no-UI mode after extraction", async () => {
 		const cwd = await makeWorkspace();
 		await writeFile(path.join(cwd, "prd.md"), prd);

@@ -159,8 +159,16 @@ async function importGoal(
 ): Promise<void> {
 	await ctx.waitForIdle();
 	try {
-		const imported = await importGoalSources(parsed.path ?? "", { cwd: ctx.cwd });
 		const current = loadGoalState(ctx);
+		if (current && current.status !== "active") {
+			ctx.ui.notify(
+				`Cannot import docs into a ${current.status} goal. Run /goal resume first, or /goal clear --yes before creating a new goal from docs.`,
+				"error",
+			);
+			return;
+		}
+
+		const imported = await importGoalSources(parsed.path ?? "", { cwd: ctx.cwd });
 		const summary = [
 			`Objective: ${imported.objective}`,
 			`Source docs: ${imported.sourceDocs.map((doc) => doc.path).join(", ")}`,
@@ -189,6 +197,13 @@ async function importGoal(
 		}
 
 		const latest = loadGoalState(ctx);
+		if (latest && latest.status !== "active") {
+			ctx.ui.notify(
+				`Cannot import docs into a ${latest.status} goal. Run /goal resume first, or /goal clear --yes before creating a new goal from docs.`,
+				"error",
+			);
+			return;
+		}
 		const next = latest
 			? saveGoalState(
 					pi,

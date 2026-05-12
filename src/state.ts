@@ -102,7 +102,7 @@ export function reduceGoalState(current: GoalState | null, event: GoalStateEvent
 			};
 		}
 		case "import-docs": {
-			if (!isCurrentGoal(current, event.goalId)) return current;
+			if (!isCurrentGoal(current, event.goalId) || current.status !== "active") return current;
 			return {
 				...current,
 				sourceDocs: mergeSourceDocs(current.sourceDocs, event.sourceDocs),

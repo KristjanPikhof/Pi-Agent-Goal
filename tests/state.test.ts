@@ -132,6 +132,46 @@ describe("goal state reducer", () => {
 		expect(state).toMatchObject({ goalId: "goal-2", status: "active" });
 	});
 
+	it("ignores import-docs for complete and paused goals", () => {
+		const sourceDoc: GoalSourceDoc = {
+			path: "docs/prd.md",
+			kind: "prd",
+			brief: "Goal brief",
+			extractedAt: baseTime + 2,
+		};
+		let state = reduceGoalState(null, createEvent("goal-1", "Import lifecycle"));
+		state = reduceGoalState(state, { action: "pause", goalId: "goal-1", now: baseTime + 1 });
+
+		state = reduceGoalState(state, {
+			action: "import-docs",
+			goalId: "goal-1",
+			now: baseTime + 2,
+			sourceDocs: [sourceDoc],
+			constraints: ["late constraint"],
+			acceptanceCriteria: ["late criteria"],
+		});
+		expect(state).toMatchObject({ status: "paused", updatedAt: baseTime + 1 });
+		expect(state?.sourceDocs).toEqual([]);
+		expect(state?.constraints).toEqual([]);
+		expect(state?.acceptanceCriteria).toEqual([]);
+
+		state = reduceGoalState(state, { action: "resume", goalId: "goal-1", now: baseTime + 3 });
+		state = reduceGoalState(state, { action: "complete", goalId: "goal-1", now: baseTime + 4 });
+		state = reduceGoalState(state, {
+			action: "import-docs",
+			goalId: "goal-1",
+			now: baseTime + 5,
+			sourceDocs: [sourceDoc],
+			constraints: ["late constraint"],
+			acceptanceCriteria: ["late criteria"],
+		});
+
+		expect(state).toMatchObject({ status: "complete", updatedAt: baseTime + 4 });
+		expect(state?.sourceDocs).toEqual([]);
+		expect(state?.constraints).toEqual([]);
+		expect(state?.acceptanceCriteria).toEqual([]);
+	});
+
 	it("ignores pause, complete, and progress for inactive paused goals until resume", () => {
 		let state = reduceGoalState(null, createEvent("goal-1", "Pause semantics"));
 		state = reduceGoalState(state, { action: "pause", goalId: "goal-1", now: baseTime + 1 });
