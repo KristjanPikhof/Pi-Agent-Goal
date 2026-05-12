@@ -369,7 +369,32 @@ function reducePersistedState(current: GoalState | null, entry: GoalStateEntry):
 }
 
 function isGoalState(value: unknown): value is GoalState {
-	return isRecord(value) && value.version === 1 && typeof value.goalId === "string";
+	return (
+		isRecord(value) &&
+		value.version === 1 &&
+		typeof value.goalId === "string" &&
+		typeof value.objective === "string" &&
+		(value.status === "active" || value.status === "paused" || value.status === "complete") &&
+		Array.isArray(value.sourceDocs) &&
+		value.sourceDocs.every(isGoalSourceDoc) &&
+		isStringArray(value.constraints) &&
+		isStringArray(value.acceptanceCriteria) &&
+		isGoalProgress(value.progress) &&
+		typeof value.createdAt === "number" &&
+		typeof value.updatedAt === "number" &&
+		(value.completedAt === undefined || typeof value.completedAt === "number") &&
+		(value.owner === "user" || value.owner === "model")
+	);
+}
+
+function isGoalProgress(value: unknown): value is GoalProgress {
+	return (
+		isRecord(value) &&
+		isStringArray(value.done) &&
+		(value.current === undefined || typeof value.current === "string") &&
+		isStringArray(value.blocked) &&
+		typeof value.lastSummary === "string"
+	);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
