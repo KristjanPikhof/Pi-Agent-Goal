@@ -38,13 +38,13 @@ The package declares Pi extension metadata:
 | Command                       | Behavior                                                                                                                                                 |
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/goal`                       | Show usage when no goal exists, otherwise show the current goal summary.                                                                                 |
-| `/goal <objective>`           | Create an active goal. If a goal already exists, interactive Pi asks for confirmation. In non-interactive mode, use `--replace`.                         |
+| `/goal <objective>`           | Create an active goal. Recognized flags such as `--replace` are stripped from the objective even when they appear before the text. If a goal already exists, interactive Pi asks for confirmation. In non-interactive mode, use `--replace`. |
 | `/goal status`                | Show objective, status, criteria, constraints, source docs, progress, blockers, and next commands.                                                       |
-| `/goal import <path> [--yes]` | Import a markdown/text PRD file or docs folder. Stores source paths plus compact briefs. Use `--yes` in non-interactive mode after reviewing the source. |
+| `/goal import <path> [--yes]` | Import a markdown/text PRD file or docs folder. Stores source paths plus compact briefs. With an existing goal, imports merge source docs, constraints, and criteria instead of replacing the objective. Use `--yes` in non-interactive mode after reviewing the source. |
 | `/goal edit`                  | Edit the objective through the interactive UI editor. Non-interactive mode should use `/goal <objective> --replace`.                                     |
-| `/goal pause`                 | Pause the goal, which stops hidden active-goal context and continuation.                                                                                 |
-| `/goal resume`                | Resume a paused or complete goal as active.                                                                                                              |
-| `/goal complete [--yes]`      | Mark the goal complete. Use `--yes` when there is no interactive confirmation UI.                                                                        |
+| `/goal pause`                 | Pause the goal, which stops hidden active-goal context, continuation, completion, and progress updates until resumed.                                    |
+| `/goal resume`                | Resume a paused goal as active. Complete goals are terminal until cleared or replaced.                                                                    |
+| `/goal complete [--yes]`      | Mark an active goal complete. Use `--yes` when there is no interactive confirmation UI.                                                                  |
 | `/goal clear [--yes]`         | Clear the current goal and hide goal UI. Use `--yes` when there is no interactive confirmation UI.                                                       |
 
 ## Model tools
@@ -53,8 +53,8 @@ The extension registers these tools for model use:
 
 - `get_goal`, reads current goal state and source paths.
 - `create_goal`, creates a goal only when `explicit_request` is true and no goal already exists.
-- `complete_goal`, marks the active goal complete with optional evidence.
-- `update_goal_progress`, updates progress only. It cannot change objective, source docs, or acceptance criteria.
+- `complete_goal`, marks an active goal complete with optional evidence. It rejects paused and already complete goals.
+- `update_goal_progress`, updates progress only. It rejects paused or complete goals and cannot change objective, source docs, or acceptance criteria.
 
 ## State, compaction, and autonomy
 
@@ -74,7 +74,7 @@ Optional cap:
 pi --no-extensions -e ./src/index.ts --goal-continuation --goal-continuation-max-turns 3
 ```
 
-Continuation only queues when the goal is active, Pi is idle, and no pending user messages exist. It rechecks the goal ID before starting and stops on no progress, completion, pause, clear, replacement, user interrupt, duplicate queue, or max-turn cap.
+Continuation only queues when the goal is active, Pi is idle, and no pending user messages exist. It rechecks the goal ID before starting and stops on no progress, completion, pause, clear, replacement, user interrupt, duplicate queue, busy state, disabled flag, pending messages, or max-turn cap.
 
 ## Known gaps versus Codex
 
@@ -82,14 +82,14 @@ Continuation only queues when the goal is active, Pi is idle, and no pending use
 - No exact Codex token budget or wall-clock accounting. Pi uses an opt-in max-turn cap and progress checks.
 - No exact Codex goal menu or bottom-pane UI. Pi uses footer status, widgets, command output, and tool renderers.
 - No general model `update_goal` tool. This is intentional, to prevent silent objective or scope rewrites.
-- Live TUI lifecycle checks for `/compact`, `/reload`, `/resume`, `/tree`, and `/fork` are documented as manual smoke coverage, with integration-style automated tests for the underlying hooks and reconstruction behavior.
+- Live TUI lifecycle checks for `/compact`, `/reload`, `/resume`, `/tree`, and `/fork` are manual smoke coverage. Record that evidence before release, or mark the release blocked. Automated tests cover the underlying hooks and reconstruction behavior, not the live TUI itself.
 
 ## Troubleshooting
 
 | Symptom                                                  | What to do                                                                                                                                      |
 | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/goal import` says the path is outside the workspace    | Run the command from the workspace root or move/copy the source file inside it.                                                                 |
-| `/goal import` requires `--yes`                          | Non-interactive mode cannot show confirmation. Review the source docs, then rerun with `--yes`.                                                 |
+| `/goal import` says the path is outside the workspace    | The requested path or its realpath resolved outside the workspace, including symlink escapes. Run from the workspace root or move/copy the source file inside it. |
+| `/goal import` requires `--yes`                          | Non-interactive mode cannot show confirmation. Review the source docs, then rerun with `--yes`. Directory imports fail if supported docs exceed the configured `maxFiles`; narrow the path or raise the limit in code/tests. |
 | Replacing a goal fails in non-interactive mode           | Rerun `/goal <objective> --replace`.                                                                                                            |
 | `/goal edit` fails                                       | The editor is interactive-only. Use `/goal <objective> --replace` instead.                                                                      |
 | Hidden context or UI looks stale after branch navigation | Run `/goal status`; state is reconstructed from the selected branch. If it is wrong, inspect recent `goal-state` custom entries in the session. |
