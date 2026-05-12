@@ -326,7 +326,7 @@ describe("/goal command lifecycle", () => {
 
 	it("edits in UI mode and rejects edit in no-UI mode", async () => {
 		const interactive = createHarness({ editor: "edited objective" });
-		await handleGoalCommand(interactive.pi, "original", interactive.ctx);
+		seedGoal(interactive.branch, { objective: "original" });
 		await handleGoalCommand(interactive.pi, "edit", interactive.ctx);
 		expect(latestGoalEntry(interactive.branch).action).toBe("edit");
 		expect(latestGoalEntry(interactive.branch).state?.objective).toBe("edited objective");
@@ -338,7 +338,7 @@ edited objective with criteria
 - First criterion
 - Second criterion`;
 		const withCriteria = createHarness({ editor: criteriaEditor });
-		await handleGoalCommand(withCriteria.pi, "original", withCriteria.ctx);
+		seedGoal(withCriteria.branch, { objective: "original" });
 		await handleGoalCommand(withCriteria.pi, "edit", withCriteria.ctx);
 		expect(withCriteria.ctx.ui.editor).toHaveBeenCalledWith(
 			"Edit goal",
@@ -353,12 +353,12 @@ edited objective with criteria
 		const emptyCriteria = createHarness({
 			editor: "# Objective\ncriteria can be cleared\n\n# Acceptance criteria\n",
 		});
-		await handleGoalCommand(emptyCriteria.pi, "original", emptyCriteria.ctx);
+		seedGoal(emptyCriteria.branch, { objective: "original" });
 		await handleGoalCommand(emptyCriteria.pi, "edit", emptyCriteria.ctx);
 		expect(latestGoalEntry(emptyCriteria.branch).state?.acceptanceCriteria).toEqual([]);
 
 		const noUi = createHarness({ hasUI: false });
-		await handleGoalCommand(noUi.pi, "original", noUi.ctx);
+		seedGoal(noUi.branch, { objective: "original" });
 		await handleGoalCommand(noUi.pi, "edit", noUi.ctx);
 		expect(noUi.ctx.ui.notify).toHaveBeenLastCalledWith(
 			expect.stringContaining("requires interactive UI"),
@@ -367,9 +367,10 @@ edited objective with criteria
 	});
 
 	it("offers start handoff after resume and skips it for pause", async () => {
-		const { pi, ctx } = createHarness({ confirm: false });
-		await handleGoalCommand(pi, "ship", ctx);
+		const { pi, ctx, branch } = createHarness({ confirm: false });
+		seedGoal(branch);
 		ctx.ui.confirm.mockClear();
+		(pi.sendUserMessage as ReturnType<typeof vi.fn>).mockClear();
 
 		await handleGoalCommand(pi, "pause", ctx);
 		expect(ctx.ui.confirm).not.toHaveBeenCalled();
@@ -383,7 +384,7 @@ edited objective with criteria
 
 	it("pauses, resumes, clears, and completes with safe confirmation behavior", async () => {
 		const { pi, ctx, branch } = createHarness({ confirm: true });
-		await handleGoalCommand(pi, "ship", ctx);
+		seedGoal(branch);
 		await handleGoalCommand(pi, "pause", ctx);
 		expect(latestGoalEntry(branch).state?.status).toBe("paused");
 
@@ -406,7 +407,7 @@ edited objective with criteria
 
 	it("requires --yes for destructive no-UI commands", async () => {
 		const { pi, ctx, branch } = createHarness({ hasUI: false });
-		await handleGoalCommand(pi, "ship", ctx);
+		seedGoal(branch);
 		await handleGoalCommand(pi, "complete", ctx);
 		expect(latestGoalEntry(branch).state?.status).toBe("active");
 		expect(ctx.ui.notify).toHaveBeenLastCalledWith(expect.stringContaining("requires --yes"), "error");
@@ -417,7 +418,7 @@ edited objective with criteria
 
 	it("refuses to complete paused goals", async () => {
 		const { pi, ctx, branch } = createHarness({ confirm: true });
-		await handleGoalCommand(pi, "ship", ctx);
+		seedGoal(branch);
 		await handleGoalCommand(pi, "pause", ctx);
 		const entriesAfterPause = branch.length;
 
