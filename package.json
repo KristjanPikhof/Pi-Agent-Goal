@@ -1,7 +1,7 @@
 {
 	"name": "pi-goal-extension",
 	"version": "0.1.0",
-	"description": "Scaffold for a Pi /goal extension.",
+	"description": "Pi extension for branch-aware long-running /goal workflows.",
 	"type": "module",
 	"private": true,
 	"main": "./src/index.ts",

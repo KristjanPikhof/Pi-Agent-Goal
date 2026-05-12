@@ -40,14 +40,14 @@ The package metadata exposes the extension through:
 
 ## Codex comparison
 
-| Area | Codex behavior | Pi Goal behavior |
-| --- | --- | --- |
-| Persistence | SQLite `thread_goals` table keyed by thread. | Pi custom session entries named `goal-state`, reconstructed from the current branch. |
-| Commands | `/goal` supports setting, viewing, editing, clearing, pausing, and resuming goals. | Same main lifecycle, with non-interactive flags for confirmation paths. |
-| Model tools | `get_goal`, `create_goal`, `update_goal` limited to completion. | `get_goal`, `create_goal`, `complete_goal`, plus progress-only `update_goal_progress`. No general objective rewrite tool. |
-| Compaction | Codex preserves goal context through its compaction pipeline. | Pi `session_before_compact` appends active goal summary/details while canonical state stays in custom entries. |
-| Continuation | Codex runtime continues active goals while idle with runtime budget tracking. | Pi continuation is opt-in, capped by max turns, and guarded by idle/pending-message/stale-goal/progress checks. |
-| UI | Codex-specific menu and bottom-pane behavior. | Pi footer status, active-goal widget, command output, and tool renderers. |
+| Area         | Codex behavior                                                                     | Pi Goal behavior                                                                                                          |
+| ------------ | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Persistence  | SQLite `thread_goals` table keyed by thread.                                       | Pi custom session entries named `goal-state`, reconstructed from the current branch.                                      |
+| Commands     | `/goal` supports setting, viewing, editing, clearing, pausing, and resuming goals. | Same main lifecycle, with non-interactive flags for confirmation paths.                                                   |
+| Model tools  | `get_goal`, `create_goal`, `update_goal` limited to completion.                    | `get_goal`, `create_goal`, `complete_goal`, plus progress-only `update_goal_progress`. No general objective rewrite tool. |
+| Compaction   | Codex preserves goal context through its compaction pipeline.                      | Pi `session_before_compact` appends active goal summary/details while canonical state stays in custom entries.            |
+| Continuation | Codex runtime continues active goals while idle with runtime budget tracking.      | Pi continuation is opt-in, capped by max turns, and guarded by idle/pending-message/stale-goal/progress checks.           |
+| UI           | Codex-specific menu and bottom-pane behavior.                                      | Pi footer status, active-goal widget, command output, and tool renderers.                                                 |
 
 Known parity gaps are intentional for this rollout: no Codex app-server RPC compatibility, no SQLite table, no exact token or wall-clock accounting, and no exact Codex menu UI.
 
@@ -83,17 +83,17 @@ Supported events are `create`, `replace`, `edit`, `pause`, `resume`, `clear`, `c
 
 ## Command behavior
 
-| Command | Implemented behavior |
-| --- | --- |
-| `/goal` | Shows usage with no goal, otherwise current summary. |
-| `/goal <objective>` | Creates a goal. If one exists, interactive mode confirms replacement, non-interactive mode requires `--replace`. |
-| `/goal status` | Shows expanded state: criteria, constraints, progress, blocked items, source docs, and next commands. |
-| `/goal import <path> [--yes]` | Imports a supported docs file or folder. Interactive mode confirms. Non-interactive mode requires `--yes`. |
-| `/goal edit` | Opens the interactive editor. Non-interactive mode returns an actionable fallback. |
-| `/goal pause` | Sets status to `paused`. |
-| `/goal resume` | Sets status to `active`. |
-| `/goal complete [--yes]` | Marks complete after confirmation or `--yes`. |
-| `/goal clear [--yes]` | Clears current state after confirmation or `--yes`. |
+| Command                       | Implemented behavior                                                                                             |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `/goal`                       | Shows usage with no goal, otherwise current summary.                                                             |
+| `/goal <objective>`           | Creates a goal. If one exists, interactive mode confirms replacement, non-interactive mode requires `--replace`. |
+| `/goal status`                | Shows expanded state: criteria, constraints, progress, blocked items, source docs, and next commands.            |
+| `/goal import <path> [--yes]` | Imports a supported docs file or folder. Interactive mode confirms. Non-interactive mode requires `--yes`.       |
+| `/goal edit`                  | Opens the interactive editor. Non-interactive mode returns an actionable fallback.                               |
+| `/goal pause`                 | Sets status to `paused`.                                                                                         |
+| `/goal resume`                | Sets status to `active`.                                                                                         |
+| `/goal complete [--yes]`      | Marks complete after confirmation or `--yes`.                                                                    |
+| `/goal clear [--yes]`         | Clears current state after confirmation or `--yes`.                                                              |
 
 Mutating commands call `ctx.waitForIdle()` before writing and reload current branch state before saving. This avoids racing with an active agent turn or a goal replacement.
 
@@ -115,11 +115,11 @@ Path rules are intentionally strict. Relative paths must resolve inside the curr
 
 ## Model tool behavior
 
-| Tool | Permission boundary |
-| --- | --- |
-| `get_goal` | Reads current state and source paths. |
-| `create_goal` | Requires `explicit_request: true` and fails if a goal exists. |
-| `complete_goal` | Only marks the current goal complete, with optional evidence in the entry reason. |
+| Tool                   | Permission boundary                                                                                          |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `get_goal`             | Reads current state and source paths.                                                                        |
+| `create_goal`          | Requires `explicit_request: true` and fails if a goal exists.                                                |
+| `complete_goal`        | Only marks the current goal complete, with optional evidence in the entry reason.                            |
 | `update_goal_progress` | Updates progress fields only. It cannot rewrite objective, source docs, constraints, or acceptance criteria. |
 
 This keeps user-owned scope under user control. There is no general model tool that can rewrite the objective.
@@ -196,14 +196,14 @@ The remaining live TUI coverage is documented in [`acceptance-criteria.md`](acce
 
 ## Troubleshooting
 
-| Symptom | Cause and fix |
-| --- | --- |
-| Import path rejected as outside workspace | Run Pi from the workspace root or import a file inside the workspace. |
-| Import requires `--yes` | Non-interactive mode cannot confirm. Review the source, then rerun with `--yes`. |
-| Goal replacement rejected | Use interactive confirmation or rerun with `--replace`. |
-| `edit` fails | `/goal edit` needs interactive UI. Use `/goal <objective> --replace` without UI. |
-| Continuation does not queue | Enable `--goal-continuation`, keep the goal active, wait until Pi is idle, and ensure no pending user messages exist. |
-| Goal appears branch-stale | Run `/goal status` on the selected branch. The source of truth is the branch's `goal-state` entries. |
+| Symptom                                   | Cause and fix                                                                                                         |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Import path rejected as outside workspace | Run Pi from the workspace root or import a file inside the workspace.                                                 |
+| Import requires `--yes`                   | Non-interactive mode cannot confirm. Review the source, then rerun with `--yes`.                                      |
+| Goal replacement rejected                 | Use interactive confirmation or rerun with `--replace`.                                                               |
+| `edit` fails                              | `/goal edit` needs interactive UI. Use `/goal <objective> --replace` without UI.                                      |
+| Continuation does not queue               | Enable `--goal-continuation`, keep the goal active, wait until Pi is idle, and ensure no pending user messages exist. |
+| Goal appears branch-stale                 | Run `/goal status` on the selected branch. The source of truth is the branch's `goal-state` entries.                  |
 
 ## Future work
 

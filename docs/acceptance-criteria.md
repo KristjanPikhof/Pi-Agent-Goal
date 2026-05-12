@@ -1,82 +1,114 @@
 # `/goal` extension acceptance criteria
 
-Use this checklist to decide whether the Pi `/goal` extension is implementation-ready and complete.
+This checklist records the implemented behavior and rollout verification status for the Pi `/goal` extension.
+
+Status key:
+
+- **Automated** means covered by unit or integration-style tests.
+- **Manual smoke** means the code path has harness coverage, but the live TUI/session behavior still needs a real Pi session check before release.
+- **Future work** means intentionally not implemented in this rollout.
 
 ## Command behavior
 
-- `/goal` shows usage when no goal exists.
-- `/goal` shows the current objective, status, source docs, progress, and next actions when a goal exists.
-- `/goal <objective>` creates an active goal with a new `goalId`.
-- `/goal <objective>` asks before replacing an existing goal.
-- `/goal edit` requires an existing goal and persists user-confirmed edits.
-- `/goal clear` removes the goal and hides status/widget UI.
-- `/goal pause` stops hidden context injection and continuation.
-- `/goal resume` reactivates the goal without rewriting objective or criteria.
-- `/goal complete` marks the goal complete and records evidence or confirmation.
-- Mutating commands behave safely while a task is running: wait for idle, queue safely, or reject with a clear message.
+| Criterion                                                                                            | Status                                         |
+| ---------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| `/goal` shows usage when no goal exists.                                                             | Automated                                      |
+| `/goal` shows current objective, status, source docs, progress, and next actions when a goal exists. | Automated                                      |
+| `/goal <objective>` creates an active goal with a new `goalId`.                                      | Automated                                      |
+| `/goal <objective>` asks before replacing an existing goal.                                          | Automated with harness confirmation            |
+| `/goal edit` requires an existing goal and persists user-confirmed edits.                            | Automated with harness editor                  |
+| `/goal clear` removes the goal and hides status/widget UI.                                           | Automated                                      |
+| `/goal pause` stops hidden context injection and continuation eligibility.                           | Automated                                      |
+| `/goal resume` reactivates the goal without rewriting objective or criteria.                         | Automated                                      |
+| `/goal complete` marks the goal complete and records completion state.                               | Automated                                      |
+| Mutating commands avoid active-turn races with `waitForIdle()` and re-read before save.              | Automated by command harness and source review |
 
 ## PRD and docs input
 
-- `/goal import <file>` reads a PRD/markdown file and extracts objective, constraints, acceptance criteria, source paths, and risks.
-- `/goal import <directory>` scans relevant docs without importing generated/vendor files.
-- Imported state stores source paths plus compact briefs, not full repeated document text.
-- User confirms the extracted objective before it becomes active.
-- Missing, unreadable, binary, oversized, or out-of-workspace paths produce clear errors.
+| Criterion                                                                                                                             | Status    |
+| ------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| `/goal import <file>` reads PRD/markdown/text files.                                                                                  | Automated |
+| File import extracts objective, constraints, acceptance criteria, source paths, risks, and open questions where headings are present. | Automated |
+| `/goal import <directory>` scans supported docs without generated/vendor directories.                                                 | Automated |
+| Imported state stores source paths plus compact briefs, not full repeated document text.                                              | Automated |
+| User confirms the extracted objective before activation, or uses `--yes` in non-interactive mode.                                     | Automated |
+| Missing, unreadable, binary, oversized, unsupported, or out-of-workspace paths produce clear errors.                                  | Automated |
 
 ## Model tools
 
-- `get_goal` returns current goal state and source paths.
-- `create_goal` works only when explicitly requested and fails if a goal already exists.
-- `complete_goal` can only mark the active goal complete.
-- The model cannot silently rewrite objective, source docs, or acceptance criteria.
-- Tool results include enough details for state reconstruction and UI rendering.
-- Tool renderers are concise and readable in Pi TUI.
+| Criterion                                                                                      | Status                        |
+| ---------------------------------------------------------------------------------------------- | ----------------------------- |
+| `get_goal` returns current goal state and source paths.                                        | Automated                     |
+| `create_goal` works only when explicitly requested and fails if a goal already exists.         | Automated                     |
+| `complete_goal` can only mark the current goal complete.                                       | Automated                     |
+| The model cannot silently rewrite objective, source docs, constraints, or acceptance criteria. | Automated by schema and tests |
+| Tool results include enough details for state reconstruction and UI rendering.                 | Automated                     |
+| Tool renderers are concise and readable.                                                       | Automated                     |
 
 ## Hidden context
 
-- Active goals inject a hidden short context before turns.
-- Paused, complete, or cleared goals do not inject active-goal context.
-- Hidden context includes objective, acceptance criteria, source paths/briefs, progress summary, and safety rules.
-- Stale hidden context from older branches or replaced goals is filtered out.
+| Criterion                                                                                                        | Status    |
+| ---------------------------------------------------------------------------------------------------------------- | --------- |
+| Active goals inject a hidden short context before turns.                                                         | Automated |
+| Paused, complete, or cleared goals do not inject active-goal context.                                            | Automated |
+| Hidden context includes objective, acceptance criteria, source paths/briefs, progress summary, and safety rules. | Automated |
+| Stale hidden context from older branches or replaced goals is filtered out.                                      | Automated |
 
 ## State and persistence
 
-- Canonical state is persisted as Pi custom entries inside the session.
-- State reconstructs from `ctx.sessionManager.getBranch()` on `session_start`, `session_tree`, reload, resume, fork, and clone.
-- Branch navigation shows the goal state for the selected branch, not a global latest goal.
-- Replacing a goal produces a new `goalId`; stale updates for previous `goalId`s are ignored.
+| Criterion                                                               | Status                                                              |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Canonical state is persisted as Pi custom entries inside the session.   | Automated                                                           |
+| State reconstructs from `ctx.sessionManager.getBranch()`.               | Automated                                                           |
+| Branch navigation shows selected-branch state, not global latest state. | Automated with branch-shaped fixtures, live `/tree` is manual smoke |
+| Replacing a goal produces a new `goalId`.                               | Automated                                                           |
+| Stale updates for previous `goalId`s are ignored.                       | Automated                                                           |
 
 ## Compaction and continuation
 
-- Manual `/compact` preserves the active goal objective, criteria, source-doc brief, and progress.
-- Auto-compaction preserves the same state.
-- After compaction, `/goal status` still works from canonical entries.
-- After compaction, the next model turn receives a correct short goal context.
-- Runtime continuation only runs when the goal is active, Pi is idle, and no pending user messages exist.
-- Continuation re-checks `goalId` before queuing work.
-- Continuation stops on no progress, completion, pause, clear, user interrupt, or replacement.
+| Criterion                                                                                                                                                                | Status                                                          |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------- |
+| Manual `/compact` preserves active goal objective, criteria, source-doc brief, and progress.                                                                             | Hook automated, live command is manual smoke                    |
+| Auto-compaction preserves the same state.                                                                                                                                | Hook automated, live auto-compaction is manual smoke            |
+| After compaction, `/goal status` still works from canonical entries.                                                                                                     | Automated by state reconstruction, live command is manual smoke |
+| After compaction, the next model turn receives a correct short goal context.                                                                                             | Automated by hook/context tests, live turn is manual smoke      |
+| Runtime continuation only runs when the goal is active, Pi is idle, and no pending user messages exist.                                                                  | Automated                                                       |
+| Continuation re-checks `goalId` before queuing and before starting work.                                                                                                 | Automated                                                       |
+| Continuation stops on no progress, completion, pause, clear, user interrupt, replacement, duplicate queue, pending messages, busy state, disabled flag, or max-turn cap. | Automated                                                       |
+| Exact Codex token/time budget accounting.                                                                                                                                | Future work                                                     |
 
 ## UI and status
 
-- Footer status reflects active/paused/complete state.
-- Widget shows short active-goal progress and disappears when not useful.
-- `/goal status` works in interactive mode and degrades gracefully when `ctx.hasUI` is false.
-- Errors are actionable: say what failed and what command to run next.
+| Criterion                                                                                   | Status                              |
+| ------------------------------------------------------------------------------------------- | ----------------------------------- |
+| Footer status reflects active, paused, complete, and no-goal states.                        | Automated, live TUI is manual smoke |
+| Widget shows short active-goal progress and disappears when not useful.                     | Automated, live TUI is manual smoke |
+| `/goal status` works in interactive mode and degrades gracefully when `ctx.hasUI` is false. | Automated                           |
+| Errors are actionable and include the next command or flag where relevant.                  | Automated                           |
 
 ## Testing checklist
 
-- Unit tests for state reducer and branch reconstruction.
-- Unit tests for doc extraction from PRD and docs folder.
-- Unit tests for tool permission boundaries.
-- Integration/manual tests for `/goal` command lifecycle.
-- Integration/manual tests for `/reload`, `/resume`, `/tree`, `/fork`, and `/compact`.
-- Continuation tests for idle continuation, no-progress stop, and stale `goalId` prevention.
+| Area                                                                                                                 | Status                                                      |
+| -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Unit tests for state reducer and branch reconstruction.                                                              | Automated                                                   |
+| Unit tests for doc extraction from PRD and docs folder.                                                              | Automated                                                   |
+| Unit tests for tool permission boundaries.                                                                           | Automated                                                   |
+| Integration-style tests for `/goal` command lifecycle.                                                               | Automated                                                   |
+| Integration-style tests for reload/resume/tree/fork reconstruction behavior.                                         | Automated with simulated session events and branch fixtures |
+| Compaction hook tests.                                                                                               | Automated                                                   |
+| Continuation guard tests for idle continuation, no-progress stop, stale `goalId`, duplicate queue, and max-turn cap. | Automated                                                   |
+| Live TUI tests for `/reload`, `/resume`, `/tree`, `/fork`, and `/compact`.                                           | Manual smoke                                                |
 
 ## Manual session lifecycle smoke checklist
 
-Automation covers reducer, command, import, tools, hidden context, compaction hooks, continuation guards, UI renderers, and branch-shaped reconstruction. The following checks document the remaining interactive Pi lifecycle verification that should be run before release in a real TUI session:
+Automation covers reducer, command, import, tools, hidden context, compaction hooks, continuation guards, UI renderers, and branch-shaped reconstruction. Run these checks in a real TUI session before release:
 
-1. Start Pi with the extension: `pi --no-extensions -e ./src/index.ts`.
+1. Start Pi with the extension:
+
+   ```bash
+   pi --no-extensions -e ./src/index.ts
+   ```
+
 2. Run `/goal` and confirm usage renders without starting an agent turn.
 3. Run `/goal Ship a multi-turn verification goal`, then confirm footer shows `goal: active` and the active-goal widget appears.
 4. Run `/goal status`, `/goal pause`, `/goal resume`, `/goal complete --yes`, and `/goal clear --yes`; confirm status/widget update or disappear at each step.
@@ -84,9 +116,23 @@ Automation covers reducer, command, import, tools, hidden context, compaction ho
 6. Trigger `/compact`; confirm `/goal status` still shows objective, criteria, source brief, and progress, then send a normal prompt and verify hidden goal context is regenerated for the active goal.
 7. Run `/reload` or restart/resume the session; confirm footer/widget and `/goal status` reconstruct from current branch custom entries.
 8. Use `/fork` or `/tree` to navigate between branches with different goal mutations; confirm the selected branch shows its own goal state and stale context from the other branch is absent.
-9. With `--goal-continuation`, update progress through `update_goal_progress`, then let an idle continuation queue; confirm it stops after no progress or max-turn cap and does not duplicate queue.
-10. In non-interactive/print smoke, run commands with `--yes` where required and confirm actionable errors are printed when confirmation flags are missing.
+9. Start Pi with continuation enabled:
 
-## Definition of done
+   ```bash
+   pi --no-extensions -e ./src/index.ts --goal-continuation --goal-continuation-max-turns 3
+   ```
 
-The extension is done when a user can start a long-running goal from a prompt or docs folder, let the agent work across multiple turns and compactions, resume the session later, branch safely, and have the model mark the goal complete only when the acceptance criteria are actually satisfied.
+   Update progress through `update_goal_progress`, then let an idle continuation queue. Confirm it stops after no progress or the max-turn cap and does not duplicate the queue.
+
+10. Run quick non-interactive load checks:
+
+    ```bash
+    pi --no-session --no-extensions -e ./src/index.ts -p /goal
+    pi --no-session --no-extensions -e ./src/index.ts --goal-continuation -p /goal
+    ```
+
+## Definition of done status
+
+The rollout acceptance is met when automated checks pass and the docs accurately mark live TUI lifecycle checks as manual smoke rather than automated proof. The extension currently supports starting a long-running goal from a prompt or docs folder, preserving state through branch-aware session entries and compaction hooks, exposing narrow tools, and optionally continuing while idle behind explicit opt-in.
+
+Remaining future work is Codex-exact compatibility: app-server RPC, SQLite persistence, exact token/time budgets, and exact Codex goal menu UI.

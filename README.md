@@ -35,17 +35,17 @@ The package declares Pi extension metadata:
 
 ## Commands
 
-| Command | Behavior |
-| --- | --- |
-| `/goal` | Show usage when no goal exists, otherwise show the current goal summary. |
-| `/goal <objective>` | Create an active goal. If a goal already exists, interactive Pi asks for confirmation. In non-interactive mode, use `--replace`. |
-| `/goal status` | Show objective, status, criteria, constraints, source docs, progress, blockers, and next commands. |
+| Command                       | Behavior                                                                                                                                                 |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/goal`                       | Show usage when no goal exists, otherwise show the current goal summary.                                                                                 |
+| `/goal <objective>`           | Create an active goal. If a goal already exists, interactive Pi asks for confirmation. In non-interactive mode, use `--replace`.                         |
+| `/goal status`                | Show objective, status, criteria, constraints, source docs, progress, blockers, and next commands.                                                       |
 | `/goal import <path> [--yes]` | Import a markdown/text PRD file or docs folder. Stores source paths plus compact briefs. Use `--yes` in non-interactive mode after reviewing the source. |
-| `/goal edit` | Edit the objective through the interactive UI editor. Non-interactive mode should use `/goal <objective> --replace`. |
-| `/goal pause` | Pause the goal, which stops hidden active-goal context and continuation. |
-| `/goal resume` | Resume a paused or complete goal as active. |
-| `/goal complete [--yes]` | Mark the goal complete. Use `--yes` when there is no interactive confirmation UI. |
-| `/goal clear [--yes]` | Clear the current goal and hide goal UI. Use `--yes` when there is no interactive confirmation UI. |
+| `/goal edit`                  | Edit the objective through the interactive UI editor. Non-interactive mode should use `/goal <objective> --replace`.                                     |
+| `/goal pause`                 | Pause the goal, which stops hidden active-goal context and continuation.                                                                                 |
+| `/goal resume`                | Resume a paused or complete goal as active.                                                                                                              |
+| `/goal complete [--yes]`      | Mark the goal complete. Use `--yes` when there is no interactive confirmation UI.                                                                        |
+| `/goal clear [--yes]`         | Clear the current goal and hide goal UI. Use `--yes` when there is no interactive confirmation UI.                                                       |
 
 ## Model tools
 
@@ -86,14 +86,14 @@ Continuation only queues when the goal is active, Pi is idle, and no pending use
 
 ## Troubleshooting
 
-| Symptom | What to do |
-| --- | --- |
-| `/goal import` says the path is outside the workspace | Run the command from the workspace root or move/copy the source file inside it. |
-| `/goal import` requires `--yes` | Non-interactive mode cannot show confirmation. Review the source docs, then rerun with `--yes`. |
-| Replacing a goal fails in non-interactive mode | Rerun `/goal <objective> --replace`. |
-| `/goal edit` fails | The editor is interactive-only. Use `/goal <objective> --replace` instead. |
+| Symptom                                                  | What to do                                                                                                                                      |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/goal import` says the path is outside the workspace    | Run the command from the workspace root or move/copy the source file inside it.                                                                 |
+| `/goal import` requires `--yes`                          | Non-interactive mode cannot show confirmation. Review the source docs, then rerun with `--yes`.                                                 |
+| Replacing a goal fails in non-interactive mode           | Rerun `/goal <objective> --replace`.                                                                                                            |
+| `/goal edit` fails                                       | The editor is interactive-only. Use `/goal <objective> --replace` instead.                                                                      |
 | Hidden context or UI looks stale after branch navigation | Run `/goal status`; state is reconstructed from the selected branch. If it is wrong, inspect recent `goal-state` custom entries in the session. |
-| Continuation does not start | Confirm Pi was launched with `--goal-continuation`, the goal is active, Pi is idle, and there are no pending user messages. |
+| Continuation does not start                              | Confirm Pi was launched with `--goal-continuation`, the goal is active, Pi is idle, and there are no pending user messages.                     |
 
 ## Local development
 
