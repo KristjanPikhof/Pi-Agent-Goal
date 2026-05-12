@@ -39,7 +39,10 @@ export const proposeGoalDraftParams = Type.Object(
 	{
 		objective: Type.String({ description: "The concise objective for the proposed /goal draft." }),
 		description: Type.Optional(
-			Type.String({ description: "Optional short context summary for the user review surface." }),
+			Type.String({
+				description:
+					"Optional short context summary for result metadata; not persisted unless folded into objective or acceptance criteria.",
+			}),
 		),
 		acceptanceCriteria: Type.Array(Type.String(), {
 			description: "Concrete, editable completion checks directly implied by the user's request.",
@@ -80,7 +83,7 @@ export const proposeGoalDraftPromptSnippet =
 export const proposeGoalDraftPromptGuidelines = [
 	"Use propose_goal_draft for plain /goal drafting turns that need user review before anything is saved.",
 	"Preserve the user's meaning and boundaries; do not invent unrelated scope or silently drop constraints.",
-	"Provide objective, optional concise description, and editable acceptanceCriteria with concrete completion checks directly implied by the request.",
+	"Provide objective and editable acceptanceCriteria with concrete completion checks directly implied by the request; include description only as optional non-persisted context metadata.",
 	"Do not leave acceptanceCriteria empty for the drafting flow; if details are uncertain, make the uncertainty explicit rather than creating unrelated checks.",
 	"Call propose_goal_draft exactly once instead of replying with the draft in prose.",
 	"Do not use create_goal for this flow: create_goal persists an already-approved goal after explicit authorization, while propose_goal_draft only opens review.",
@@ -127,7 +130,7 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 		promptSnippet: "Create a user-approved /goal only when no goal exists.",
 		promptGuidelines: [
 			"Use create_goal only when the user or system/developer instructions explicitly ask to persist an already-approved goal; do not infer goals from ordinary tasks.",
-			"Do not use create_goal for agent-drafted /goal proposals; use propose_goal_draft so the user can review objective, description, and acceptance criteria first.",
+			"Do not use create_goal for agent-drafted /goal proposals; use propose_goal_draft so the user can review objective and acceptance criteria first.",
 			"create_goal fails if a goal already exists; do not use it to rewrite an existing objective.",
 		],
 		parameters: createGoalParams,
