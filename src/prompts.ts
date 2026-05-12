@@ -30,7 +30,7 @@ export function renderGoalStartPrompt(goal: GoalState): string {
 		"</objective>",
 		"",
 		"Acceptance criteria:",
-		...formatXmlList(goal.acceptanceCriteria),
+		...formatAcceptanceCriteriaXmlList(goal.acceptanceCriteria),
 		"",
 		`Current progress: ${escapeXml(goal.progress.lastSummary || "No progress recorded yet.")}`,
 		goal.progress.current ? `Current work: ${escapeXml(goal.progress.current)}` : undefined,
@@ -53,7 +53,7 @@ export function renderContinuationPrompt(goal: GoalState): string {
 		"</objective>",
 		"",
 		"Remaining acceptance criteria:",
-		...formatXmlList(goal.acceptanceCriteria),
+		...formatAcceptanceCriteriaXmlList(goal.acceptanceCriteria),
 		"",
 		`Current progress: ${escapeXml(goal.progress.lastSummary || "No progress recorded yet.")}`,
 		goal.progress.current ? `Current work: ${escapeXml(goal.progress.current)}` : undefined,
@@ -83,7 +83,7 @@ export function renderGoalContext(goal: GoalState): string {
 		`Objective: ${escapeXml(goal.objective)}`,
 		`Status: ${escapeXml(goal.status)}`,
 		"Acceptance criteria:",
-		...formatXmlList(goal.acceptanceCriteria),
+		...formatAcceptanceCriteriaXmlList(goal.acceptanceCriteria),
 		`Current progress: ${escapeXml(goal.progress.lastSummary || "No progress recorded yet.")}`,
 		goal.progress.current ? `Current work: ${escapeXml(goal.progress.current)}` : undefined,
 		goal.progress.blocked.length > 0 ? `Blocked: ${escapeXml(goal.progress.blocked.join("; "))}` : undefined,
@@ -106,7 +106,7 @@ export function renderCompactGoalSummary(goal: GoalState): string {
 		`Objective: ${goal.objective}`,
 		`Status: ${goal.status}`,
 		"Acceptance criteria:",
-		...formatMarkdownList(goal.acceptanceCriteria),
+		...formatAcceptanceCriteriaMarkdownList(goal.acceptanceCriteria),
 		"Source docs:",
 		...formatMarkdownList(goal.sourceDocs.map((doc) => `${doc.path}: ${doc.brief}`)),
 		"Progress:",
@@ -146,8 +146,10 @@ export function escapeXml(value: string): string {
 		.replace(/'/g, "&apos;");
 }
 
-function formatXmlList(items: string[]): string[] {
-	return items.length === 0 ? ["- none"] : items.map((item) => `- ${escapeXml(item)}`);
+function formatAcceptanceCriteriaXmlList(items: string[]): string[] {
+	return items.length === 0
+		? ["- No acceptance criteria were specified for this goal; use the objective as the source of truth."]
+		: items.map((item) => `- ${escapeXml(item)}`);
 }
 
 function formatSourceDocs(sourceDocs: GoalSourceDoc[]): string[] {
@@ -159,4 +161,10 @@ function formatSourceDocs(sourceDocs: GoalSourceDoc[]): string[] {
 
 function formatMarkdownList(items: string[]): string[] {
 	return items.length === 0 ? ["- none"] : items.map((item) => `- ${item}`);
+}
+
+function formatAcceptanceCriteriaMarkdownList(items: string[]): string[] {
+	return items.length === 0
+		? ["- No acceptance criteria were specified for this goal; use the objective as the source of truth."]
+		: formatMarkdownList(items);
 }

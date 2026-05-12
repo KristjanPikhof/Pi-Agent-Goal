@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { GOAL_CONTEXT_CUSTOM_TYPE, renderCompactGoalSummary, renderGoalContext } from "../src/prompts.js";
+import {
+	GOAL_CONTEXT_CUSTOM_TYPE,
+	renderCompactGoalSummary,
+	renderGoalContext,
+	renderGoalStartPrompt,
+} from "../src/prompts.js";
 import { createGoalContextMessage, filterGoalContextMessages } from "../src/runtime.js";
 
 import type { GoalState } from "../src/types.js";
@@ -76,6 +81,32 @@ describe("goal prompt rendering", () => {
 		]);
 		expect(filterGoalContextMessages([fresh, ordinary], goal({ status: "paused" }))).toEqual([ordinary]);
 		expect(filterGoalContextMessages([fresh, ordinary], null)).toEqual([ordinary]);
+	});
+
+	it("renders start handoff with concrete generated acceptance criteria", () => {
+		const prompt = renderGoalStartPrompt(
+			goal({ acceptanceCriteria: ["Build the thing", "Tests prove the behavior"] }),
+		);
+
+		expect(prompt).toContain("Acceptance criteria:\n- Build the thing\n- Tests prove the behavior");
+		expect(prompt).not.toContain("No acceptance criteria were specified");
+		expect(prompt).not.toContain("- none");
+	});
+
+	it("renders intentional empty acceptance criteria copy in prompts", () => {
+		const emptyGoal = goal({ acceptanceCriteria: [] });
+		const startPrompt = renderGoalStartPrompt(emptyGoal);
+		const context = renderGoalContext(emptyGoal);
+		const summary = renderCompactGoalSummary(emptyGoal);
+
+		for (const rendered of [startPrompt, context, summary]) {
+			expect(rendered).toContain(
+				"No acceptance criteria were specified for this goal; use the objective as the source of truth.",
+			);
+		}
+		expect(startPrompt).not.toContain("Acceptance criteria:\n- none");
+		expect(context).not.toContain("Acceptance criteria:\n- none");
+		expect(summary).not.toContain("Acceptance criteria:\n- none");
 	});
 
 	it("renders compact goal summaries with objective, criteria, source brief, and progress", () => {

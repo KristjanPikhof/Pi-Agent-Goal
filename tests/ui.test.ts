@@ -83,6 +83,12 @@ describe("goal UI renderers", () => {
 		expect(status).toContain("Current work:\n- polishing widgets");
 		expect(status).toContain("Source docs:\n- docs/prd.md (prd): PRD brief");
 		expect(status).toContain("Commands:");
+
+		const emptyCriteriaStatus = renderGoalStatus(goal({ acceptanceCriteria: [] }));
+		expect(emptyCriteriaStatus).toContain(
+			"No acceptance criteria were specified for this goal; use the objective as the source of truth.",
+		);
+		expect(emptyCriteriaStatus).not.toContain("Acceptance criteria:\n- none");
 	});
 
 	it("applies status/widget and no-ops without UI methods", () => {
@@ -99,6 +105,8 @@ describe("goal UI renderers", () => {
 
 	it("uses actionable usage and error copy", () => {
 		expect(GOAL_USAGE).toContain("/goal import <path> [--yes]");
+		expect(GOAL_USAGE).toContain("plain text is AI-prepared and editable before start");
+		expect(GOAL_USAGE).toContain("review or edit the prepared objective and acceptance criteria");
 		expect(GOAL_USAGE).toContain("Non-interactive mode");
 		expect(noGoalMessage("pause")).toContain("Start one with /goal <objective>");
 		expect(nonInteractiveConfirmationMessage("/goal clear")).toContain("requires --yes");
