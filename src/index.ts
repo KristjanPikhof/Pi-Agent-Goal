@@ -1,8 +1,17 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { registerGoalCommand } from "./commands.js";
 import { registerGoalTools } from "./tools.js";
+import { registerGoalRuntime } from "./runtime.js";
 
 export { handleGoalCommand, parseGoalCommand, registerGoalCommand } from "./commands.js";
+export { createGoalCompaction, createGoalContextMessage, filterGoalContextMessages, registerGoalRuntime } from "./runtime.js";
+export {
+	compactGoalDetails,
+	escapeXml,
+	GOAL_CONTEXT_CUSTOM_TYPE,
+	renderCompactGoalSummary,
+	renderGoalContext,
+} from "./prompts.js";
 export {
 	DEFAULT_IMPORT_MAX_FILE_BYTES,
 	DEFAULT_IMPORT_MAX_FILES,
@@ -52,4 +61,5 @@ export type {
 export default function goalExtension(pi: ExtensionAPI): void {
 	registerGoalCommand(pi);
 	registerGoalTools(pi);
+	registerGoalRuntime(pi);
 }
