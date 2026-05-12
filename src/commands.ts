@@ -145,7 +145,10 @@ export function parseGoalCommand(args: string): ParsedGoalCommand {
 		return { kind: "import", path: pathArg, confirmed, replace };
 	}
 
-	const objective = tokens.filter((token) => !RECOGNIZED_FLAGS.has(token)).join(" ").trim();
+	const objective = tokens
+		.filter((token) => !RECOGNIZED_FLAGS.has(token))
+		.join(" ")
+		.trim();
 	return { kind: "create", objective, confirmed, replace };
 }
 
