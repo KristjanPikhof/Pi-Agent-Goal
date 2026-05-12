@@ -405,7 +405,9 @@ describe("goal tool renderers", () => {
 				objective: "Review branch",
 				acceptanceCriteria: ["Review the diff", "Report risks"],
 			}),
-		).toBe("propose_goal_draft:\nObjective: Review branch\nAcceptance criteria:\n- Review the diff\n- Report risks");
+		).toBe(
+			"propose_goal_draft:\nObjective: Review branch\nAcceptance criteria:\n- Review the diff\n- Report risks",
+		);
 		expect(
 			formatGoalToolResult({ content: [{ type: "text", text: "Goal complete." }], details: undefined }),
 		).toBe("Goal complete.");
