@@ -116,7 +116,8 @@ export function parseEditableGoalDraft(content: string): EditableGoalDraft {
 	const normalized = normalizeMarkdown(content);
 	const sections = parseMarkdownSections(normalized);
 	const hasHeadings = /^#{1,6}\s+.+$/m.test(normalized);
-	const objective = firstValue(sections, ["objective", "goal"]) ?? (!hasHeadings ? normalized.trim() : undefined);
+	const objective =
+		firstValue(sections, ["objective", "goal"]) ?? (!hasHeadings ? normalized.trim() : undefined);
 	if (!objective) {
 		throw new GoalImportError("Goal draft must include a non-empty Objective section.");
 	}
@@ -133,7 +134,9 @@ export function parseEditableGoalDraft(content: string): EditableGoalDraft {
 
 export function renderEditableGoalDraft(input: EditableGoalDraft): string {
 	const acceptanceCriteria = input.acceptanceCriteria.map((item) => `- ${item}`).join("\n");
-	return [`# Objective`, input.objective, ``, `# Acceptance criteria`, acceptanceCriteria].join("\n").trimEnd();
+	return [`# Objective`, input.objective, ``, `# Acceptance criteria`, acceptanceCriteria]
+		.join("\n")
+		.trimEnd();
 }
 
 export function resolveImportPath(inputPath: string, cwd: string): string {

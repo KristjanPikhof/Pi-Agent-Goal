@@ -318,6 +318,32 @@ describe("/goal command lifecycle", () => {
 		expect(latestGoalEntry(interactive.branch).action).toBe("edit");
 		expect(latestGoalEntry(interactive.branch).state?.objective).toBe("edited objective");
 
+		const criteriaEditor = `# Objective
+edited objective with criteria
+
+# Acceptance criteria
+- First criterion
+- Second criterion`;
+		const withCriteria = createHarness({ editor: criteriaEditor });
+		await handleGoalCommand(withCriteria.pi, "original", withCriteria.ctx);
+		await handleGoalCommand(withCriteria.pi, "edit", withCriteria.ctx);
+		expect(withCriteria.ctx.ui.editor).toHaveBeenCalledWith(
+			"Edit goal",
+			expect.stringContaining("# Acceptance criteria"),
+		);
+		expect(latestGoalEntry(withCriteria.branch).action).toBe("edit");
+		expect(latestGoalEntry(withCriteria.branch).state).toMatchObject({
+			objective: "edited objective with criteria",
+			acceptanceCriteria: ["First criterion", "Second criterion"],
+		});
+
+		const emptyCriteria = createHarness({
+			editor: "# Objective\ncriteria can be cleared\n\n# Acceptance criteria\n",
+		});
+		await handleGoalCommand(emptyCriteria.pi, "original", emptyCriteria.ctx);
+		await handleGoalCommand(emptyCriteria.pi, "edit", emptyCriteria.ctx);
+		expect(latestGoalEntry(emptyCriteria.branch).state?.acceptanceCriteria).toEqual([]);
+
 		const noUi = createHarness({ hasUI: false });
 		await handleGoalCommand(noUi.pi, "original", noUi.ctx);
 		await handleGoalCommand(noUi.pi, "edit", noUi.ctx);

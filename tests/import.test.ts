@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { handleGoalCommand, parseGoalCommand } from "../src/commands.js";
-import { extractGoalBrief, importGoalSources } from "../src/import.js";
+import { extractGoalBrief, importGoalSources, parseEditableGoalDraft } from "../src/import.js";
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type { GoalStateEntry } from "../src/types.js";
@@ -71,6 +71,28 @@ describe("goal import extraction", () => {
 		expect(extracted.openQuestions).toEqual(["What size limit is enough?"]);
 		expect(extracted.sourcePaths).toContain("src/import.ts");
 		expect(extracted.brief).toContain("Source: docs/prd.md");
+	});
+
+	it("parses editable goal drafts with objective and acceptance criteria sections", () => {
+		expect(
+			parseEditableGoalDraft(
+				`# Objective\nShip edited draft.\n\n# Acceptance criteria\n- Saves criteria.\n- Allows edits.`,
+			),
+		).toEqual({
+			objective: "Ship edited draft.",
+			acceptanceCriteria: ["Saves criteria.", "Allows edits."],
+		});
+		expect(parseEditableGoalDraft(`# Objective\nShip without criteria.\n\n# Acceptance criteria\n`)).toEqual({
+			objective: "Ship without criteria.",
+			acceptanceCriteria: [],
+		});
+		expect(parseEditableGoalDraft("plain objective remains supported")).toEqual({
+			objective: "plain objective remains supported",
+			acceptanceCriteria: [],
+		});
+		expect(() => parseEditableGoalDraft(`# Acceptance criteria\n- Missing objective`)).toThrow(
+			"Objective section",
+		);
 	});
 
 	it("imports a single markdown PRD file with compact source metadata", async () => {
