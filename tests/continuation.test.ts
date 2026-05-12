@@ -39,7 +39,7 @@ function createGoal() {
 function createHarness(
 	options: {
 		enabled?: boolean;
-		maxTurns?: number;
+		maxTurns?: number | string;
 		idle?: boolean;
 		pending?: boolean;
 		branch?: Array<{ type: string; customType?: string; data?: unknown }>;
@@ -245,7 +245,7 @@ describe("goal continuation scheduler", () => {
 		state.queuedGoalId = "goal-1";
 		const { api, ctx } = createHarness({
 			enabled: true,
-			maxTurns: 1,
+			maxTurns: "1",
 			branch,
 		});
 		startQueuedGoalContinuation(api, state, ctx, 20);
@@ -276,6 +276,10 @@ describe("goal continuation scheduler", () => {
 			ui: { setStatus: vi.fn() },
 		};
 		registerGoalRuntime(pi);
+		expect((pi as unknown as { registerFlag: ReturnType<typeof vi.fn> }).registerFlag).toHaveBeenCalledWith(
+			"goal-continuation-max-turns",
+			expect.objectContaining({ type: "string", default: "3" }),
+		);
 
 		await handlers.get("agent_end")?.({}, ctx);
 		expect(
@@ -287,5 +291,6 @@ describe("goal continuation scheduler", () => {
 			GOAL_CONTINUATION_CUSTOM_TYPE,
 			expect.objectContaining({ action: "stopped", reason: "user-interrupt" }),
 		);
+		expect(ctx.ui.setStatus).toHaveBeenLastCalledWith("goal-continuation", undefined);
 	});
 });
