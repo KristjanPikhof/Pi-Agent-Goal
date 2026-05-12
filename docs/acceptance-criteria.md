@@ -10,24 +10,24 @@ Status key:
 
 ## Command behavior
 
-| Criterion                                                                                                                                                                                                        | Status                                          |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| `/goal` shows usage when no goal exists.                                                                                                                                                                         | Automated                                       |
-| `/goal` shows current objective, status, source docs, progress, and next actions when a goal exists.                                                                                                             | Automated                                       |
-| `/goal <objective>` sends the plain text to the chat agent with instructions to call `propose_goal_draft` with objective, optional description, and acceptance criteria.                                         | Automated                                       |
-| `propose_goal_draft` validates objective and at least one acceptance criterion before review.                                                                                                                     | Automated                                       |
-| Interactive draft review can show Start/Edit/Cancel with public Pi `select`, `editor`, and `confirm` APIs; Start saves and starts, Edit opens a prefilled modal markdown draft, and Cancel saves nothing.        | Automated by tool harness, live TUI is manual smoke |
-| `/goal <objective>` strips recognized flags such as `--replace` and `--start` from the saved objective wherever they appear in the input.                                                                        | Automated                                       |
-| `/goal <objective>` asks before replacing an existing goal.                                                                                                                                                      | Automated with harness confirmation             |
-| `/goal start` starts the current active goal with a one-shot follow-up handoff.                                                                                                                                  | Automated                                       |
-| `--start` opts create, import, and resume flows into immediate start, and is required for non-interactive immediate start.                                                                                       | Automated by parser and command lifecycle tests |
-| `/goal edit` requires an existing goal and persists user-confirmed edits.                                                                                                                                        | Automated with harness editor                   |
-| `/goal clear` removes the goal and hides status/widget UI.                                                                                                                                                       | Automated                                       |
-| `/goal pause` stops hidden context injection, continuation eligibility, completion, and progress updates.                                                                                                        | Automated                                       |
-| `/goal resume` reactivates a paused goal without rewriting objective or criteria.                                                                                                                                | Automated                                       |
-| `/goal complete` marks only active goals complete and records completion state.                                                                                                                                  | Automated                                       |
-| Complete goals stay terminal until cleared or replaced.                                                                                                                                                          | Automated                                       |
-| Mutating commands avoid active-turn races with `waitForIdle()` and re-read before save.                                                                                                                          | Automated by command harness and source review  |
+| Criterion                                                                                                                                                                                                 | Status                                              |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| `/goal` shows usage when no goal exists.                                                                                                                                                                  | Automated                                           |
+| `/goal` shows current objective, status, source docs, progress, and next actions when a goal exists.                                                                                                      | Automated                                           |
+| `/goal <objective>` sends the plain text to the chat agent with instructions to call `propose_goal_draft` with objective, optional description, and acceptance criteria.                                  | Automated                                           |
+| `propose_goal_draft` validates objective and at least one acceptance criterion before review.                                                                                                             | Automated                                           |
+| Interactive draft review can show Start/Edit/Cancel with public Pi `select`, `editor`, and `confirm` APIs; Start saves and starts, Edit opens a prefilled modal markdown draft, and Cancel saves nothing. | Automated by tool harness, live TUI is manual smoke |
+| `/goal <objective>` strips recognized flags such as `--replace` and `--start` from the saved objective wherever they appear in the input.                                                                 | Automated                                           |
+| `/goal <objective>` asks before replacing an existing goal.                                                                                                                                               | Automated with harness confirmation                 |
+| `/goal start` starts the current active goal with a one-shot follow-up handoff.                                                                                                                           | Automated                                           |
+| `--start` opts create, import, and resume flows into immediate start, and is required for non-interactive immediate start.                                                                                | Automated by parser and command lifecycle tests     |
+| `/goal edit` requires an existing goal and persists user-confirmed edits.                                                                                                                                 | Automated with harness editor                       |
+| `/goal clear` removes the goal and hides status/widget UI.                                                                                                                                                | Automated                                           |
+| `/goal pause` stops hidden context injection, continuation eligibility, completion, and progress updates.                                                                                                 | Automated                                           |
+| `/goal resume` reactivates a paused goal without rewriting objective or criteria.                                                                                                                         | Automated                                           |
+| `/goal complete` marks only active goals complete and records completion state.                                                                                                                           | Automated                                           |
+| Complete goals stay terminal until cleared or replaced.                                                                                                                                                   | Automated                                           |
+| Mutating commands avoid active-turn races with `waitForIdle()` and re-read before save.                                                                                                                   | Automated by command harness and source review      |
 
 ## PRD and docs input
 
@@ -45,17 +45,17 @@ Status key:
 
 ## Model tools
 
-| Criterion                                                                                      | Status                        |
-| ---------------------------------------------------------------------------------------------- | ----------------------------- |
-| `get_goal` returns current goal state and source paths.                                        | Automated                     |
-| `create_goal` works only when explicitly requested and fails if a goal already exists.         | Automated                     |
-| `propose_goal_draft` is the review-only path for agent-drafted `/goal` proposals and saves only after Start. | Automated                     |
+| Criterion                                                                                                     | Status                        |
+| ------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| `get_goal` returns current goal state and source paths.                                                       | Automated                     |
+| `create_goal` works only when explicitly requested and fails if a goal already exists.                        | Automated                     |
+| `propose_goal_draft` is the review-only path for agent-drafted `/goal` proposals and saves only after Start.  | Automated                     |
 | `propose_goal_draft` returns `review_ui_unavailable` and saves nothing when interactive review UI is missing. | Automated                     |
-| `complete_goal` can only mark the current active goal complete.                                | Automated                     |
-| `complete_goal` and `update_goal_progress` reject paused goals.                                | Automated                     |
-| The model cannot silently rewrite objective, source docs, constraints, or acceptance criteria. | Automated by schema and tests |
-| Tool results include enough details for state reconstruction and UI rendering.                 | Automated                     |
-| Tool renderers are concise and readable.                                                       | Automated                     |
+| `complete_goal` can only mark the current active goal complete.                                               | Automated                     |
+| `complete_goal` and `update_goal_progress` reject paused goals.                                               | Automated                     |
+| The model cannot silently rewrite objective, source docs, constraints, or acceptance criteria.                | Automated by schema and tests |
+| Tool results include enough details for state reconstruction and UI rendering.                                | Automated                     |
+| Tool renderers are concise and readable.                                                                      | Automated                     |
 
 ## Hidden context
 
