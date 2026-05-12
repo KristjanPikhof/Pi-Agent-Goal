@@ -265,6 +265,52 @@ describe("/goal command lifecycle", () => {
 		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
 	});
 
+	it("aborts stale --replace when the goal changes before save", async () => {
+		const { pi, ctx, branch } = createHarness({ hasUI: false });
+		await handleGoalCommand(pi, "original", ctx);
+		(pi.sendUserMessage as ReturnType<typeof vi.fn>).mockClear();
+		ctx.ui.notify.mockClear();
+		const entriesBeforeReplace = branch.length;
+		const externalState = {
+			...latestGoalEntry(branch).state!,
+			goalId: "external-goal",
+			objective: "external replacement",
+			updatedAt: Date.now(),
+		};
+		let reads = 0;
+		ctx.sessionManager.getBranch.mockImplementation(() => {
+			reads += 1;
+			if (reads === 2) {
+				branch.push({
+					type: "custom",
+					customType: GOAL_CUSTOM_TYPE,
+					data: {
+						action: "replace",
+						state: externalState,
+						event: {
+							action: "replace",
+							goalId: externalState.goalId,
+							objective: externalState.objective,
+							now: externalState.updatedAt,
+							owner: "user",
+						},
+					},
+				});
+			}
+			return branch;
+		});
+
+		await handleGoalCommand(pi, "intended replacement --replace --start", ctx);
+
+		expect(branch).toHaveLength(entriesBeforeReplace + 1);
+		expect(latestGoalEntry(branch).state?.objective).toBe("external replacement");
+		expect(ctx.ui.notify).toHaveBeenLastCalledWith(
+			"Goal changed before saving. Re-run /goal with your objective.",
+			"error",
+		);
+		expect(pi.sendUserMessage).not.toHaveBeenCalled();
+	});
+
 	it("edits in UI mode and rejects edit in no-UI mode", async () => {
 		const interactive = createHarness({ editor: "edited objective" });
 		await handleGoalCommand(interactive.pi, "original", interactive.ctx);

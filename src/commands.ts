@@ -300,7 +300,7 @@ async function createOrReplaceGoal(
 	}
 
 	const latest = loadGoalState(ctx);
-	if (current?.goalId !== latest?.goalId && !parsed.replace) {
+	if (current?.goalId !== latest?.goalId) {
 		ctx.ui.notify("Goal changed before saving. Re-run /goal with your objective.", "error");
 		return;
 	}
@@ -333,7 +333,11 @@ async function offerGoalStartHandoff(
 	if (!ctx.hasUI) return;
 
 	const latest = loadGoalState(ctx);
-	const ok = await ctx.ui.confirm("Start working on this goal now?", latest?.objective ?? "");
+	if (!latest || latest.goalId !== expectedGoalId) {
+		ctx.ui.notify("Goal changed before starting. Re-run /goal start for the current goal.", "error");
+		return;
+	}
+	const ok = await ctx.ui.confirm("Start working on this goal now?", latest.objective);
 	if (!ok) return;
 	await startActiveGoal(api, ctx, expectedGoalId);
 }
