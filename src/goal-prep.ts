@@ -39,7 +39,7 @@ export async function preparePlainGoalDraft(
 		if (!generated) throw new Error("Goal proposal generator returned no usable proposal.");
 		return { proposal: generated, prompt };
 	} catch {
-		 return {
+		return {
 			proposal: fallback,
 			prompt,
 			warning:

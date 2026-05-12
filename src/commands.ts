@@ -306,7 +306,10 @@ async function createOrReplaceGoal(
 	if (prepared.warning) {
 		ctx.ui.notify(prepared.warning, "warning");
 	} else if (ctx.hasUI && !parsed.confirmed) {
-		const ok = await ctx.ui.confirm("Use generated goal proposal?", renderGoalProposalReview(prepared.proposal));
+		const ok = await ctx.ui.confirm(
+			"Use generated goal proposal?",
+			renderGoalProposalReview(prepared.proposal),
+		);
 		if (!ok) {
 			ctx.ui.notify("Goal proposal cancelled.", "info");
 			return;

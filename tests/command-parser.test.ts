@@ -2,10 +2,19 @@ import { describe, expect, it, vi } from "vitest";
 import { handleGoalCommand, parseGoalCommand, registerGoalCommand } from "../src/commands.js";
 import { GOAL_CUSTOM_TYPE } from "../src/state.js";
 
+import type { GoalProposalGenerator } from "../src/goal-prep.js";
+
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type { GoalStateEntry } from "../src/types.js";
 
-function createHarness(options: { hasUI?: boolean; confirm?: boolean; editor?: string } = {}) {
+function createHarness(
+	options: {
+		hasUI?: boolean;
+		confirm?: boolean;
+		editor?: string;
+		generateGoalProposal?: GoalProposalGenerator;
+	} = {},
+) {
 	const branch: Array<{ type: string; customType?: string; data?: unknown }> = [];
 	const commands = new Map<
 		string,
@@ -30,6 +39,7 @@ function createHarness(options: { hasUI?: boolean; confirm?: boolean; editor?: s
 			setStatus: vi.fn(),
 			setWidget: vi.fn(),
 		},
+		generateGoalProposal: options.generateGoalProposal,
 	};
 	return { pi, ctx, branch, commands };
 }
@@ -111,6 +121,72 @@ describe("/goal command lifecycle", () => {
 		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("ship interactively"), {
 			deliverAs: "followUp",
 		});
+	});
+
+	it("prepares plain goals with generated objective and acceptance criteria before starting", async () => {
+		const generateGoalProposal = vi.fn<GoalProposalGenerator>(async () => ({
+			objective: "Ship the interactive feature",
+			acceptanceCriteria: ["Feature is implemented", "Tests cover the flow"],
+		}));
+		const { pi, ctx, branch } = createHarness({ confirm: true, generateGoalProposal });
+
+		await handleGoalCommand(pi, "ship interactive feature --start", ctx);
+
+		expect(generateGoalProposal).toHaveBeenCalledWith(
+			expect.stringContaining("Preserve the original meaning exactly"),
+			{ objective: "ship interactive feature" },
+		);
+		expect(generateGoalProposal.mock.calls[0]?.[0]).toContain("do not add scope");
+		expect(ctx.ui.confirm).toHaveBeenCalledWith(
+			"Use generated goal proposal?",
+			expect.stringContaining("Tests cover the flow"),
+		);
+		expect(latestGoalEntry(branch).state).toMatchObject({
+			objective: "Ship the interactive feature",
+			acceptanceCriteria: ["Feature is implemented", "Tests cover the flow"],
+		});
+		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("Tests cover the flow"), {
+			deliverAs: "followUp",
+		});
+	});
+
+	it("falls back to original objective with a clear warning when proposal generation fails", async () => {
+		const generateGoalProposal = vi.fn<GoalProposalGenerator>(async () => {
+			throw new Error("model unavailable");
+		});
+		const { pi, ctx, branch } = createHarness({ hasUI: false, generateGoalProposal });
+
+		await handleGoalCommand(pi, "ship fallback --start", ctx);
+
+		expect(ctx.ui.notify).toHaveBeenCalledWith(
+			expect.stringContaining("Could not generate acceptance criteria"),
+			"warning",
+		);
+		expect(latestGoalEntry(branch).state).toMatchObject({
+			objective: "ship fallback",
+			acceptanceCriteria: [],
+		});
+		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
+	});
+
+	it("shows generated proposals in non-interactive mode before explicit start", async () => {
+		const generateGoalProposal = vi.fn<GoalProposalGenerator>(async () =>
+			JSON.stringify({
+				objective: "Ship non-interactive proposal",
+				acceptanceCriteria: ["Proposal is visible before start"],
+			}),
+		);
+		const { pi, ctx, branch } = createHarness({ hasUI: false, generateGoalProposal });
+
+		await handleGoalCommand(pi, "ship non-interactive proposal --start", ctx);
+
+		expect(ctx.ui.notify).toHaveBeenCalledWith(
+			expect.stringContaining("Proposal is visible before start"),
+			"info",
+		);
+		expect(latestGoalEntry(branch).state?.acceptanceCriteria).toEqual(["Proposal is visible before start"]);
+		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
 	});
 
 	it("does not queue duplicate start follow-ups after denied handoff or command errors", async () => {
