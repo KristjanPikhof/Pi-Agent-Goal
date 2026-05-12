@@ -14,8 +14,9 @@ Status key:
 | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
 | `/goal` shows usage when no goal exists.                                                                                                                                                                         | Automated                                       |
 | `/goal` shows current objective, status, source docs, progress, and next actions when a goal exists.                                                                                                             | Automated                                       |
-| `/goal <objective>` creates a criteria-free draft from plain text unless criteria are imported or added by the user.                                                                                             | Automated                                       |
-| Interactive `/goal <objective>` can show Start/Edit/Cancel with public Pi `select`, `editor`, and `confirm` APIs; Start saves and starts, Edit opens a prefilled modal markdown draft, and Cancel saves nothing. | Manual smoke pending                            |
+| `/goal <objective>` sends the plain text to the chat agent with instructions to call `propose_goal_draft` with objective, optional description, and acceptance criteria.                                         | Automated                                       |
+| `propose_goal_draft` validates objective and at least one acceptance criterion before review.                                                                                                                     | Automated                                       |
+| Interactive draft review can show Start/Edit/Cancel with public Pi `select`, `editor`, and `confirm` APIs; Start saves and starts, Edit opens a prefilled modal markdown draft, and Cancel saves nothing.        | Automated by tool harness, live TUI is manual smoke |
 | `/goal <objective>` strips recognized flags such as `--replace` and `--start` from the saved objective wherever they appear in the input.                                                                        | Automated                                       |
 | `/goal <objective>` asks before replacing an existing goal.                                                                                                                                                      | Automated with harness confirmation             |
 | `/goal start` starts the current active goal with a one-shot follow-up handoff.                                                                                                                                  | Automated                                       |
@@ -48,6 +49,8 @@ Status key:
 | ---------------------------------------------------------------------------------------------- | ----------------------------- |
 | `get_goal` returns current goal state and source paths.                                        | Automated                     |
 | `create_goal` works only when explicitly requested and fails if a goal already exists.         | Automated                     |
+| `propose_goal_draft` is the review-only path for agent-drafted `/goal` proposals and saves only after Start. | Automated                     |
+| `propose_goal_draft` returns `review_ui_unavailable` and saves nothing when interactive review UI is missing. | Automated                     |
 | `complete_goal` can only mark the current active goal complete.                                | Automated                     |
 | `complete_goal` and `update_goal_progress` reject paused goals.                                | Automated                     |
 | The model cannot silently rewrite objective, source docs, constraints, or acceptance criteria. | Automated by schema and tests |
@@ -102,7 +105,7 @@ Status key:
 | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | Unit tests for state reducer and branch reconstruction.                                                              | Automated                                                                        |
 | Unit tests for doc extraction from PRD and docs folder.                                                              | Automated                                                                        |
-| Unit tests for tool permission boundaries.                                                                           | Automated                                                                        |
+| Unit tests for tool permission boundaries and `propose_goal_draft` Start/Edit/Cancel behavior.                       | Automated                                                                        |
 | Integration-style tests for `/goal` command lifecycle.                                                               | Automated                                                                        |
 | Integration-style tests for reload/resume/tree/fork reconstruction behavior.                                         | Automated with simulated session events and branch fixtures                      |
 | Compaction hook tests.                                                                                               | Automated                                                                        |
@@ -120,7 +123,7 @@ Automation covers reducer, command parsing, import safety and merge behavior, to
    ```
 
 2. Run `/goal` and confirm usage renders without starting an agent turn.
-3. Run `/goal Ship a multi-turn verification goal`, confirm the interactive flow shows Start/Edit/Cancel, and choose Cancel. Confirm no goal is saved. Run it again, choose Edit, confirm the modal markdown draft is prefilled with the objective and acceptance criteria fields, add one criterion, then choose Start and confirm one follow-up agent turn is queued.
+3. Run `/goal Ship a multi-turn verification goal`, confirm the command asks the chat agent to draft with `propose_goal_draft`, and wait for the review UI. Choose Cancel and confirm no goal is saved. Run it again, choose Edit, confirm the modal markdown draft is prefilled with the objective and acceptance criteria fields, change one criterion, then choose Start and confirm one follow-up agent turn is queued.
 4. Run `/goal start` and confirm one follow-up agent turn is queued for the active goal.
 5. Run `/goal status`, `/goal pause`, `/goal resume --start`, `/goal complete --yes`, and `/goal clear --yes`; confirm status/widget update or disappear at each step and that `--start` on resume queues only the explicit handoff.
 6. Create `docs/prd.md`, run `/goal import docs/prd.md`, review the confirmation, and confirm `/goal status` shows source docs and extracted criteria. Then import a second doc into the same goal and confirm source docs, constraints, and criteria merge without replacing the objective. Repeat a non-interactive import with `--yes --start` and confirm it starts immediately.
@@ -146,6 +149,6 @@ Update progress through `update_goal_progress`, then let an idle continuation qu
 
 ## Definition of done status
 
-The rollout acceptance is met when automated checks pass and the docs accurately mark live TUI lifecycle checks as manual smoke rather than automated proof. Release readiness also requires recorded live TUI smoke evidence, or an explicit blocked status for that evidence. The extension currently supports reviewing a plain text goal as a criteria-free editable draft, importing criteria from docs, starting saved goals through an explicit one-shot handoff, preserving state through branch-aware session entries and compaction hooks, exposing narrow tools, and optionally continuing while idle behind a separate explicit opt-in.
+The rollout acceptance is met when automated checks pass and the docs accurately mark live TUI lifecycle checks as manual smoke rather than automated proof. Release readiness also requires recorded live TUI smoke evidence, or an explicit blocked status for that evidence. The extension currently supports agent-mediated drafting from plain `/goal` text through `propose_goal_draft`, Start/Edit/Cancel review before persistence, importing criteria from docs, starting saved goals through an explicit one-shot handoff, preserving state through branch-aware session entries and compaction hooks, exposing narrow tools, and optionally continuing while idle behind a separate explicit opt-in.
 
 Remaining future work is Codex-exact compatibility: app-server RPC, SQLite persistence, exact token/time budgets, and exact Codex goal menu UI.

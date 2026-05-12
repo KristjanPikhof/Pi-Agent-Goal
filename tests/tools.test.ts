@@ -174,6 +174,15 @@ describe("goal tool execution", () => {
 			sourceDocs: [expect.objectContaining({ path: "docs/prd.md" })],
 		});
 		expect(sendUserMessage).toHaveBeenCalledOnce();
+		expect(sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("Ship reviewed goal"), {
+			deliverAs: "followUp",
+		});
+		expect(sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("- done"), {
+			deliverAs: "followUp",
+		});
+		expect(sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("- tests pass"), {
+			deliverAs: "followUp",
+		});
 		expect(result).toMatchObject({
 			terminate: true,
 			details: {
@@ -188,6 +197,7 @@ describe("goal tool execution", () => {
 
 	it("propose_goal_draft supports Edit review and retries invalid edits", async () => {
 		const { pi, ctx, branch, ui } = createHarness();
+		const sendUserMessage = vi.fn();
 		ui.select.mockResolvedValueOnce("Edit").mockResolvedValueOnce("Edit").mockResolvedValueOnce("Start");
 		ui.editor
 			.mockResolvedValueOnce("# Acceptance criteria\n- missing objective")
@@ -196,7 +206,7 @@ describe("goal tool execution", () => {
 		const result = await executeProposeGoalDraft(
 			{ objective: "Initial", acceptanceCriteria: ["initial criterion"] },
 			ctx,
-			{ ...pi, sendUserMessage: vi.fn() },
+			{ ...pi, sendUserMessage },
 		);
 
 		expect(ui.notify).toHaveBeenCalledWith("Goal draft must include a non-empty Objective section.", "error");
@@ -205,7 +215,13 @@ describe("goal tool execution", () => {
 			objective: "Edited goal",
 			acceptanceCriteria: ["edited criterion"],
 		});
-		expect(result.details).toMatchObject({ status: "saved" });
+		expect(sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("Edited goal"), {
+			deliverAs: "followUp",
+		});
+		expect(sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("- edited criterion"), {
+			deliverAs: "followUp",
+		});
+		expect(result.details).toMatchObject({ status: "saved", started: true });
 	});
 
 	it("propose_goal_draft cancellation and no-UI policy do not save", async () => {
@@ -237,6 +253,21 @@ describe("goal tool execution", () => {
 	});
 
 	it("propose_goal_draft confirms existing goal replacement and rejects stale state", async () => {
+		const denied = createHarness();
+		denied.ui.confirm.mockResolvedValueOnce(false);
+		executeCreateGoal({ objective: "Old goal", explicit_request: true }, denied.ctx, denied.pi);
+		const deniedResult = await executeProposeGoalDraft(
+			{ objective: "Denied replacement", acceptanceCriteria: ["new criterion"] },
+			denied.ctx,
+			{ ...denied.pi, sendUserMessage: vi.fn() },
+		);
+		expect(denied.branch).toHaveLength(1);
+		expect(latestGoalEntry(denied.branch).state?.objective).toBe("Old goal");
+		expect(deniedResult).toMatchObject({
+			terminate: true,
+			details: { status: "cancelled", reason: "replacement_not_confirmed" },
+		});
+
 		const replace = createHarness();
 		executeCreateGoal({ objective: "Old goal", explicit_request: true }, replace.ctx, replace.pi);
 		const replacement = await executeProposeGoalDraft(
