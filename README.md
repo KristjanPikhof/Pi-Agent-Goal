@@ -136,3 +136,7 @@ Related docs:
 - [`docs/README.md`](docs/README.md), rollout notes and doc map.
 - [`docs/implementation.md`](docs/implementation.md), implemented architecture and behavior.
 - [`docs/acceptance-criteria.md`](docs/acceptance-criteria.md), acceptance status, test matrix, and smoke checklist.
+
+## License
+
+MIT. See [`LICENSE`](./LICENSE).
