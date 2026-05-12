@@ -48,7 +48,9 @@ describe("goal prompt rendering", () => {
 		expect(prompt).toContain("Call the propose_goal_draft tool exactly once");
 		expect(prompt).toContain("Do not answer in prose");
 		expect(prompt).toContain("Do not call create_goal for this drafting flow");
+		expect(prompt).toContain("Set startImmediately to true");
 		expect(prompt).toContain("pass startImmediately: true");
+		expect(prompt).not.toContain("Set start to true");
 		expect(prompt).toContain("Review the deep branch and flag risks, no fixes yet");
 	});
 
