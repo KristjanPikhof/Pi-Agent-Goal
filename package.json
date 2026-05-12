@@ -1,6 +1,6 @@
 {
 	"name": "pi-goal",
-	"version": "0.1.0",
+	"version": "0.1.5",
 	"description": "Pi extension for branch-aware long-running /goal workflows.",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -25,7 +25,8 @@
 	"keywords": [
 		"pi",
 		"pi-extension",
-		"goal"
+		"goal",
+		"pi-package"
 	],
 	"license": "UNLICENSED",
 	"pi": {
