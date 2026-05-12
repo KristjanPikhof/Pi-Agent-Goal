@@ -121,7 +121,7 @@ Published and local installs load the source extension entry:
 }
 ```
 
-The extension folder mirrors the Pi Agents Team layout:
+The extension folder layout is:
 
 ```text
 extensions/index.ts
