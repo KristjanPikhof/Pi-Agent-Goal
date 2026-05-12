@@ -39,9 +39,6 @@
 		"docs",
 		"README.md"
 	],
-	"dependencies": {
-		"@earendil-works/pi-coding-agent": "^0.74.0"
-	},
 	"devDependencies": {
 		"@eslint/js": "^9.39.1",
 		"@types/node": "^24.10.1",
