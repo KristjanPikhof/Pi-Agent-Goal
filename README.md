@@ -1,6 +1,6 @@
 # Pi Agent Goal
 
-Pi Agent Goal adds Codex-style `/goal` support to Pi as an installable package. It lets a user set a long-running objective, import goal context from docs, preserve state through branch-aware session history and compaction, expose narrow model tools, and optionally continue work when Pi is idle.
+Pi Agent Goal adds persistent `/goal` workflows to Pi. Set a long-running objective, import context from docs, keep goal state aligned with branch history, expose narrow progress tools, and start agent work explicitly when you are ready.
 
 Repository: [`KristjanPikhof/Pi-Agent-Goal`](https://github.com/KristjanPikhof/Pi-Agent-Goal)
 
