@@ -106,7 +106,7 @@ describe("goal UI renderers", () => {
 	it("uses actionable usage and error copy", () => {
 		expect(GOAL_USAGE).toContain("/goal import <path> [--yes]");
 		expect(GOAL_USAGE).toContain("interactive UI can edit before start");
-		expect(GOAL_USAGE).toContain("review, edit, or cancel the criteria-free draft");
+		expect(GOAL_USAGE).toContain("review, edit, or cancel the drafted objective and acceptance criteria");
 		expect(GOAL_USAGE).toContain("Non-interactive mode");
 		expect(noGoalMessage("pause")).toContain("Start one with /goal <objective>");
 		expect(nonInteractiveConfirmationMessage("/goal clear")).toContain("requires --yes");
