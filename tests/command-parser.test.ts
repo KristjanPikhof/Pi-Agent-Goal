@@ -135,7 +135,7 @@ describe("/goal command lifecycle", () => {
 			expect.stringContaining("Call the propose_goal_draft tool exactly once"),
 		);
 		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("ship the feature"));
-		expect(ctx.ui.notify).toHaveBeenCalledWith("Goal draft queued for review.", "success");
+		expect(ctx.ui.notify).toHaveBeenCalledWith("Goal draft queued for review.", "info");
 	});
 
 	it("carries --start intent into the agent drafting prompt", async () => {
@@ -211,7 +211,7 @@ describe("/goal command lifecycle", () => {
 		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("ship"), {
 			deliverAs: "followUp",
 		});
-		expect(ctx.ui.notify).toHaveBeenLastCalledWith("Goal start queued.", "success");
+		expect(ctx.ui.notify).toHaveBeenLastCalledWith("Goal start queued.", "info");
 	});
 
 	it("starts an existing active goal and rejects inactive states", async () => {
