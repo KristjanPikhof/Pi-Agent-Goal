@@ -19,7 +19,8 @@ export function renderGoalSummary(goal: GoalState): string {
 
 	if (goal.progress.current) lines.push(`Current: ${goal.progress.current}`);
 	if (goal.acceptanceCriteria.length > 0) lines.push(`Acceptance: ${goal.acceptanceCriteria.length} item(s)`);
-	if (goal.sourceDocs.length > 0) lines.push(`Source docs: ${goal.sourceDocs.map((doc) => doc.path).join(", ")}`);
+	if (goal.sourceDocs.length > 0)
+		lines.push(`Source docs: ${goal.sourceDocs.map((doc) => doc.path).join(", ")}`);
 	lines.push("Next actions: /goal status, /goal edit, /goal pause, /goal complete, /goal clear");
 
 	return lines.join("\n");

@@ -1,6 +1,12 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { loadGoalState, saveGoalState, validateObjective } from "./state.js";
-import { formatGoalStatusLabel, GOAL_USAGE, renderGoalStatus, renderGoalSummary, renderGoalWidget } from "./ui.js";
+import {
+	formatGoalStatusLabel,
+	GOAL_USAGE,
+	renderGoalStatus,
+	renderGoalSummary,
+	renderGoalWidget,
+} from "./ui.js";
 
 import type { GoalState, GoalStateEvent } from "./types.js";
 
@@ -49,7 +55,11 @@ export function registerGoalCommand(pi: ExtensionAPI): void {
 	});
 }
 
-export async function handleGoalCommand(pi: ExtensionAPI, args: string, ctx: GoalCommandContext): Promise<void> {
+export async function handleGoalCommand(
+	pi: ExtensionAPI,
+	args: string,
+	ctx: GoalCommandContext,
+): Promise<void> {
 	const parsed = parseGoalCommand(args);
 
 	if (parsed.kind === "show" || parsed.kind === "status") {
@@ -122,7 +132,8 @@ export function parseGoalCommand(args: string): ParsedGoalCommand {
 	if (first === "resume") return { kind: "resume", confirmed, replace };
 	if (first === "clear") return { kind: "clear", confirmed, replace };
 	if (first === "complete") return { kind: "complete", confirmed, replace };
-	if (first === "import") return { kind: "import", path: tokens.slice(1).join(" ").trim(), confirmed, replace };
+	if (first === "import")
+		return { kind: "import", path: tokens.slice(1).join(" ").trim(), confirmed, replace };
 
 	return { kind: "create", objective: trimmed, confirmed, replace };
 }
@@ -139,10 +150,16 @@ async function createOrReplaceGoal(
 	if (current) {
 		if (!parsed.replace) {
 			if (!ctx.hasUI) {
-				ctx.ui.notify("A goal already exists. Re-run with --replace to replace it in non-interactive mode.", "error");
+				ctx.ui.notify(
+					"A goal already exists. Re-run with --replace to replace it in non-interactive mode.",
+					"error",
+				);
 				return;
 			}
-			const ok = await ctx.ui.confirm("Replace current goal?", `Current: ${current.objective}\n\nNew: ${objective}`);
+			const ok = await ctx.ui.confirm(
+				"Replace current goal?",
+				`Current: ${current.objective}\n\nNew: ${objective}`,
+			);
 			if (!ok) {
 				ctx.ui.notify("Goal replacement cancelled.", "info");
 				return;
@@ -158,7 +175,13 @@ async function createOrReplaceGoal(
 	}
 	const next = saveGoalState(
 		pi,
-		{ action: latest ? "replace" : action, goalId: crypto.randomUUID(), objective, now: Date.now(), owner: "user" },
+		{
+			action: latest ? "replace" : action,
+			goalId: crypto.randomUUID(),
+			objective,
+			now: Date.now(),
+			owner: "user",
+		},
 		latest,
 	);
 	updateGoalUi(ctx, next);
@@ -187,7 +210,11 @@ async function editGoal(pi: ExtensionAPI, ctx: GoalCommandContext, current: Goal
 		return;
 	}
 
-	const next = saveGoalState(pi, { action: "edit", goalId: latest.goalId, objective: edited, now: Date.now() }, latest);
+	const next = saveGoalState(
+		pi,
+		{ action: "edit", goalId: latest.goalId, objective: edited, now: Date.now() },
+		latest,
+	);
 	updateGoalUi(ctx, next);
 	ctx.ui.notify("Goal updated.", "success");
 }
@@ -224,7 +251,10 @@ async function confirmThenMutate(
 
 	if (!confirmed) {
 		if (!ctx.hasUI) {
-			ctx.ui.notify(`/${action === "clear" ? "goal clear" : "goal complete"} requires --yes in non-interactive mode.`, "error");
+			ctx.ui.notify(
+				`/${action === "clear" ? "goal clear" : "goal complete"} requires --yes in non-interactive mode.`,
+				"error",
+			);
 			return;
 		}
 		const ok = await ctx.ui.confirm(confirmTitle, current.objective);
@@ -239,7 +269,11 @@ async function confirmThenMutate(
 		ctx.ui.notify("Goal changed before saving. Re-run the command.", "error");
 		return;
 	}
-	const next = saveGoalState(pi, { action, goalId: latest.goalId, now: Date.now() } as GoalStateEvent, latest);
+	const next = saveGoalState(
+		pi,
+		{ action, goalId: latest.goalId, now: Date.now() } as GoalStateEvent,
+		latest,
+	);
 	updateGoalUi(ctx, next);
 	ctx.ui.notify(message, "success");
 }

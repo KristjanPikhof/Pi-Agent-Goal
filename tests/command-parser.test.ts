@@ -7,7 +7,10 @@ import type { GoalStateEntry } from "../src/types.js";
 
 function createHarness(options: { hasUI?: boolean; confirm?: boolean; editor?: string } = {}) {
 	const branch: Array<{ type: string; customType?: string; data?: unknown }> = [];
-	const commands = new Map<string, { handler: (args: string, ctx: unknown) => Promise<void>; description?: string }>();
+	const commands = new Map<
+		string,
+		{ handler: (args: string, ctx: unknown) => Promise<void>; description?: string }
+	>();
 	const pi = {
 		registerCommand: vi.fn((name: string, command) => commands.set(name, command)),
 		appendEntry: vi.fn((customType: string, data: unknown) => {
@@ -75,7 +78,10 @@ describe("/goal command lifecycle", () => {
 		await handleGoalCommand(pi, "  ship the feature  ", ctx);
 
 		expect(ctx.waitForIdle).toHaveBeenCalledOnce();
-		expect(pi.appendEntry).toHaveBeenCalledWith(GOAL_CUSTOM_TYPE, expect.objectContaining({ action: "create" }));
+		expect(pi.appendEntry).toHaveBeenCalledWith(
+			GOAL_CUSTOM_TYPE,
+			expect.objectContaining({ action: "create" }),
+		);
 		expect(latestGoalEntry(branch).state).toMatchObject({ objective: "ship the feature", status: "active" });
 		expect(ctx.ui.setStatus).toHaveBeenLastCalledWith("goal", "goal: active");
 	});
@@ -97,7 +103,10 @@ describe("/goal command lifecycle", () => {
 		await handleGoalCommand(pi, "first", ctx);
 		await handleGoalCommand(pi, "second", ctx);
 
-		expect(ctx.ui.confirm).toHaveBeenCalledWith("Replace current goal?", expect.stringContaining("New: second"));
+		expect(ctx.ui.confirm).toHaveBeenCalledWith(
+			"Replace current goal?",
+			expect.stringContaining("New: second"),
+		);
 		expect(latestGoalEntry(branch).action).toBe("replace");
 		expect(latestGoalEntry(branch).state?.objective).toBe("second");
 	});
@@ -124,7 +133,10 @@ describe("/goal command lifecycle", () => {
 		const noUi = createHarness({ hasUI: false });
 		await handleGoalCommand(noUi.pi, "original", noUi.ctx);
 		await handleGoalCommand(noUi.pi, "edit", noUi.ctx);
-		expect(noUi.ctx.ui.notify).toHaveBeenLastCalledWith(expect.stringContaining("requires interactive UI"), "error");
+		expect(noUi.ctx.ui.notify).toHaveBeenLastCalledWith(
+			expect.stringContaining("requires interactive UI"),
+			"error",
+		);
 	});
 
 	it("pauses, resumes, clears, and completes with safe confirmation behavior", async () => {
