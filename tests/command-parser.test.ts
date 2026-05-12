@@ -100,6 +100,56 @@ describe("/goal command lifecycle", () => {
 		expect(ctx.ui.setStatus).toHaveBeenLastCalledWith("goal", "goal: active");
 	});
 
+	it("starts active goals with a one-shot follow-up prompt", async () => {
+		const { pi, ctx } = createHarness();
+		await handleGoalCommand(pi, "ship --start", ctx);
+
+		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(
+			expect.stringContaining("Start working toward the active goal now."),
+			{ deliverAs: "followUp" },
+		);
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("ship"), {
+			deliverAs: "followUp",
+		});
+		expect(ctx.ui.notify).toHaveBeenLastCalledWith("Goal start queued.", "success");
+	});
+
+	it("starts an existing active goal and rejects inactive states", async () => {
+		const active = createHarness();
+		await handleGoalCommand(active.pi, "ship", active.ctx);
+		(active.pi.sendUserMessage as ReturnType<typeof vi.fn>).mockClear();
+		await handleGoalCommand(active.pi, "start", active.ctx);
+		expect(active.pi.sendUserMessage).toHaveBeenCalledOnce();
+
+		const paused = createHarness();
+		await handleGoalCommand(paused.pi, "ship", paused.ctx);
+		await handleGoalCommand(paused.pi, "pause", paused.ctx);
+		(paused.pi.sendUserMessage as ReturnType<typeof vi.fn>).mockClear();
+		await handleGoalCommand(paused.pi, "start", paused.ctx);
+		expect(paused.pi.sendUserMessage).not.toHaveBeenCalled();
+		expect(paused.ctx.ui.notify).toHaveBeenLastCalledWith(expect.stringContaining("paused goal"), "error");
+
+		const complete = createHarness({ confirm: true });
+		await handleGoalCommand(complete.pi, "ship", complete.ctx);
+		await handleGoalCommand(complete.pi, "complete", complete.ctx);
+		(complete.pi.sendUserMessage as ReturnType<typeof vi.fn>).mockClear();
+		await handleGoalCommand(complete.pi, "start", complete.ctx);
+		expect(complete.pi.sendUserMessage).not.toHaveBeenCalled();
+		expect(complete.ctx.ui.notify).toHaveBeenLastCalledWith(
+			expect.stringContaining("complete goal"),
+			"error",
+		);
+	});
+
+	it("does not start when no goal exists", async () => {
+		const { pi, ctx } = createHarness();
+		await handleGoalCommand(pi, "start", ctx);
+
+		expect(pi.sendUserMessage).not.toHaveBeenCalled();
+		expect(ctx.ui.notify).toHaveBeenLastCalledWith(expect.stringContaining("No goal exists"), "error");
+	});
+
 	it("shows summary and expanded status for an existing goal", async () => {
 		const { pi, ctx } = createHarness();
 		await handleGoalCommand(pi, "ship", ctx);

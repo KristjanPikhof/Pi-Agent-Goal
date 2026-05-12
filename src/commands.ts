@@ -305,7 +305,7 @@ async function createOrReplaceGoal(
 	);
 	updateGoalUi(ctx, next);
 	ctx.ui.notify(action === "replace" ? "Goal replaced." : "Goal created.", "success");
-	if (parsed.start) await startActiveGoal(pi, ctx, next.goalId);
+	if (parsed.start && next) await startActiveGoal(pi, ctx, next.goalId);
 }
 
 export async function startActiveGoal(
