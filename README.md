@@ -19,14 +19,14 @@ In Pi, run:
 /goal
 ```
 
-You should see usage when no goal exists yet. Create a goal, review the prepared proposal, then start it when you are ready:
+You should see usage when no goal exists yet. Create a goal, review the editable draft, then start it when you are ready:
 
 ```text
 /goal Ship the onboarding cleanup
 # choose Start, Edit, or Cancel in interactive Pi
 ```
 
-If you saved the goal without starting, start it later:
+If you created the goal without `--start`, start it later:
 
 ```text
 /goal start
@@ -72,7 +72,7 @@ The root extension shim loads `extensions/pi-goal/index.ts`, and the package man
 | Command                                 | Behavior                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/goal`                                 | Show usage when no goal exists, otherwise show the current goal summary.                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| `/goal <objective> [--start]`           | Save a criteria-free draft from plain text using only real Pi command/UI APIs. Interactive Pi with the select UI shows Start, Edit, and Cancel; Edit opens the modal editor with the objective and acceptance criteria fields prefilled. Recognized flags such as `--replace` and `--start` are stripped from the objective even when they appear before the text. If a goal already exists, interactive Pi asks for confirmation. In non-interactive mode, use `--replace` to replace and `--start` to begin immediately. |
+| `/goal <objective> [--start]`           | Build a criteria-free draft from plain text using only real Pi command/UI APIs. Interactive Pi with the select UI shows Start, Edit, and Cancel before saving; Start saves and queues the one-shot handoff, Edit opens the modal editor with the objective and acceptance criteria fields prefilled, and Cancel saves nothing. Recognized flags such as `--replace` and `--start` are stripped from the objective even when they appear before the text. If a goal already exists, interactive Pi asks for confirmation. In non-interactive mode, use `--replace` to replace and `--start` to begin immediately. |
 | `/goal start`                           | Start the current active goal with a one-shot follow-up handoff. This is user-requested agent work, not automatic idle continuation. Paused or complete goals must be resumed, cleared, or replaced first.                                                                                                                                                                                                                                                                                                                 |
 | `/goal status`                          | Show objective, status, criteria, constraints, source docs, progress, blockers, and next commands.                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `/goal import <path> [--yes] [--start]` | Import a markdown/text PRD file or docs folder. Stores source paths plus compact briefs. With no current goal, creates an active goal. With an existing active goal, imports merge source docs, constraints, and criteria instead of replacing the objective. Paused or complete goals reject import without mutation. Use `--yes` in non-interactive mode after reviewing the source, and add `--start` when that non-interactive import should begin work immediately.                                                   |
@@ -84,13 +84,13 @@ The root extension shim loads `extensions/pi-goal/index.ts`, and the package man
 
 ## Plain goal review flow
 
-Plain `/goal` text is treated as a draft, not as an already-active work order. Real Pi exposes command UI primitives (`ctx.ui.select`, `ctx.ui.editor`, `ctx.ui.confirm`) but no public proposal-generation API, so this extension keeps the user's original objective and stores no acceptance criteria unless the user adds them in the editor.
+Plain `/goal` text is treated as an editable draft, not as an already-started work order. Real Pi exposes command UI primitives (`ctx.ui.select`, `ctx.ui.editor`, `ctx.ui.confirm`) but no public proposal-generation API, so this extension keeps the user's original objective and stores no acceptance criteria unless the user imports criteria from docs or adds them in the editor.
 
 In interactive Pi with the select UI, the user reviews the draft before anything is saved. The choices are:
 
 - **Start**, save the draft and queue the one-shot start handoff.
-- **Edit**, open a prefilled modal editor for the objective and acceptance criteria, then return to review. Invalid editor content is reported and the review loop continues.
-- **Cancel**, discard the unsaved draft.
+- **Edit**, open a prefilled modal markdown editor for the objective and acceptance criteria, then return to review. Invalid editor content is reported and the review loop continues.
+- **Cancel**, discard the unsaved draft and save nothing.
 
 If no select UI is available, the command falls back to the older confirm/start handoff behavior. Criteria-free goals are explicit: start/continuation prompts say that no acceptance criteria were specified, with the objective as the source of truth.
 

@@ -12,7 +12,7 @@ Read in this order:
 ## What shipped
 
 - Branch-aware canonical goal state in Pi custom entries named `goal-state`.
-- `/goal` command lifecycle: create, clean `--replace` parsing, replace with confirmation, status, edit, pause, resume, complete, clear, and import.
+- `/goal` command lifecycle: criteria-free plain text drafts, interactive Start/Edit/Cancel review through public Pi UI APIs, clean `--replace` parsing, replace with confirmation, status, edit, pause, resume, complete, clear, and import.
 - Markdown/text PRD and docs-folder import with workspace realpath validation, symlink escape rejection, generated/vendor ignores, binary and size checks, directory `maxFiles` overflow errors, and compact source briefs.
 - Import semantics that create from docs when no goal exists, then merge and dedupe source docs, constraints, and criteria for an existing goal without rewriting the objective.
 - Model tools: `get_goal`, `create_goal`, `complete_goal`, and `update_goal_progress` with narrow permissions. Completion and progress tools reject paused goals.
