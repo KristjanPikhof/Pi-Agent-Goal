@@ -3,24 +3,15 @@
 	"version": "0.1.5",
 	"description": "Pi extension for branch-aware long-running /goal workflows.",
 	"type": "module",
-	"main": "./dist/index.js",
-	"types": "./dist/index.d.ts",
+	"main": "./extensions/index.ts",
 	"exports": {
-		".": {
-			"types": "./dist/index.d.ts",
-			"default": "./dist/index.js"
-		},
-		"./extensions": "./dist/extensions/index.js",
-		"./package.json": "./package.json"
+		".": "./extensions/index.ts"
 	},
 	"scripts": {
 		"typecheck": "tsc --noEmit",
 		"lint": "eslint .",
 		"format": "prettier --check .",
-		"test": "vitest run",
-		"build": "tsc -p tsconfig.publish.json && mkdir -p dist/extensions && printf 'export { default } from \"../index.js\";\\n' > dist/extensions/index.js",
-		"build:publish": "rm -rf dist && npm run build",
-		"prepack": "npm run build:publish"
+		"test": "vitest run"
 	},
 	"keywords": [
 		"pi",
@@ -31,11 +22,12 @@
 	"license": "UNLICENSED",
 	"pi": {
 		"extensions": [
-			"./dist/extensions/index.js"
+			"./extensions/index.ts"
 		]
 	},
 	"files": [
-		"dist",
+		"extensions",
+		"src",
 		"docs",
 		"README.md"
 	],
