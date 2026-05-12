@@ -254,7 +254,7 @@ async function importGoal(
 				);
 		updateGoalUi(ctx, next);
 		ctx.ui.notify(latest ? "Goal docs imported." : "Goal created from import.", "success");
-		await offerGoalStartHandoff(pi, ctx, next.goalId, parsed.start);
+		if (next) await offerGoalStartHandoff(pi, ctx, next.goalId, parsed.start);
 	} catch (error) {
 		ctx.ui.notify(error instanceof Error ? error.message : String(error), "error");
 	}
@@ -308,7 +308,7 @@ async function createOrReplaceGoal(
 	);
 	updateGoalUi(ctx, next);
 	ctx.ui.notify(action === "replace" ? "Goal replaced." : "Goal created.", "success");
-	await offerGoalStartHandoff(pi, ctx, next.goalId, parsed.start);
+	if (next) await offerGoalStartHandoff(pi, ctx, next.goalId, parsed.start);
 }
 
 async function offerGoalStartHandoff(

@@ -18,7 +18,8 @@ function createHarness(cwd: string, options: { hasUI?: boolean; confirm?: boolea
 		appendEntry: vi.fn((customType: string, data: unknown) =>
 			branch.push({ type: "custom", customType, data }),
 		),
-	} as unknown as ExtensionAPI;
+		sendUserMessage: vi.fn(),
+	} as unknown as ExtensionAPI & { sendUserMessage: ReturnType<typeof vi.fn> };
 	const ctx = {
 		cwd,
 		hasUI: options.hasUI ?? true,
@@ -139,11 +140,12 @@ describe("/goal import command", () => {
 		});
 	});
 
-	it("asks confirmation then creates a goal from imported file", async () => {
+	it("asks confirmation then creates a goal from imported file and offers start handoff", async () => {
 		const cwd = await makeWorkspace();
 		await mkdir(path.join(cwd, "docs"));
 		await writeFile(path.join(cwd, "docs/prd.md"), prd);
-		const { pi, ctx, branch } = createHarness(cwd, { confirm: true });
+		const { pi, ctx, branch } = createHarness(cwd, { confirm: false });
+		ctx.ui.confirm.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
 
 		await handleGoalCommand(pi, "import docs/prd.md", ctx);
 
@@ -152,28 +154,83 @@ describe("/goal import command", () => {
 			"Create goal from import?",
 			expect.stringContaining("Ship goal import"),
 		);
+		expect(ctx.ui.confirm).toHaveBeenCalledWith(
+			"Start working on this goal now?",
+			"Ship goal import from docs.",
+		);
 		expect(latestGoalEntry(branch).action).toBe("create");
 		expect(latestGoalEntry(branch).state).toMatchObject({
 			objective: "Ship goal import from docs.",
 			acceptanceCriteria: ["Reads markdown PRDs.", "Stores source paths."],
 			sourceDocs: [expect.objectContaining({ path: "docs/prd.md" })],
 		});
+		expect(pi.sendUserMessage).not.toHaveBeenCalled();
 	});
 
-	it("imports docs into an existing goal without rewriting objective", async () => {
+	it("imports docs into an existing goal without rewriting objective and offers start handoff", async () => {
 		const cwd = await makeWorkspace();
 		await writeFile(path.join(cwd, "notes.md"), prd);
-		const { pi, ctx, branch } = createHarness(cwd, { confirm: true });
+		const { pi, ctx, branch } = createHarness(cwd, { confirm: false });
 		await handleGoalCommand(pi, "Original objective", ctx);
+		ctx.ui.confirm.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
 
 		await handleGoalCommand(pi, "import notes.md", ctx);
 
-		expect(ctx.ui.confirm).toHaveBeenLastCalledWith("Import docs into current goal?", expect.any(String));
+		expect(ctx.ui.confirm).toHaveBeenCalledWith("Import docs into current goal?", expect.any(String));
+		expect(ctx.ui.confirm).toHaveBeenCalledWith("Start working on this goal now?", "Original objective");
 		expect(latestGoalEntry(branch).action).toBe("import-docs");
 		expect(latestGoalEntry(branch).state?.objective).toBe("Original objective");
 		expect(latestGoalEntry(branch).state?.sourceDocs).toEqual([
 			expect.objectContaining({ path: "notes.md" }),
 		]);
+		expect(pi.sendUserMessage).not.toHaveBeenCalled();
+	});
+
+	it("starts imported goals immediately with --start in no-UI mode", async () => {
+		const cwd = await makeWorkspace();
+		await writeFile(path.join(cwd, "prd.md"), prd);
+		const { pi, ctx, branch } = createHarness(cwd, { hasUI: false });
+
+		await handleGoalCommand(pi, "import prd.md --yes --start", ctx);
+
+		expect(latestGoalEntry(branch).action).toBe("create");
+		expect(ctx.ui.confirm).not.toHaveBeenCalled();
+		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("Ship goal import from docs."), {
+			deliverAs: "followUp",
+		});
+	});
+
+	it("does not start when the import start handoff is denied", async () => {
+		const cwd = await makeWorkspace();
+		await writeFile(path.join(cwd, "prd.md"), prd);
+		const { pi, ctx } = createHarness(cwd, { confirm: false });
+		ctx.ui.confirm.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+
+		await handleGoalCommand(pi, "import prd.md", ctx);
+
+		expect(ctx.ui.confirm).toHaveBeenCalledWith("Start working on this goal now?", "Ship goal import from docs.");
+		expect(pi.sendUserMessage).not.toHaveBeenCalled();
+	});
+
+	it("does not start when goal changes while import start confirmation is pending", async () => {
+		const cwd = await makeWorkspace();
+		await writeFile(path.join(cwd, "prd.md"), prd);
+		const { pi, ctx, branch } = createHarness(cwd, { confirm: true });
+		ctx.ui.confirm.mockResolvedValueOnce(true).mockImplementationOnce(async () => {
+			await handleGoalCommand(pi, "Replacement objective --replace --yes", ctx);
+			return true;
+		});
+
+		await handleGoalCommand(pi, "import prd.md", ctx);
+
+		expect(branch).toHaveLength(2);
+		expect(latestGoalEntry(branch).state?.objective).toBe("Replacement objective");
+		expect(pi.sendUserMessage).not.toHaveBeenCalled();
+		expect(ctx.ui.notify).toHaveBeenLastCalledWith(
+			expect.stringContaining("Goal changed before starting"),
+			"error",
+		);
 	});
 
 	it("aborts when the active goal changes while an import confirmation is pending", async () => {
