@@ -32,14 +32,18 @@ export function renderGoalAgentDraftingPrompt(
 		options.replacingExistingGoal
 			? "This request is replacing an existing goal; preserve the new user request and let the review flow confirm replacement."
 			: "This request is for a new draft unless the review flow later decides otherwise.",
-		options.currentGoal ? "Current goal context (for replacement awareness only; do not merge unless the user requested it):" : undefined,
+		options.currentGoal
+			? "Current goal context (for replacement awareness only; do not merge unless the user requested it):"
+			: undefined,
 		options.currentGoal ? `<current_goal goal_id="${escapeXml(options.currentGoal.goalId)}">` : undefined,
 		options.currentGoal ? `Status: ${escapeXml(options.currentGoal.status)}` : undefined,
 		options.currentGoal ? `Objective: ${escapeXml(options.currentGoal.objective)}` : undefined,
 		options.currentGoal ? "Acceptance criteria:" : undefined,
 		...(options.currentGoal ? formatAcceptanceCriteriaXmlList(options.currentGoal.acceptanceCriteria) : []),
 		options.currentGoal ? "</current_goal>" : undefined,
-		options.start ? "Command context: user requested start after review; pass start: true." : "Command context: user did not request immediate start; pass start: false or omit it.",
+		options.start
+			? "Command context: user requested start after review; pass start: true."
+			: "Command context: user did not request immediate start; pass start: false or omit it.",
 		"",
 		"User request:",
 		"<goal_request>",
