@@ -101,6 +101,58 @@ describe("goal state reducer", () => {
 		expect(state).toMatchObject({ goalId: "goal-2", objective: "Next goal", status: "active" });
 	});
 
+	it("treats complete goals as terminal until clear or replace", () => {
+		let state = reduceGoalState(null, createEvent("goal-1", "Terminal"));
+		state = reduceGoalState(state, { action: "complete", goalId: "goal-1", now: baseTime + 1 });
+		expect(state).toMatchObject({ status: "complete", completedAt: baseTime + 1 });
+
+		state = reduceGoalState(state, { action: "resume", goalId: "goal-1", now: baseTime + 2 });
+		expect(state).toMatchObject({ status: "complete", completedAt: baseTime + 1 });
+
+		state = reduceGoalState(state, {
+			action: "progress",
+			goalId: "goal-1",
+			now: baseTime + 3,
+			progress: { done: ["late"], lastSummary: "late" },
+		});
+		expect(state?.progress.done).toEqual([]);
+		expect(state?.progress.lastSummary).toBe("");
+
+		state = reduceGoalState(state, { action: "clear", goalId: "goal-1", now: baseTime + 4 });
+		expect(state).toBeNull();
+
+		state = reduceGoalState(state, {
+			action: "replace",
+			goalId: "goal-2",
+			objective: "Replacement",
+			now: baseTime + 5,
+		});
+		expect(state).toMatchObject({ goalId: "goal-2", status: "active" });
+	});
+
+	it("ignores pause, complete, and progress for inactive paused goals until resume", () => {
+		let state = reduceGoalState(null, createEvent("goal-1", "Pause semantics"));
+		state = reduceGoalState(state, { action: "pause", goalId: "goal-1", now: baseTime + 1 });
+		expect(state?.status).toBe("paused");
+
+		state = reduceGoalState(state, { action: "pause", goalId: "goal-1", now: baseTime + 2 });
+		expect(state?.updatedAt).toBe(baseTime + 1);
+
+		state = reduceGoalState(state, { action: "complete", goalId: "goal-1", now: baseTime + 3 });
+		expect(state?.status).toBe("paused");
+
+		state = reduceGoalState(state, {
+			action: "progress",
+			goalId: "goal-1",
+			now: baseTime + 4,
+			progress: { done: ["late"], lastSummary: "late" },
+		});
+		expect(state?.progress.done).toEqual([]);
+
+		state = reduceGoalState(state, { action: "resume", goalId: "goal-1", now: baseTime + 5 });
+		expect(state?.status).toBe("active");
+	});
+
 	it("ignores stale goalId mutations after replacement", () => {
 		let state = reduceGoalState(null, createEvent("goal-1", "First"));
 		state = reduceGoalState(state, {
