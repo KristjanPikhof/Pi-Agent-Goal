@@ -360,6 +360,10 @@ For a larger popup, follow Pi TUI constraints from `docs/tui.md`: every rendered
 - Test resume, reload, branch, fork, compaction, and model tool behavior.
 - Polish UI copy and error messages.
 
+### Verification coverage
+
+The test suite includes focused unit tests plus integration-style harness tests for command lifecycle, docs import, model tools, hidden context, compaction details, branch-shaped reconstruction, stale `goalId` handling, and continuation safety. Interactive Pi operations that depend on a live TUI/session manager (`/compact`, `/reload`, `/resume`, `/tree`, `/fork`) are documented as a manual smoke checklist in `docs/acceptance-criteria.md`.
+
 ## Risks and mitigations
 
 | Risk                                 | Mitigation                                                                             |

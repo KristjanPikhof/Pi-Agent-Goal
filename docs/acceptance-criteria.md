@@ -72,6 +72,21 @@ Use this checklist to decide whether the Pi `/goal` extension is implementation-
 - Integration/manual tests for `/reload`, `/resume`, `/tree`, `/fork`, and `/compact`.
 - Continuation tests for idle continuation, no-progress stop, and stale `goalId` prevention.
 
+## Manual session lifecycle smoke checklist
+
+Automation covers reducer, command, import, tools, hidden context, compaction hooks, continuation guards, UI renderers, and branch-shaped reconstruction. The following checks document the remaining interactive Pi lifecycle verification that should be run before release in a real TUI session:
+
+1. Start Pi with the extension: `pi --no-extensions -e ./src/index.ts`.
+2. Run `/goal` and confirm usage renders without starting an agent turn.
+3. Run `/goal Ship a multi-turn verification goal`, then confirm footer shows `goal: active` and the active-goal widget appears.
+4. Run `/goal status`, `/goal pause`, `/goal resume`, `/goal complete --yes`, and `/goal clear --yes`; confirm status/widget update or disappear at each step.
+5. Create `docs/prd.md`, run `/goal import docs/prd.md`, review the confirmation, and confirm `/goal status` shows source docs and extracted criteria.
+6. Trigger `/compact`; confirm `/goal status` still shows objective, criteria, source brief, and progress, then send a normal prompt and verify hidden goal context is regenerated for the active goal.
+7. Run `/reload` or restart/resume the session; confirm footer/widget and `/goal status` reconstruct from current branch custom entries.
+8. Use `/fork` or `/tree` to navigate between branches with different goal mutations; confirm the selected branch shows its own goal state and stale context from the other branch is absent.
+9. With `--goal-continuation`, update progress through `update_goal_progress`, then let an idle continuation queue; confirm it stops after no progress or max-turn cap and does not duplicate queue.
+10. In non-interactive/print smoke, run commands with `--yes` where required and confirm actionable errors are printed when confirmation flags are missing.
+
 ## Definition of done
 
 The extension is done when a user can start a long-running goal from a prompt or docs folder, let the agent work across multiple turns and compactions, resume the session later, branch safely, and have the model mark the goal complete only when the acceptance criteria are actually satisfied.
