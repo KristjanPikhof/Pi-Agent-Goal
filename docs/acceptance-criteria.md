@@ -10,23 +10,23 @@ Status key:
 
 ## Command behavior
 
-| Criterion                                                                                                                   | Status                                         |
-| --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| `/goal` shows usage when no goal exists.                                                                                    | Automated                                      |
-| `/goal` shows current objective, status, source docs, progress, and next actions when a goal exists.                        | Automated                                      |
-| `/goal <objective>` creates an active goal with a new `goalId`.                                                             | Automated                                      |
-| `/goal <objective>` stores context first and interactive Pi asks whether to start work now.                                | Manual smoke pending                           |
-| `/goal <objective>` strips recognized flags such as `--replace` and `--start` from the saved objective wherever they appear in the input. | Automated                                      |
-| `/goal <objective>` asks before replacing an existing goal.                                                                 | Automated with harness confirmation            |
-| `/goal start` starts the current active goal with a one-shot follow-up handoff.                                             | Automated                                      |
-| `--start` opts create, import, and resume flows into immediate start, and is required for non-interactive immediate start.  | Partial automated parser coverage; implementation review pending |
-| `/goal edit` requires an existing goal and persists user-confirmed edits.                                                   | Automated with harness editor                  |
-| `/goal clear` removes the goal and hides status/widget UI.                                                                  | Automated                                      |
-| `/goal pause` stops hidden context injection, continuation eligibility, completion, and progress updates.                   | Automated                                      |
-| `/goal resume` reactivates a paused goal without rewriting objective or criteria.                                           | Automated                                      |
-| `/goal complete` marks only active goals complete and records completion state.                                             | Automated                                      |
-| Complete goals stay terminal until cleared or replaced.                                                                     | Automated                                      |
-| Mutating commands avoid active-turn races with `waitForIdle()` and re-read before save.                                     | Automated by command harness and source review |
+| Criterion                                                                                                                                 | Status                                                           |
+| ----------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `/goal` shows usage when no goal exists.                                                                                                  | Automated                                                        |
+| `/goal` shows current objective, status, source docs, progress, and next actions when a goal exists.                                      | Automated                                                        |
+| `/goal <objective>` creates an active goal with a new `goalId`.                                                                           | Automated                                                        |
+| `/goal <objective>` stores context first and interactive Pi asks whether to start work now.                                               | Manual smoke pending                                             |
+| `/goal <objective>` strips recognized flags such as `--replace` and `--start` from the saved objective wherever they appear in the input. | Automated                                                        |
+| `/goal <objective>` asks before replacing an existing goal.                                                                               | Automated with harness confirmation                              |
+| `/goal start` starts the current active goal with a one-shot follow-up handoff.                                                           | Automated                                                        |
+| `--start` opts create, import, and resume flows into immediate start, and is required for non-interactive immediate start.                | Partial automated parser coverage; implementation review pending |
+| `/goal edit` requires an existing goal and persists user-confirmed edits.                                                                 | Automated with harness editor                                    |
+| `/goal clear` removes the goal and hides status/widget UI.                                                                                | Automated                                                        |
+| `/goal pause` stops hidden context injection, continuation eligibility, completion, and progress updates.                                 | Automated                                                        |
+| `/goal resume` reactivates a paused goal without rewriting objective or criteria.                                                         | Automated                                                        |
+| `/goal complete` marks only active goals complete and records completion state.                                                           | Automated                                                        |
+| Complete goals stay terminal until cleared or replaced.                                                                                   | Automated                                                        |
+| Mutating commands avoid active-turn races with `waitForIdle()` and re-read before save.                                                   | Automated by command harness and source review                   |
 
 ## PRD and docs input
 
@@ -81,7 +81,7 @@ Status key:
 | Auto-compaction preserves the same state.                                                                                                                                | Hook automated, live auto-compaction is manual smoke            |
 | After compaction, `/goal status` still works from canonical entries.                                                                                                     | Automated by state reconstruction, live command is manual smoke |
 | After compaction, the next model turn receives a correct short goal context.                                                                                             | Automated by hook/context tests, live turn is manual smoke      |
-| Explicit start handoff (`/goal start` or `--start`) remains separate from automatic idle continuation and does not enable background work.                              | Source review                                                    |
+| Explicit start handoff (`/goal start` or `--start`) remains separate from automatic idle continuation and does not enable background work.                               | Source review                                                   |
 | Runtime continuation only runs when the goal is active, Pi is idle, and no pending user messages exist.                                                                  | Automated                                                       |
 | Continuation re-checks `goalId` before queuing and before starting work.                                                                                                 | Automated                                                       |
 | Continuation stops on no progress, completion, pause, clear, user interrupt, replacement, duplicate queue, pending messages, busy state, disabled flag, or max-turn cap. | Automated                                                       |
@@ -129,11 +129,11 @@ Automation covers reducer, command parsing, import safety and merge behavior, to
 9. Use `/fork` or `/tree` to navigate between branches with different goal mutations; confirm the selected branch shows its own goal state and stale context from the other branch is absent.
 10. Start Pi with continuation enabled:
 
-   ```bash
-   pi --no-extensions -e ./extensions/index.ts --goal-continuation --goal-continuation-max-turns 3
-   ```
+```bash
+pi --no-extensions -e ./extensions/index.ts --goal-continuation --goal-continuation-max-turns 3
+```
 
-   Update progress through `update_goal_progress`, then let an idle continuation queue. Confirm it stops after no progress or the max-turn cap and does not duplicate the queue.
+Update progress through `update_goal_progress`, then let an idle continuation queue. Confirm it stops after no progress or the max-turn cap and does not duplicate the queue.
 
 11. Confirm this automatic continuation path is distinct from `/goal start` and `--start`: it should only queue while Pi is idle and the continuation flag is enabled.
 

@@ -88,7 +88,7 @@ describe("/goal command lifecycle", () => {
 	});
 
 	it("creates an active goal after waiting for idle", async () => {
-		const { pi, ctx, branch } = createHarness();
+		const { pi, ctx, branch } = createHarness({ confirm: false });
 		await handleGoalCommand(pi, "  ship the feature  ", ctx);
 
 		expect(ctx.waitForIdle).toHaveBeenCalledOnce();
@@ -98,12 +98,26 @@ describe("/goal command lifecycle", () => {
 		);
 		expect(latestGoalEntry(branch).state).toMatchObject({ objective: "ship the feature", status: "active" });
 		expect(ctx.ui.setStatus).toHaveBeenLastCalledWith("goal", "goal: active");
+		expect(ctx.ui.confirm).toHaveBeenCalledWith("Start working on this goal now?", "ship the feature");
+		expect(pi.sendUserMessage).not.toHaveBeenCalled();
+	});
+
+	it("offers start handoff after create and queues it when accepted", async () => {
+		const { pi, ctx } = createHarness({ confirm: true });
+		await handleGoalCommand(pi, "ship interactively", ctx);
+
+		expect(ctx.ui.confirm).toHaveBeenCalledWith("Start working on this goal now?", "ship interactively");
+		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("ship interactively"), {
+			deliverAs: "followUp",
+		});
 	});
 
 	it("starts active goals with a one-shot follow-up prompt", async () => {
 		const { pi, ctx } = createHarness();
 		await handleGoalCommand(pi, "ship --start", ctx);
 
+		expect(ctx.ui.confirm).not.toHaveBeenCalledWith("Start working on this goal now?", "ship");
 		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
 		expect(pi.sendUserMessage).toHaveBeenCalledWith(
 			expect.stringContaining("Start working toward the active goal now."),
@@ -162,20 +176,23 @@ describe("/goal command lifecycle", () => {
 		expect(ctx.ui.notify).toHaveBeenCalledWith(expect.stringContaining("Acceptance criteria:"), "info");
 	});
 
-	it("asks confirmation before replacing an existing goal", async () => {
-		const { pi, ctx, branch } = createHarness({ confirm: true });
+	it("asks confirmation before replacing an existing goal and then offers start handoff", async () => {
+		const { pi, ctx, branch } = createHarness({ confirm: false });
 		await handleGoalCommand(pi, "first", ctx);
+		ctx.ui.confirm.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
 		await handleGoalCommand(pi, "second", ctx);
 
 		expect(ctx.ui.confirm).toHaveBeenCalledWith(
 			"Replace current goal?",
 			expect.stringContaining("New: second"),
 		);
+		expect(ctx.ui.confirm).toHaveBeenCalledWith("Start working on this goal now?", "second");
 		expect(latestGoalEntry(branch).action).toBe("replace");
 		expect(latestGoalEntry(branch).state?.objective).toBe("second");
+		expect(pi.sendUserMessage).not.toHaveBeenCalled();
 	});
 
-	it("requires --replace for non-interactive replacement", async () => {
+	it("requires --replace for non-interactive replacement and only starts with --start", async () => {
 		const { pi, ctx, branch } = createHarness({ hasUI: false });
 		await handleGoalCommand(pi, "first", ctx);
 		await handleGoalCommand(pi, "second", ctx);
@@ -186,6 +203,11 @@ describe("/goal command lifecycle", () => {
 		await handleGoalCommand(pi, "second --replace", ctx);
 		expect(latestGoalEntry(branch).action).toBe("replace");
 		expect(latestGoalEntry(branch).state?.objective).toBe("second");
+		expect(pi.sendUserMessage).not.toHaveBeenCalled();
+
+		await handleGoalCommand(pi, "third --replace --start", ctx);
+		expect(latestGoalEntry(branch).state?.objective).toBe("third");
+		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
 	});
 
 	it("edits in UI mode and rejects edit in no-UI mode", async () => {
@@ -202,6 +224,21 @@ describe("/goal command lifecycle", () => {
 			expect.stringContaining("requires interactive UI"),
 			"error",
 		);
+	});
+
+	it("offers start handoff after resume and skips it for pause", async () => {
+		const { pi, ctx } = createHarness({ confirm: false });
+		await handleGoalCommand(pi, "ship", ctx);
+		ctx.ui.confirm.mockClear();
+
+		await handleGoalCommand(pi, "pause", ctx);
+		expect(ctx.ui.confirm).not.toHaveBeenCalled();
+		expect(pi.sendUserMessage).not.toHaveBeenCalled();
+
+		ctx.ui.confirm.mockResolvedValueOnce(true);
+		await handleGoalCommand(pi, "resume", ctx);
+		expect(ctx.ui.confirm).toHaveBeenCalledWith("Start working on this goal now?", "ship");
+		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
 	});
 
 	it("pauses, resumes, clears, and completes with safe confirmation behavior", async () => {

@@ -10,7 +10,8 @@ The extension makes long-running objectives explicit, persistent, and safe acros
 - Source docs: stored as source paths plus extracted compact briefs, implemented in `src/import.ts`.
 - Model tools: `get_goal`, `create_goal`, `complete_goal`, and `update_goal_progress`, implemented in `src/tools.ts`.
 - Hidden context and compaction: runtime hooks in `src/runtime.ts`, prompt rendering in `src/prompts.ts`.
-- Autonomy: opt-in idle continuation behind the `goal-continuation` flag.
+- Start handoff: `/goal start` and `--start` queue a one-shot follow-up for the active goal.
+- Autonomy: opt-in idle continuation behind the `goal-continuation` flag, separate from explicit start handoff.
 
 ## Install and local loading
 
@@ -50,7 +51,7 @@ extensions/pi-goal/index.ts
 | Area         | Codex behavior                                                                     | Pi Goal behavior                                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | Persistence  | SQLite `thread_goals` table keyed by thread.                                       | Pi custom session entries named `goal-state`, reconstructed from the current branch.                                      |
-| Commands     | `/goal` supports setting, viewing, editing, clearing, pausing, and resuming goals. | Same main lifecycle, with non-interactive flags for confirmation paths and clean `--replace` parsing.                     |
+| Commands     | `/goal` supports setting, viewing, editing, clearing, pausing, and resuming goals. | Same main lifecycle, with explicit `/goal start`, non-interactive `--start`, confirmation flags, and clean flag parsing.  |
 | Model tools  | `get_goal`, `create_goal`, `update_goal` limited to completion.                    | `get_goal`, `create_goal`, `complete_goal`, plus progress-only `update_goal_progress`. No general objective rewrite tool. |
 | Compaction   | Codex preserves goal context through its compaction pipeline.                      | Pi `session_before_compact` appends active goal summary/details while canonical state stays in custom entries.            |
 | Continuation | Codex runtime continues active goals while idle with runtime budget tracking.      | Pi continuation is opt-in, capped by max turns, and guarded by idle/pending-message/stale-goal/progress checks.           |
@@ -90,19 +91,37 @@ Supported events are `create`, `replace`, `edit`, `pause`, `resume`, `clear`, `c
 
 ## Command behavior
 
-| Command                       | Implemented behavior                                                                                                                                                                                                                                                                                                                                                        |
-| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/goal`                       | Shows usage with no goal, otherwise current summary.                                                                                                                                                                                                                                                                                                                        |
-| `/goal <objective>`           | Creates a goal. Recognized flags are removed from the objective, so `--replace ship` and `ship --replace` both create or replace objective `ship`. If one exists, interactive mode confirms replacement, non-interactive mode requires `--replace`.                                                                                                                         |
-| `/goal status`                | Shows expanded state: criteria, constraints, progress, blocked items, source docs, and next commands.                                                                                                                                                                                                                                                                       |
-| `/goal import <path> [--yes]` | Imports a supported docs file or folder. Interactive mode confirms. Non-interactive mode requires `--yes`. With no current goal it creates an active goal from imported docs; with an existing active goal it appends imported docs and merges extracted constraints and criteria without replacing the objective. Paused or complete goals reject import without mutation. |
-| `/goal edit`                  | Opens the interactive editor. Non-interactive mode returns an actionable fallback.                                                                                                                                                                                                                                                                                          |
-| `/goal pause`                 | Sets an active goal to `paused`. Paused goals do not receive hidden context, continuation, completion, or progress updates.                                                                                                                                                                                                                                                 |
-| `/goal resume`                | Sets a paused goal to `active`. Complete goals are not resumed; clear or replace them instead.                                                                                                                                                                                                                                                                              |
-| `/goal complete [--yes]`      | Marks an active goal complete after confirmation or `--yes`.                                                                                                                                                                                                                                                                                                                |
-| `/goal clear [--yes]`         | Clears current state after confirmation or `--yes`.                                                                                                                                                                                                                                                                                                                         |
+| Command                                 | Implemented behavior                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/goal`                                 | Shows usage with no goal, otherwise current summary.                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `/goal <objective> [--start]`           | Stores an active goal. Interactive mode asks whether to start work now; otherwise setting the goal only saves context. Recognized flags are removed from the objective, so `--replace ship`, `ship --replace`, and `ship --start` save objective `ship`. If one exists, interactive mode confirms replacement, non-interactive mode requires `--replace`. Non-interactive immediate start requires `--start`.                                        |
+| `/goal start`                           | Starts the existing active goal by sending a one-shot follow-up prompt. It re-reads state before sending and rejects missing, paused, complete, or changed goals. This handoff is not automatic continuation.                                                                                                                                                                                                                                        |
+| `/goal status`                          | Shows expanded state: criteria, constraints, progress, blocked items, source docs, and next commands.                                                                                                                                                                                                                                                                                                                                                |
+| `/goal import <path> [--yes] [--start]` | Imports a supported docs file or folder. Interactive mode confirms and can start after storing. Non-interactive mode requires `--yes`, and immediate start also requires `--start`. With no current goal it creates an active goal from imported docs; with an existing active goal it appends imported docs and merges extracted constraints and criteria without replacing the objective. Paused or complete goals reject import without mutation. |
+| `/goal edit`                            | Opens the interactive editor. Non-interactive mode returns an actionable fallback.                                                                                                                                                                                                                                                                                                                                                                   |
+| `/goal pause`                           | Sets an active goal to `paused`. Paused goals do not receive hidden context, continuation, completion, or progress updates.                                                                                                                                                                                                                                                                                                                          |
+| `/goal resume [--start]`                | Sets a paused goal to `active`. Complete goals are not resumed; clear or replace them instead. Non-interactive immediate start after resume requires `--start`.                                                                                                                                                                                                                                                                                      |
+| `/goal complete [--yes]`                | Marks an active goal complete after confirmation or `--yes`.                                                                                                                                                                                                                                                                                                                                                                                         |
+| `/goal clear [--yes]`                   | Clears current state after confirmation or `--yes`.                                                                                                                                                                                                                                                                                                                                                                                                  |
 
 Mutating commands call `ctx.waitForIdle()` before writing and reload current branch state before saving. This avoids racing with an active agent turn or a goal replacement.
+
+## Explicit start handoff
+
+Setting or importing a goal is a state change. Starting a goal is a separate handoff that tells Pi to begin work from the saved goal context.
+
+Use these forms:
+
+```text
+/goal Ship the onboarding cleanup
+/goal start
+/goal import docs/prd.md --yes --start
+/goal resume --start
+```
+
+`/goal start` is for an already active goal. `--start` is for create, import, and resume flows that should start immediately, especially in non-interactive `-p` runs where Pi cannot ask a follow-up question.
+
+The start handoff queues a single follow-up prompt for the current active `goalId`. It does not enable recurring idle work, does not bypass paused or complete states, and does not replace the `--goal-continuation` runtime flag.
 
 ## PRD and docs import
 
@@ -151,7 +170,9 @@ Canonical state still comes from `goal-state` custom entries after compaction. T
 
 ## Runtime continuation
 
-Automatic continuation is disabled by default. Enable it with:
+Automatic continuation is disabled by default and is separate from `/goal start` or `--start`. The start handoff queues one explicit turn. Continuation can queue later turns only when the runtime flag is enabled and the idle guards pass.
+
+Enable continuation with:
 
 ```bash
 pi --no-extensions -e ./extensions/index.ts --goal-continuation
@@ -205,15 +226,16 @@ The remaining live TUI coverage is documented in [`acceptance-criteria.md`](acce
 
 ## Troubleshooting
 
-| Symptom                                   | Cause and fix                                                                                                                                  |
-| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Import path rejected as outside workspace | Run Pi from the workspace root or import a file inside the workspace. Symlinks are checked by realpath and cannot point outside the workspace. |
-| Directory import reports too many docs    | Narrow the directory path or raise the configured `maxFiles` limit. The import fails rather than silently dropping docs.                       |
-| Import requires `--yes`                   | Non-interactive mode cannot confirm. Review the source, then rerun with `--yes`.                                                               |
-| Goal replacement rejected                 | Use interactive confirmation or rerun with `--replace`. The flag is stripped from the saved objective.                                         |
-| `edit` fails                              | `/goal edit` needs interactive UI. Use `/goal <objective> --replace` without UI.                                                               |
-| Continuation does not queue               | Enable `--goal-continuation`, keep the goal active, wait until Pi is idle, and ensure no pending user messages exist.                          |
-| Goal appears branch-stale                 | Run `/goal status` on the selected branch. The source of truth is the branch's `goal-state` entries.                                           |
+| Symptom                                   | Cause and fix                                                                                                                                                                                         |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Import path rejected as outside workspace | Run Pi from the workspace root or import a file inside the workspace. Symlinks are checked by realpath and cannot point outside the workspace.                                                        |
+| Directory import reports too many docs    | Narrow the directory path or raise the configured `maxFiles` limit. The import fails rather than silently dropping docs.                                                                              |
+| Import requires `--yes`                   | Non-interactive mode cannot confirm. Review the source, then rerun with `--yes`. Add `--start` only if that import should immediately hand work to the agent.                                         |
+| Goal replacement rejected                 | Use interactive confirmation or rerun with `--replace`. The flag is stripped from the saved objective. Add `--start` only when the replacement should begin immediately.                              |
+| `edit` fails                              | `/goal edit` needs interactive UI. Use `/goal <objective> --replace` without UI.                                                                                                                      |
+| `/goal start` does not queue              | Confirm a goal exists, is active, and the follow-up messaging API is available. Resume paused goals first; clear or replace complete goals.                                                           |
+| Continuation does not queue               | Enable `--goal-continuation`, keep the goal active, wait until Pi is idle, and ensure no pending user messages exist. Do not confuse this with `/goal start`, which queues only one explicit handoff. |
+| Goal appears branch-stale                 | Run `/goal status` on the selected branch. The source of truth is the branch's `goal-state` entries.                                                                                                  |
 
 ## Future work
 
