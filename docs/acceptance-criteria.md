@@ -112,7 +112,7 @@ Automation covers reducer, command parsing, import safety and merge behavior, to
 1. Start Pi with the extension:
 
    ```bash
-   pi --no-extensions -e ./src/index.ts
+   pi --no-extensions -e ./extensions/index.ts
    ```
 
 2. Run `/goal` and confirm usage renders without starting an agent turn.
@@ -125,7 +125,7 @@ Automation covers reducer, command parsing, import safety and merge behavior, to
 9. Start Pi with continuation enabled:
 
    ```bash
-   pi --no-extensions -e ./src/index.ts --goal-continuation --goal-continuation-max-turns 3
+   pi --no-extensions -e ./extensions/index.ts --goal-continuation --goal-continuation-max-turns 3
    ```
 
    Update progress through `update_goal_progress`, then let an idle continuation queue. Confirm it stops after no progress or the max-turn cap and does not duplicate the queue.
@@ -133,8 +133,8 @@ Automation covers reducer, command parsing, import safety and merge behavior, to
 10. Run quick non-interactive load checks:
 
     ```bash
-    pi --no-session --no-extensions -e ./src/index.ts -p /goal
-    pi --no-session --no-extensions -e ./src/index.ts --goal-continuation -p /goal
+    pi --no-session --no-extensions -e ./extensions/index.ts -p /goal
+    pi --no-session --no-extensions -e ./extensions/index.ts --goal-continuation -p /goal
     ```
 
 ## Definition of done status

@@ -18,24 +18,31 @@ From the repo root:
 
 ```bash
 npm install
-pi --no-extensions -e ./src/index.ts
+pi --no-extensions -e ./extensions/index.ts
 ```
 
 Quick load checks:
 
 ```bash
-pi --no-session --no-extensions -e ./src/index.ts -p /goal
-pi --no-session --no-extensions -e ./src/index.ts --goal-continuation -p /goal
+pi --no-session --no-extensions -e ./extensions/index.ts -p /goal
+pi --no-session --no-extensions -e ./extensions/index.ts --goal-continuation -p /goal
 ```
 
-The package metadata exposes the extension through:
+The package metadata exposes the extension through the same source-extension layout as Pi Agents Team:
 
 ```json
 {
 	"pi": {
-		"extensions": ["./src/index.ts"]
+		"extensions": ["./extensions/index.ts"]
 	}
 }
+```
+
+The extension folder is:
+
+```text
+extensions/index.ts
+extensions/pi-goal/index.ts
 ```
 
 ## Codex comparison
@@ -147,13 +154,13 @@ Canonical state still comes from `goal-state` custom entries after compaction. T
 Automatic continuation is disabled by default. Enable it with:
 
 ```bash
-pi --no-extensions -e ./src/index.ts --goal-continuation
+pi --no-extensions -e ./extensions/index.ts --goal-continuation
 ```
 
 Set the cap with:
 
 ```bash
-pi --no-extensions -e ./src/index.ts --goal-continuation --goal-continuation-max-turns 3
+pi --no-extensions -e ./extensions/index.ts --goal-continuation --goal-continuation-max-turns 3
 ```
 
 Continuation queues only when all checks pass:
@@ -190,8 +197,8 @@ npm run typecheck
 npm run lint
 npm run format
 npm test
-pi --no-session --no-extensions -e ./src/index.ts -p /goal
-pi --no-session --no-extensions -e ./src/index.ts --goal-continuation -p /goal
+pi --no-session --no-extensions -e ./extensions/index.ts -p /goal
+pi --no-session --no-extensions -e ./extensions/index.ts --goal-continuation -p /goal
 ```
 
 The remaining live TUI coverage is documented in [`acceptance-criteria.md`](acceptance-criteria.md#manual-session-lifecycle-smoke-checklist). It covers interactive `/compact`, `/reload`, `/resume`, `/tree`, `/fork`, and visible footer/widget lifecycle checks. Record those smoke results before release, or mark the release blocked instead of treating automated harness tests as live TUI evidence.
@@ -210,6 +217,5 @@ The remaining live TUI coverage is documented in [`acceptance-criteria.md`](acce
 
 ## Future work
 
-- Package for distribution outside local `-e ./src/index.ts` loading.
 - Optional richer Pi TUI popup if users need more than footer/widget plus command output.
 - Optional stricter Codex parity features, such as token/time accounting or RPC compatibility, if Pi users need them.
