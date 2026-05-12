@@ -1,6 +1,6 @@
 # Pi `/goal` extension docs
 
-The Pi Agent Goal package follows the Pi Agents Team source-extension shape: `extensions/index.ts` loads `extensions/pi-goal/index.ts`, which wires the implementation from `src/index.ts`. These docs describe the shipped behavior, acceptance status, and remaining rollout checks.
+The Pi Agent Goal package uses a source-extension shape: `extensions/index.ts` loads `extensions/pi-goal/index.ts`, which wires the implementation from `src/index.ts`. These docs describe the shipped behavior, acceptance status, and remaining rollout checks.
 
 Read in this order:
 
