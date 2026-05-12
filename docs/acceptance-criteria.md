@@ -10,33 +10,33 @@ Status key:
 
 ## Command behavior
 
-| Criterion                                                                                            | Status                                         |
-| ---------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
-| `/goal` shows usage when no goal exists.                                                             | Automated                                      |
-| `/goal` shows current objective, status, source docs, progress, and next actions when a goal exists. | Automated                                      |
-| `/goal <objective>` creates an active goal with a new `goalId`.                                      | Automated                                      |
+| Criterion                                                                                                                   | Status                                         |
+| --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| `/goal` shows usage when no goal exists.                                                                                    | Automated                                      |
+| `/goal` shows current objective, status, source docs, progress, and next actions when a goal exists.                        | Automated                                      |
+| `/goal <objective>` creates an active goal with a new `goalId`.                                                             | Automated                                      |
 | `/goal <objective>` strips recognized flags such as `--replace` from the saved objective wherever they appear in the input. | Automated                                      |
-| `/goal <objective>` asks before replacing an existing goal.                                          | Automated with harness confirmation            |
-| `/goal edit` requires an existing goal and persists user-confirmed edits.                            | Automated with harness editor                  |
-| `/goal clear` removes the goal and hides status/widget UI.                                           | Automated                                      |
-| `/goal pause` stops hidden context injection, continuation eligibility, completion, and progress updates. | Automated                                  |
-| `/goal resume` reactivates a paused goal without rewriting objective or criteria.                    | Automated                                      |
-| `/goal complete` marks only active goals complete and records completion state.                       | Automated                                      |
-| Complete goals stay terminal until cleared or replaced.                                              | Automated                                      |
-| Mutating commands avoid active-turn races with `waitForIdle()` and re-read before save.              | Automated by command harness and source review |
+| `/goal <objective>` asks before replacing an existing goal.                                                                 | Automated with harness confirmation            |
+| `/goal edit` requires an existing goal and persists user-confirmed edits.                                                   | Automated with harness editor                  |
+| `/goal clear` removes the goal and hides status/widget UI.                                                                  | Automated                                      |
+| `/goal pause` stops hidden context injection, continuation eligibility, completion, and progress updates.                   | Automated                                      |
+| `/goal resume` reactivates a paused goal without rewriting objective or criteria.                                           | Automated                                      |
+| `/goal complete` marks only active goals complete and records completion state.                                             | Automated                                      |
+| Complete goals stay terminal until cleared or replaced.                                                                     | Automated                                      |
+| Mutating commands avoid active-turn races with `waitForIdle()` and re-read before save.                                     | Automated by command harness and source review |
 
 ## PRD and docs input
 
-| Criterion                                                                                                                             | Status    |
-| ------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| `/goal import <file>` reads PRD/markdown/text files.                                                                                  | Automated |
-| File import extracts objective, constraints, acceptance criteria, source paths, risks, and open questions where headings are present. | Automated |
-| `/goal import <directory>` scans supported docs without generated/vendor directories.                                                 | Automated |
-| Directory import fails with a clear overflow error when supported docs exceed `maxFiles`; it does not silently truncate.               | Automated |
-| Imported state stores source paths plus compact briefs, not full repeated document text.                                              | Automated |
+| Criterion                                                                                                                                                | Status    |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| `/goal import <file>` reads PRD/markdown/text files.                                                                                                     | Automated |
+| File import extracts objective, constraints, acceptance criteria, source paths, risks, and open questions where headings are present.                    | Automated |
+| `/goal import <directory>` scans supported docs without generated/vendor directories.                                                                    | Automated |
+| Directory import fails with a clear overflow error when supported docs exceed `maxFiles`; it does not silently truncate.                                 | Automated |
+| Imported state stores source paths plus compact briefs, not full repeated document text.                                                                 | Automated |
 | Import creates a goal when none exists, and merges/dedupes source docs, constraints, and criteria into an existing goal without rewriting the objective. | Automated |
-| User confirms the extracted objective before activation, or uses `--yes` in non-interactive mode.                                     | Automated |
-| Missing, unreadable, binary, oversized, unsupported, out-of-workspace, or symlink-escaped paths produce clear errors after realpath checks. | Automated |
+| User confirms the extracted objective before activation, or uses `--yes` in non-interactive mode.                                                        | Automated |
+| Missing, unreadable, binary, oversized, unsupported, out-of-workspace, or symlink-escaped paths produce clear errors after realpath checks.              | Automated |
 
 ## Model tools
 
@@ -93,15 +93,15 @@ Status key:
 
 ## Testing checklist
 
-| Area                                                                                                                 | Status                                                      |
-| -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| Unit tests for state reducer and branch reconstruction.                                                              | Automated                                                   |
-| Unit tests for doc extraction from PRD and docs folder.                                                              | Automated                                                   |
-| Unit tests for tool permission boundaries.                                                                           | Automated                                                   |
-| Integration-style tests for `/goal` command lifecycle.                                                               | Automated                                                   |
-| Integration-style tests for reload/resume/tree/fork reconstruction behavior.                                         | Automated with simulated session events and branch fixtures |
-| Compaction hook tests.                                                                                               | Automated                                                   |
-| Continuation guard tests for idle continuation, no-progress stop, stale `goalId`, duplicate queue, and max-turn cap. | Automated                                                   |
+| Area                                                                                                                 | Status                                                                           |
+| -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Unit tests for state reducer and branch reconstruction.                                                              | Automated                                                                        |
+| Unit tests for doc extraction from PRD and docs folder.                                                              | Automated                                                                        |
+| Unit tests for tool permission boundaries.                                                                           | Automated                                                                        |
+| Integration-style tests for `/goal` command lifecycle.                                                               | Automated                                                                        |
+| Integration-style tests for reload/resume/tree/fork reconstruction behavior.                                         | Automated with simulated session events and branch fixtures                      |
+| Compaction hook tests.                                                                                               | Automated                                                                        |
+| Continuation guard tests for idle continuation, no-progress stop, stale `goalId`, duplicate queue, and max-turn cap. | Automated                                                                        |
 | Live TUI tests for `/reload`, `/resume`, `/tree`, `/fork`, and `/compact`.                                           | Manual smoke, evidence must be recorded before release or release marked blocked |
 
 ## Manual session lifecycle smoke checklist
