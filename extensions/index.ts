@@ -1,1 +1,1 @@
-export { default } from "./pi-goal/index";
+export { default } from "./pi-goal/index.js";
