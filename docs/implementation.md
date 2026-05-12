@@ -43,7 +43,7 @@ The package metadata exposes the extension through:
 | Area         | Codex behavior                                                                     | Pi Goal behavior                                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | Persistence  | SQLite `thread_goals` table keyed by thread.                                       | Pi custom session entries named `goal-state`, reconstructed from the current branch.                                      |
-| Commands     | `/goal` supports setting, viewing, editing, clearing, pausing, and resuming goals. | Same main lifecycle, with non-interactive flags for confirmation paths.                                                   |
+| Commands     | `/goal` supports setting, viewing, editing, clearing, pausing, and resuming goals. | Same main lifecycle, with non-interactive flags for confirmation paths and clean `--replace` parsing.                    |
 | Model tools  | `get_goal`, `create_goal`, `update_goal` limited to completion.                    | `get_goal`, `create_goal`, `complete_goal`, plus progress-only `update_goal_progress`. No general objective rewrite tool. |
 | Compaction   | Codex preserves goal context through its compaction pipeline.                      | Pi `session_before_compact` appends active goal summary/details while canonical state stays in custom entries.            |
 | Continuation | Codex runtime continues active goals while idle with runtime budget tracking.      | Pi continuation is opt-in, capped by max turns, and guarded by idle/pending-message/stale-goal/progress checks.           |
@@ -79,27 +79,27 @@ type GoalState = {
 };
 ```
 
-Supported events are `create`, `replace`, `edit`, `pause`, `resume`, `clear`, `complete`, `progress`, and `import-docs`. Replacing a goal creates a new `goalId`; later mutations for stale IDs are ignored. Objectives are trimmed, non-empty, and limited to 4000 characters.
+Supported events are `create`, `replace`, `edit`, `pause`, `resume`, `clear`, `complete`, `progress`, and `import-docs`. Replacing a goal creates a new `goalId`; later mutations for stale IDs are ignored. Complete goals are terminal until cleared or replaced. Paused goals can only resume, report status, or clear. Objectives are trimmed, non-empty, and limited to 4000 characters.
 
 ## Command behavior
 
 | Command                       | Implemented behavior                                                                                             |
 | ----------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `/goal`                       | Shows usage with no goal, otherwise current summary.                                                             |
-| `/goal <objective>`           | Creates a goal. If one exists, interactive mode confirms replacement, non-interactive mode requires `--replace`. |
+| `/goal <objective>`           | Creates a goal. Recognized flags are removed from the objective, so `--replace ship` and `ship --replace` both create or replace objective `ship`. If one exists, interactive mode confirms replacement, non-interactive mode requires `--replace`. |
 | `/goal status`                | Shows expanded state: criteria, constraints, progress, blocked items, source docs, and next commands.            |
-| `/goal import <path> [--yes]` | Imports a supported docs file or folder. Interactive mode confirms. Non-interactive mode requires `--yes`.       |
+| `/goal import <path> [--yes]` | Imports a supported docs file or folder. Interactive mode confirms. Non-interactive mode requires `--yes`. With no current goal it creates from imported docs; with an existing goal it appends imported docs and merges extracted constraints and criteria without replacing the objective. |
 | `/goal edit`                  | Opens the interactive editor. Non-interactive mode returns an actionable fallback.                               |
-| `/goal pause`                 | Sets status to `paused`.                                                                                         |
-| `/goal resume`                | Sets status to `active`.                                                                                         |
-| `/goal complete [--yes]`      | Marks complete after confirmation or `--yes`.                                                                    |
+| `/goal pause`                 | Sets an active goal to `paused`. Paused goals do not receive hidden context, continuation, completion, or progress updates. |
+| `/goal resume`                | Sets a paused goal to `active`. Complete goals are not resumed; clear or replace them instead.                   |
+| `/goal complete [--yes]`      | Marks an active goal complete after confirmation or `--yes`.                                                     |
 | `/goal clear [--yes]`         | Clears current state after confirmation or `--yes`.                                                              |
 
 Mutating commands call `ctx.waitForIdle()` before writing and reload current branch state before saving. This avoids racing with an active agent turn or a goal replacement.
 
 ## PRD and docs import
 
-`/goal import` accepts `.md`, `.markdown`, and `.txt` files. Directory import scans supported files, ignores generated/vendor directories, and enforces configurable file count and size limits.
+`/goal import` accepts `.md`, `.markdown`, and `.txt` files. Directory import scans supported files, ignores generated/vendor directories, and enforces configurable file count and size limits. If a directory contains more supported files than `maxFiles`, import fails with an overflow error instead of silently truncating the set.
 
 Extracted fields:
 
@@ -111,7 +111,9 @@ Extracted fields:
 - referenced source paths,
 - source document hash and compact brief.
 
-Path rules are intentionally strict. Relative paths must resolve inside the current workspace. Missing, unreadable, unsupported, binary, oversized, or out-of-workspace paths return clear errors. Imported docs are read-only inputs; the extension never edits the source files.
+Path rules are intentionally strict. Relative paths must first resolve inside the workspace, then both the workspace and import target are checked with `realpath`. Symlinks that escape the workspace are rejected for files and directories. Missing, unreadable, unsupported, binary, oversized, or out-of-workspace paths return clear errors. Imported docs are read-only inputs; the extension never edits the source files.
+
+Multiple imported docs are combined with deterministic dedupe. The first non-empty imported objective is used when creating a goal. Later imports into an existing goal merge source docs by path (new hash/brief wins for that path) and dedupe constraints and acceptance criteria. They do not rewrite the current objective.
 
 ## Model tool behavior
 
@@ -119,8 +121,8 @@ Path rules are intentionally strict. Relative paths must resolve inside the curr
 | ---------------------- | ------------------------------------------------------------------------------------------------------------ |
 | `get_goal`             | Reads current state and source paths.                                                                        |
 | `create_goal`          | Requires `explicit_request: true` and fails if a goal exists.                                                |
-| `complete_goal`        | Only marks the current goal complete, with optional evidence in the entry reason.                            |
-| `update_goal_progress` | Updates progress fields only. It cannot rewrite objective, source docs, constraints, or acceptance criteria. |
+| `complete_goal`        | Only marks the current active goal complete, with optional evidence in the entry reason. It rejects paused and already complete goals. |
+| `update_goal_progress` | Updates progress fields only on active goals. It rejects paused or complete goals and cannot rewrite objective, source docs, constraints, or acceptance criteria. |
 
 This keeps user-owned scope under user control. There is no general model tool that can rewrite the objective.
 
@@ -179,7 +181,7 @@ The UI layer is lightweight:
 
 ## Acceptance and verification status
 
-Automated coverage includes reducer transitions, branch reconstruction, command parsing and lifecycle, docs import, model tool boundaries, prompt rendering, hidden context filtering, compaction details, continuation stop conditions, UI rendering, and integration-style session lifecycle flows.
+Automated coverage includes reducer transitions, branch reconstruction, command parsing and lifecycle, docs import safety and merge behavior, model tool boundaries, prompt rendering, hidden context filtering, compaction details, continuation stop conditions, UI rendering, and integration-style session lifecycle flows.
 
 Current verification commands for rollout:
 
@@ -192,15 +194,16 @@ pi --no-session --no-extensions -e ./src/index.ts -p /goal
 pi --no-session --no-extensions -e ./src/index.ts --goal-continuation -p /goal
 ```
 
-The remaining live TUI coverage is documented in [`acceptance-criteria.md`](acceptance-criteria.md#manual-session-lifecycle-smoke-checklist). It covers interactive `/compact`, `/reload`, `/resume`, `/tree`, `/fork`, and visible footer/widget lifecycle checks.
+The remaining live TUI coverage is documented in [`acceptance-criteria.md`](acceptance-criteria.md#manual-session-lifecycle-smoke-checklist). It covers interactive `/compact`, `/reload`, `/resume`, `/tree`, `/fork`, and visible footer/widget lifecycle checks. Record those smoke results before release, or mark the release blocked instead of treating automated harness tests as live TUI evidence.
 
 ## Troubleshooting
 
 | Symptom                                   | Cause and fix                                                                                                         |
 | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Import path rejected as outside workspace | Run Pi from the workspace root or import a file inside the workspace.                                                 |
+| Import path rejected as outside workspace | Run Pi from the workspace root or import a file inside the workspace. Symlinks are checked by realpath and cannot point outside the workspace. |
+| Directory import reports too many docs    | Narrow the directory path or raise the configured `maxFiles` limit. The import fails rather than silently dropping docs. |
 | Import requires `--yes`                   | Non-interactive mode cannot confirm. Review the source, then rerun with `--yes`.                                      |
-| Goal replacement rejected                 | Use interactive confirmation or rerun with `--replace`.                                                               |
+| Goal replacement rejected                 | Use interactive confirmation or rerun with `--replace`. The flag is stripped from the saved objective.                |
 | `edit` fails                              | `/goal edit` needs interactive UI. Use `/goal <objective> --replace` without UI.                                      |
 | Continuation does not queue               | Enable `--goal-continuation`, keep the goal active, wait until Pi is idle, and ensure no pending user messages exist. |
 | Goal appears branch-stale                 | Run `/goal status` on the selected branch. The source of truth is the branch's `goal-state` entries.                  |
