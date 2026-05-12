@@ -210,6 +210,55 @@ describe("/goal command lifecycle", () => {
 		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
 	});
 
+	it("reviews generated proposals with Start/Edit/Cancel select flow and starts edited criteria", async () => {
+		const generateGoalProposal = vi.fn<GoalProposalGenerator>(async () => ({
+			objective: "Initial generated proposal",
+			acceptanceCriteria: ["Initial criterion"],
+		}));
+		const editedDraft = `# Objective
+Edited generated proposal
+
+# Acceptance criteria
+- Edited criterion
+- Start prompt uses edited criteria`;
+		const { pi, ctx, branch } = createHarness({
+			select: ["Edit", "Start"],
+			editor: editedDraft,
+			generateGoalProposal,
+		});
+
+		await handleGoalCommand(pi, "ship edited proposal", ctx);
+
+		expect(ctx.ui.select).toHaveBeenCalledWith("Review generated goal proposal", ["Start", "Edit", "Cancel"]);
+		expect(ctx.ui.editor).toHaveBeenCalledWith(
+			"Edit goal proposal",
+			expect.stringContaining("Initial generated proposal"),
+		);
+		expect(latestGoalEntry(branch).state).toMatchObject({
+			objective: "Edited generated proposal",
+			acceptanceCriteria: ["Edited criterion", "Start prompt uses edited criteria"],
+		});
+		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(
+			expect.stringContaining("Start prompt uses edited criteria"),
+			{ deliverAs: "followUp" },
+		);
+	});
+
+	it("cancels generated proposal review without saving or starting", async () => {
+		const generateGoalProposal = vi.fn<GoalProposalGenerator>(async () => ({
+			objective: "Generated but cancelled",
+			acceptanceCriteria: ["Should not persist"],
+		}));
+		const { pi, ctx, branch } = createHarness({ select: ["Cancel"], generateGoalProposal });
+
+		await handleGoalCommand(pi, "ship cancelled proposal --start", ctx);
+
+		expect(ctx.ui.notify).toHaveBeenCalledWith("Goal proposal cancelled; no goal was saved.", "info");
+		expect(branch).toHaveLength(0);
+		expect(pi.sendUserMessage).not.toHaveBeenCalled();
+	});
+
 	it("does not queue duplicate start follow-ups after denied handoff or command errors", async () => {
 		const { pi, ctx } = createHarness({ confirm: false });
 
