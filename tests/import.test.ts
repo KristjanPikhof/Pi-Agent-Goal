@@ -176,6 +176,24 @@ describe("/goal import command", () => {
 		]);
 	});
 
+	it("aborts when the active goal changes while an import confirmation is pending", async () => {
+		const cwd = await makeWorkspace();
+		await writeFile(path.join(cwd, "notes.md"), prd);
+		const { pi, ctx, branch } = createHarness(cwd, { confirm: true });
+		await handleGoalCommand(pi, "Original objective", ctx);
+
+		ctx.ui.confirm.mockImplementationOnce(async () => {
+			await handleGoalCommand(pi, "Replacement objective --replace --yes", ctx);
+			return true;
+		});
+		await handleGoalCommand(pi, "import notes.md", ctx);
+
+		expect(branch).toHaveLength(2);
+		expect(latestGoalEntry(branch).action).toBe("replace");
+		expect(latestGoalEntry(branch).state?.objective).toBe("Replacement objective");
+		expect(ctx.ui.notify).toHaveBeenLastCalledWith(expect.stringContaining("Goal changed before saving"), "error");
+	});
+
 	it("rejects import into paused or complete goals without mutating state", async () => {
 		const cwd = await makeWorkspace();
 		await writeFile(path.join(cwd, "prd.md"), prd);
