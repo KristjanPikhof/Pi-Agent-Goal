@@ -26,7 +26,7 @@ export function renderGoalAgentDraftingPrompt(
 		"- Acceptance criteria must be useful for completion review; avoid vague criteria and do not leave the draft criteria-free.",
 		"- If details are ambiguous, keep the ambiguity visible in the objective or criteria instead of inventing implementation scope.",
 		"- Include sourcePaths only for paths the user explicitly mentioned.",
-		"- Set start to true only if the user asked to start immediately or the command context says to start after review.",
+		"- Set startImmediately to true only if the user asked to start immediately or the command context says to start after review.",
 		"",
 		"Example boundary: if the user asks for a deep branch review, draft criteria for reviewing the branch, reporting findings, and noting risks/tests; do not expand into fixing issues unless the user asked for fixes.",
 		options.replacingExistingGoal
