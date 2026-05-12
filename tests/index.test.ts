@@ -4,7 +4,13 @@ import goalExtension from "../src/index.js";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 function createPiStub() {
-	const commands = new Map<string, { description?: string; handler: (args: string, ctx: { ui: { notify: ReturnType<typeof vi.fn> } }) => Promise<void> }>();
+	const commands = new Map<
+		string,
+		{
+			description?: string;
+			handler: (args: string, ctx: { ui: { notify: ReturnType<typeof vi.fn> } }) => Promise<void>;
+		}
+	>();
 	const pi = {
 		registerCommand: vi.fn((name, options) => {
 			commands.set(name, options);

@@ -1,6 +1,13 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
-export type { GoalProgress, GoalSourceDoc, GoalState, GoalStateAction, GoalStateEntry, GoalStatus } from "./types.js";
+export type {
+	GoalProgress,
+	GoalSourceDoc,
+	GoalState,
+	GoalStateAction,
+	GoalStateEntry,
+	GoalStatus,
+} from "./types.js";
 
 const PLACEHOLDER_MESSAGE = [
 	"/goal extension scaffold loaded.",

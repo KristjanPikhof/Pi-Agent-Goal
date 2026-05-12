@@ -32,9 +32,9 @@ The package also declares Pi extension metadata:
 
 ```json
 {
-  "pi": {
-    "extensions": ["./src/index.ts"]
-  }
+	"pi": {
+		"extensions": ["./src/index.ts"]
+	}
 }
 ```
 

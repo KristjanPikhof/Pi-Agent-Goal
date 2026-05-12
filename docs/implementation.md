@@ -17,33 +17,33 @@ Use this shape:
 
 Codex has a first-class goal feature behind a feature flag.
 
-| Area | Codex behavior | Source |
-| --- | --- | --- |
-| Slash command registration | Adds `Goal`; description is “set or view the goal for a long-running task”; supports inline args; available while a task is running; not available in side conversations. | `codex-rs/tui/src/slash_command.rs` |
-| Bare `/goal` | Opens current goal menu when a thread exists; otherwise shows usage. | `codex-rs/tui/src/chatwidget/slash_dispatch.rs` |
-| `/goal <objective>` | Sets an objective, validates input, confirms before replacing an existing goal, queues command parsing when the session has not started. | `codex-rs/tui/src/chatwidget/slash_dispatch.rs` |
-| Control args | `clear`, `edit`, `pause`, `resume`; status updates are user/system-owned. | `codex-rs/tui/src/chatwidget/slash_dispatch.rs`, `codex-rs/tui/src/app/thread_goal_actions.rs` |
-| Persistence | SQLite table `thread_goals` keyed by thread id, with `goal_id`, objective, status, token budget, usage, timestamps. | `codex-rs/state/migrations/0029_thread_goals.sql`, `codex-rs/state/src/runtime/goals.rs` |
-| Runtime | Tracks token and wall-clock usage, pauses on interrupt, restores runtime state on resume, and starts continuation turns when idle. | `codex-rs/core/src/goals.rs` |
-| Model tools | Exposes `get_goal`, `create_goal`, `update_goal`; update only allows `complete`. | `codex-rs/core/src/tools/handlers/goal_spec.rs` |
-| Compaction | Replaces history with a summary while preserving user messages and initial context placement rules. | `codex-rs/core/src/compact.rs`, `codex-rs/core/src/session/turn.rs` |
+| Area                       | Codex behavior                                                                                                                                                            | Source                                                                                         |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Slash command registration | Adds `Goal`; description is “set or view the goal for a long-running task”; supports inline args; available while a task is running; not available in side conversations. | `codex-rs/tui/src/slash_command.rs`                                                            |
+| Bare `/goal`               | Opens current goal menu when a thread exists; otherwise shows usage.                                                                                                      | `codex-rs/tui/src/chatwidget/slash_dispatch.rs`                                                |
+| `/goal <objective>`        | Sets an objective, validates input, confirms before replacing an existing goal, queues command parsing when the session has not started.                                  | `codex-rs/tui/src/chatwidget/slash_dispatch.rs`                                                |
+| Control args               | `clear`, `edit`, `pause`, `resume`; status updates are user/system-owned.                                                                                                 | `codex-rs/tui/src/chatwidget/slash_dispatch.rs`, `codex-rs/tui/src/app/thread_goal_actions.rs` |
+| Persistence                | SQLite table `thread_goals` keyed by thread id, with `goal_id`, objective, status, token budget, usage, timestamps.                                                       | `codex-rs/state/migrations/0029_thread_goals.sql`, `codex-rs/state/src/runtime/goals.rs`       |
+| Runtime                    | Tracks token and wall-clock usage, pauses on interrupt, restores runtime state on resume, and starts continuation turns when idle.                                        | `codex-rs/core/src/goals.rs`                                                                   |
+| Model tools                | Exposes `get_goal`, `create_goal`, `update_goal`; update only allows `complete`.                                                                                          | `codex-rs/core/src/tools/handlers/goal_spec.rs`                                                |
+| Compaction                 | Replaces history with a summary while preserving user messages and initial context placement rules.                                                                       | `codex-rs/core/src/compact.rs`, `codex-rs/core/src/session/turn.rs`                            |
 
 Pi should copy the product behavior, not the implementation. Pi does not need Codex’s app-server or SQLite thread-goal table because Pi sessions are already JSONL, branch-aware, and extension-writable.
 
 ## Pi architecture to use
 
-| Pi primitive | Use in `/goal` |
-| --- | --- |
-| `pi.registerCommand("goal", ...)` | User command entrypoint for viewing, setting, editing, clearing, pausing, resuming, and importing docs. |
-| `pi.registerTool(...)` | Model tools for goal read/create/complete. |
-| `pi.appendEntry(customType, data)` | Canonical, branch-aware state persistence. |
-| `before_agent_start` | Inject hidden goal context before a turn starts. |
-| `context` | Filter stale goal context and keep only current-branch context. |
-| `agent_end` / `turn_end` | Update progress, decide whether to continue, update UI status. |
-| `session_start`, `session_tree` | Reconstruct in-memory state from the current branch. |
-| `session_before_compact` | Preserve goal state and source-doc brief in custom compaction summary. |
-| `ctx.ui.setStatus`, `ctx.ui.setWidget`, `ctx.ui.custom` | Footer/status and optional full summary UI. |
-| `ctx.waitForIdle()`, `pi.sendUserMessage(..., { deliverAs })` | Safe runtime continuation. |
+| Pi primitive                                                  | Use in `/goal`                                                                                          |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `pi.registerCommand("goal", ...)`                             | User command entrypoint for viewing, setting, editing, clearing, pausing, resuming, and importing docs. |
+| `pi.registerTool(...)`                                        | Model tools for goal read/create/complete.                                                              |
+| `pi.appendEntry(customType, data)`                            | Canonical, branch-aware state persistence.                                                              |
+| `before_agent_start`                                          | Inject hidden goal context before a turn starts.                                                        |
+| `context`                                                     | Filter stale goal context and keep only current-branch context.                                         |
+| `agent_end` / `turn_end`                                      | Update progress, decide whether to continue, update UI status.                                          |
+| `session_start`, `session_tree`                               | Reconstruct in-memory state from the current branch.                                                    |
+| `session_before_compact`                                      | Preserve goal state and source-doc brief in custom compaction summary.                                  |
+| `ctx.ui.setStatus`, `ctx.ui.setWidget`, `ctx.ui.custom`       | Footer/status and optional full summary UI.                                                             |
+| `ctx.waitForIdle()`, `pi.sendUserMessage(..., { deliverAs })` | Safe runtime continuation.                                                                              |
 
 Useful Pi examples:
 
@@ -58,31 +58,31 @@ Persist every state mutation as a new custom entry. Reconstruct from `ctx.sessio
 type GoalStatus = "active" | "paused" | "complete";
 
 type GoalSourceDoc = {
-  path: string;
-  kind: "prd" | "doc" | "directory" | "manual";
-  brief: string;
-  hash?: string;
-  extractedAt: number;
+	path: string;
+	kind: "prd" | "doc" | "directory" | "manual";
+	brief: string;
+	hash?: string;
+	extractedAt: number;
 };
 
 type GoalState = {
-  version: 1;
-  goalId: string;
-  objective: string;
-  status: GoalStatus;
-  sourceDocs: GoalSourceDoc[];
-  constraints: string[];
-  acceptanceCriteria: string[];
-  progress: {
-    done: string[];
-    current?: string;
-    blocked: string[];
-    lastSummary: string;
-  };
-  createdAt: number;
-  updatedAt: number;
-  completedAt?: number;
-  owner: "user" | "model";
+	version: 1;
+	goalId: string;
+	objective: string;
+	status: GoalStatus;
+	sourceDocs: GoalSourceDoc[];
+	constraints: string[];
+	acceptanceCriteria: string[];
+	progress: {
+		done: string[];
+		current?: string;
+		blocked: string[];
+		lastSummary: string;
+	};
+	createdAt: number;
+	updatedAt: number;
+	completedAt?: number;
+	owner: "user" | "model";
 };
 ```
 
@@ -108,17 +108,17 @@ Do not store canonical state only in memory or only in tool result details. In-m
 
 Implement `/goal` with the following subcommands.
 
-| Command | Behavior |
-| --- | --- |
-| `/goal` | Show current goal summary. If none, show usage and examples. |
-| `/goal <objective>` | Set a new active goal. If a goal exists, ask before replacing. |
-| `/goal edit` | Open editor with current objective and brief fields. Persist user edits. |
-| `/goal clear` | Remove current goal after confirmation. |
-| `/goal pause` | Set status to `paused`; stop continuation. |
-| `/goal resume` | Set status to `active`; optionally queue continuation if idle. |
-| `/goal complete` | Mark complete after confirmation. |
-| `/goal import <path>` | Import a PRD, markdown file, or docs directory into source docs. |
-| `/goal status` | Show expanded status, source docs, acceptance criteria, progress, and risks. |
+| Command               | Behavior                                                                     |
+| --------------------- | ---------------------------------------------------------------------------- |
+| `/goal`               | Show current goal summary. If none, show usage and examples.                 |
+| `/goal <objective>`   | Set a new active goal. If a goal exists, ask before replacing.               |
+| `/goal edit`          | Open editor with current objective and brief fields. Persist user edits.     |
+| `/goal clear`         | Remove current goal after confirmation.                                      |
+| `/goal pause`         | Set status to `paused`; stop continuation.                                   |
+| `/goal resume`        | Set status to `active`; optionally queue continuation if idle.               |
+| `/goal complete`      | Mark complete after confirmation.                                            |
+| `/goal import <path>` | Import a PRD, markdown file, or docs directory into source docs.             |
+| `/goal status`        | Show expanded status, source docs, acceptance criteria, progress, and risks. |
 
 Bare `/goal` should work while the agent is active because it only reads state and displays UI. Mutating commands should wait for idle before writing canonical state, unless they are implemented as queued follow-up operations.
 
@@ -159,12 +159,13 @@ Recommended extraction format:
 Source: docs/prd.md
 Objective: ...
 Constraints:
+
 - ...
-Acceptance criteria:
+  Acceptance criteria:
 - ...
-Implementation hints:
+  Implementation hints:
 - path/to/file.ts: ...
-Open questions:
+  Open questions:
 - ...
 ```
 
@@ -174,12 +175,12 @@ Keep source-doc briefs short. The hidden turn context should mention source path
 
 Expose model tools with narrow permissions.
 
-| Tool | Parameters | Allowed behavior |
-| --- | --- | --- |
-| `get_goal` | none | Return current goal, status, criteria, progress, and source paths. |
-| `create_goal` | `objective`, optional `source_paths`, optional `acceptance_criteria` | Create only when the user explicitly asked for a goal or developer/system instructions require it. Fail if a goal exists. |
-| `complete_goal` | optional `evidence` | Mark complete only when all required work is done. |
-| Optional `update_goal_progress` | `done`, `current`, `blocked`, `summary` | Update implementation progress, not objective or scope. |
+| Tool                            | Parameters                                                           | Allowed behavior                                                                                                          |
+| ------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `get_goal`                      | none                                                                 | Return current goal, status, criteria, progress, and source paths.                                                        |
+| `create_goal`                   | `objective`, optional `source_paths`, optional `acceptance_criteria` | Create only when the user explicitly asked for a goal or developer/system instructions require it. Fail if a goal exists. |
+| `complete_goal`                 | optional `evidence`                                                  | Mark complete only when all required work is done.                                                                        |
+| Optional `update_goal_progress` | `done`, `current`, `blocked`, `summary`                              | Update implementation progress, not objective or scope.                                                                   |
 
 Do not expose a general `update_goal` tool that can rewrite objective, constraints, or source docs. Codex intentionally limits `update_goal` to `complete`, and Pi should keep the same safety boundary.
 
@@ -195,14 +196,14 @@ Inject a short hidden custom message before relevant turns when a goal is active
 
 ```typescript
 pi.on("before_agent_start", async (_event, ctx) => {
-  if (!goal || goal.status !== "active") return;
-  return {
-    message: {
-      customType: "goal-context",
-      display: false,
-      content: renderGoalContext(goal),
-    },
-  };
+	if (!goal || goal.status !== "active") return;
+	return {
+		message: {
+			customType: "goal-context",
+			display: false,
+			content: renderGoalContext(goal),
+		},
+	};
 });
 ```
 
@@ -238,14 +239,14 @@ Implementation approach:
 
 ```typescript
 return {
-  compaction: {
-    summary: `${defaultLikeSummary}\n\n## Active goal\n${renderCompactGoalSummary(goal)}`,
-    firstKeptEntryId: preparation.firstKeptEntryId,
-    tokensBefore: preparation.tokensBefore,
-    details: {
-      goal: compactGoalDetails(goal),
-    },
-  },
+	compaction: {
+		summary: `${defaultLikeSummary}\n\n## Active goal\n${renderCompactGoalSummary(goal)}`,
+		firstKeptEntryId: preparation.firstKeptEntryId,
+		tokensBefore: preparation.tokensBefore,
+		details: {
+			goal: compactGoalDetails(goal),
+		},
+	},
 };
 ```
 
@@ -361,15 +362,15 @@ For a larger popup, follow Pi TUI constraints from `docs/tui.md`: every rendered
 
 ## Risks and mitigations
 
-| Risk | Mitigation |
-| --- | --- |
-| Runaway autonomous continuation | Require active status, idle checks, progress detection, and backoff/loop stop. |
-| Model silently changes user scope | Do not expose objective rewrite tools; require `/goal edit` or user confirmation. |
-| Compaction drops source context | Store canonical state in custom entries and re-inject hidden context after compaction. |
-| Branch state leaks | Reconstruct only from `getBranch()`, never from all entries for active state. |
-| Docs import floods context | Store paths plus extracted briefs; model can read files on demand. |
-| Stale continuation after replacement | Track `goalId`; re-read before queuing and before acting. |
-| UI unavailable in print/RPC modes | Guard with `ctx.hasUI`; return text notifications or tool results instead. |
+| Risk                                 | Mitigation                                                                             |
+| ------------------------------------ | -------------------------------------------------------------------------------------- |
+| Runaway autonomous continuation      | Require active status, idle checks, progress detection, and backoff/loop stop.         |
+| Model silently changes user scope    | Do not expose objective rewrite tools; require `/goal edit` or user confirmation.      |
+| Compaction drops source context      | Store canonical state in custom entries and re-inject hidden context after compaction. |
+| Branch state leaks                   | Reconstruct only from `getBranch()`, never from all entries for active state.          |
+| Docs import floods context           | Store paths plus extracted briefs; model can read files on demand.                     |
+| Stale continuation after replacement | Track `goalId`; re-read before queuing and before acting.                              |
+| UI unavailable in print/RPC modes    | Guard with `ctx.hasUI`; return text notifications or tool results instead.             |
 
 ## Implementation TODOs
 
