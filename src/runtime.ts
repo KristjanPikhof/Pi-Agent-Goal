@@ -80,9 +80,10 @@ export function registerGoalRuntime(pi: ExtensionAPI): void {
 		event: string,
 		handler: (event: unknown, ctx: unknown) => Promise<unknown> | unknown,
 	) => void;
-	const api = pi as ExtensionAPI & ContinuationAPI & {
-		registerFlag?: (name: string, options: Record<string, unknown>) => void;
-	};
+	const api = pi as ExtensionAPI &
+		ContinuationAPI & {
+			registerFlag?: (name: string, options: Record<string, unknown>) => void;
+		};
 	const continuationState = createGoalContinuationState();
 
 	api.registerFlag?.("goal-continuation", {
@@ -125,7 +126,8 @@ export function registerGoalRuntime(pi: ExtensionAPI): void {
 	);
 
 	on("input", async (event) => {
-		const prompt = (event as { input?: string; prompt?: string }).input ?? (event as { prompt?: string }).prompt ?? "";
+		const prompt =
+			(event as { input?: string; prompt?: string }).input ?? (event as { prompt?: string }).prompt ?? "";
 		if (continuationState.queuedGoalId || continuationState.runningGoalId) {
 			if (!prompt.includes("Continue working toward the active goal.")) {
 				stopGoalContinuation(api, continuationState, "user-interrupt");
@@ -234,13 +236,15 @@ export async function maybeQueueGoalContinuation(
 	now = Date.now(),
 ): Promise<GoalContinuationDecision> {
 	if (api.getFlag?.("goal-continuation") !== true) return stopDecision("disabled");
-	if (state.queuedGoalId || state.runningGoalId) return stopDecision("duplicate-queue", state.queuedGoalId ?? state.runningGoalId);
+	if (state.queuedGoalId || state.runningGoalId)
+		return stopDecision("duplicate-queue", state.queuedGoalId ?? state.runningGoalId);
 	if (ctx.isIdle?.() !== true) return stopDecision("busy");
 	if (ctx.hasPendingMessages?.() === true) return stopDecision("pending-messages");
 
 	const goal = loadGoalState(ctx);
 	if (!isActiveGoal(goal)) return stopDecision("not-active");
-	if (state.stoppedGoalId === goal.goalId && state.stoppedReason === "no-progress") return stopDecision("no-progress", goal.goalId);
+	if (state.stoppedGoalId === goal.goalId && state.stoppedReason === "no-progress")
+		return stopDecision("no-progress", goal.goalId);
 	if (state.stoppedGoalId === goal.goalId && state.stoppedReason === "user-interrupt")
 		return stopDecision("user-interrupt", goal.goalId);
 	const maxTurns = getMaxContinuationTurns(api);
@@ -248,7 +252,8 @@ export async function maybeQueueGoalContinuation(
 	if (turnCount >= maxTurns) return stopDecision("max-turns", goal.goalId);
 
 	const rechecked = loadGoalState(ctx);
-	if (!isActiveGoal(rechecked) || rechecked.goalId !== goal.goalId) return stopDecision("stale-goal", goal.goalId);
+	if (!isActiveGoal(rechecked) || rechecked.goalId !== goal.goalId)
+		return stopDecision("stale-goal", goal.goalId);
 
 	state.queuedGoalId = goal.goalId;
 	recordGoalContinuation(api, { action: "queued", goalId: goal.goalId, at: now, turnCount });

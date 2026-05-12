@@ -194,7 +194,10 @@ describe("goal continuation scheduler", () => {
 		const paused = persist({ action: "pause", goalId: "goal-1", now: 2 }, created.state);
 		const completed = persist({ action: "complete", goalId: "goal-1", now: 3 }, created.state);
 		const cleared = persist({ action: "clear", goalId: "goal-1", now: 4 }, created.state);
-		const replaced = persist({ action: "replace", goalId: "goal-2", objective: "Replacement", now: 5 }, created.state);
+		const replaced = persist(
+			{ action: "replace", goalId: "goal-2", objective: "Replacement", now: 5 },
+			created.state,
+		);
 
 		for (const entry of [paused.entry, completed.entry, cleared.entry, replaced.entry]) {
 			const branch = [customEntry(created.entry)];
