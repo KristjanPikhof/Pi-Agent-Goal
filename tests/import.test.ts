@@ -218,7 +218,9 @@ describe("/goal import command", () => {
 		await writeFile(path.join(cwd, "prd.md"), prd);
 		const { pi, ctx, branch } = createHarness(cwd, { confirm: true });
 		ctx.ui.confirm.mockResolvedValueOnce(true).mockImplementationOnce(async () => {
+			ctx.hasUI = false;
 			await handleGoalCommand(pi, "Replacement objective --replace --yes", ctx);
+			ctx.hasUI = true;
 			return true;
 		});
 
@@ -236,11 +238,14 @@ describe("/goal import command", () => {
 	it("aborts when the active goal changes while an import confirmation is pending", async () => {
 		const cwd = await makeWorkspace();
 		await writeFile(path.join(cwd, "notes.md"), prd);
-		const { pi, ctx, branch } = createHarness(cwd, { confirm: true });
+		const { pi, ctx, branch } = createHarness(cwd, { confirm: false });
 		await handleGoalCommand(pi, "Original objective", ctx);
+		ctx.ui.confirm.mockClear();
 
 		ctx.ui.confirm.mockImplementationOnce(async () => {
+			ctx.hasUI = false;
 			await handleGoalCommand(pi, "Replacement objective --replace --yes", ctx);
+			ctx.hasUI = true;
 			return true;
 		});
 		await handleGoalCommand(pi, "import notes.md", ctx);

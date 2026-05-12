@@ -52,7 +52,16 @@ interface GoalStartAPI {
 	sendUserMessage(message: string, options?: { deliverAs?: "followUp" | "steer" }): unknown;
 }
 
-const CONTROL_COMMANDS = new Set(["status", "edit", "pause", "resume", "start", "clear", "complete", "import"]);
+const CONTROL_COMMANDS = new Set([
+	"status",
+	"edit",
+	"pause",
+	"resume",
+	"start",
+	"clear",
+	"complete",
+	"import",
+]);
 const RECOGNIZED_FLAGS = new Set(["--yes", "-y", "--replace", "--start"]);
 
 export function registerGoalCommand(pi: ExtensionAPI): void {
@@ -344,7 +353,10 @@ export async function startActiveGoal(
 		return false;
 	}
 	if (latest.status !== "active") {
-		ctx.ui.notify(`Cannot start a ${latest.status} goal. Run /goal resume first or choose an active goal.`, "error");
+		ctx.ui.notify(
+			`Cannot start a ${latest.status} goal. Run /goal resume first or choose an active goal.`,
+			"error",
+		);
 		return false;
 	}
 	if (!api.sendUserMessage) {
