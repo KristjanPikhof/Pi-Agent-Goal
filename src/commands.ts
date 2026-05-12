@@ -368,7 +368,7 @@ export async function saveReviewedGoalAndOfferStart(
 	updateGoalUi(ctx, next);
 	ctx.ui.notify(
 		options.successMessage ?? (options.action === "replace" ? "Goal replaced." : "Goal created."),
-		"success",
+		"info",
 	);
 	if (next) await offerGoalStartHandoff(api, ctx, next.goalId, options.start);
 	return next;
