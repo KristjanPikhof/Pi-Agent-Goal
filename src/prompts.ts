@@ -2,6 +2,23 @@ import type { GoalSourceDoc, GoalState } from "./types.js";
 
 export const GOAL_CONTEXT_CUSTOM_TYPE = "goal-context";
 
+export function renderGoalProposalPrompt(objective: string): string {
+	return [
+		"Draft a structured /goal proposal from the user's plain objective.",
+		"Preserve the original meaning exactly: do not add scope, remove scope, or reinterpret intent.",
+		"Return only JSON with this shape: {\"objective\": string, \"acceptanceCriteria\": string[]}.",
+		"Normalize wording for clarity, but keep the same deliverable and boundaries.",
+		"Create concrete acceptanceCriteria only when they directly follow from the user's objective.",
+		"If no concrete criteria can be inferred without adding scope, return an empty acceptanceCriteria array.",
+		"Do not include markdown, commentary, or fields other than objective and acceptanceCriteria.",
+		"",
+		"Plain objective:",
+		"<objective>",
+		escapeXml(objective),
+		"</objective>",
+	].join("\n");
+}
+
 export function renderGoalStartPrompt(goal: GoalState): string {
 	return [
 		"Start working toward the active goal now.",

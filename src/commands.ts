@@ -1,4 +1,5 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { preparePlainGoalDraft, type GoalProposalGenerator } from "./goal-prep.js";
 import { importGoalSources, parseEditableGoalDraft, renderEditableGoalDraft } from "./import.js";
 import { renderGoalStartPrompt } from "./prompts.js";
 import { loadGoalState, saveGoalState, validateObjective } from "./state.js";
@@ -46,6 +47,7 @@ interface GoalCommandContext {
 		setStatus(key: string, value: string | undefined): void;
 		setWidget(key: string, value: string[] | undefined): void;
 	};
+	generateGoalProposal?: GoalProposalGenerator;
 }
 
 interface GoalStartAPI {
@@ -276,6 +278,8 @@ async function createOrReplaceGoal(
 	current: GoalState | null,
 ): Promise<void> {
 	const objective = validateObjective(parsed.objective ?? "");
+	const prepared = await preparePlainGoalDraft(objective, ctx.generateGoalProposal);
+	const proposedObjective = validateObjective(prepared.proposal.objective);
 	let action: "create" | "replace" = "create";
 
 	if (current) {
@@ -289,7 +293,7 @@ async function createOrReplaceGoal(
 			}
 			const ok = await ctx.ui.confirm(
 				"Replace current goal?",
-				`Current: ${current.objective}\n\nNew: ${objective}`,
+				`Current: ${current.objective}\n\nNew: ${proposedObjective}`,
 			);
 			if (!ok) {
 				ctx.ui.notify("Goal replacement cancelled.", "info");
@@ -297,6 +301,18 @@ async function createOrReplaceGoal(
 			}
 		}
 		action = "replace";
+	}
+
+	if (prepared.warning) {
+		ctx.ui.notify(prepared.warning, "warning");
+	} else if (ctx.hasUI && !parsed.confirmed) {
+		const ok = await ctx.ui.confirm("Use generated goal proposal?", renderGoalProposalReview(prepared.proposal));
+		if (!ok) {
+			ctx.ui.notify("Goal proposal cancelled.", "info");
+			return;
+		}
+	} else if (!ctx.hasUI) {
+		ctx.ui.notify(renderGoalProposalReview(prepared.proposal), "info");
 	}
 
 	const latest = loadGoalState(ctx);
@@ -309,7 +325,8 @@ async function createOrReplaceGoal(
 		{
 			action: latest ? "replace" : action,
 			goalId: crypto.randomUUID(),
-			objective,
+			objective: proposedObjective,
+			acceptanceCriteria: prepared.proposal.acceptanceCriteria,
 			now: Date.now(),
 			owner: "user",
 		},
@@ -496,4 +513,14 @@ async function confirmThenMutate(
 
 function updateGoalUi(ctx: GoalCommandContext, goal: GoalState | null): void {
 	applyGoalUi(ctx, goal);
+}
+
+function renderGoalProposalReview(proposal: { objective: string; acceptanceCriteria: string[] }): string {
+	return [
+		`Objective: ${proposal.objective}`,
+		"Acceptance criteria:",
+		...(proposal.acceptanceCriteria.length > 0
+			? proposal.acceptanceCriteria.map((item) => `- ${item}`)
+			: ["- none"]),
+	].join("\n");
 }

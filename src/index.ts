@@ -26,6 +26,8 @@ export {
 	renderGoalContext,
 	renderGoalStartPrompt,
 } from "./prompts.js";
+export { preparePlainGoalDraft } from "./goal-prep.js";
+export type { GoalDraftProposal, GoalProposalGenerator, PreparedGoalDraft } from "./goal-prep.js";
 export {
 	DEFAULT_IMPORT_MAX_FILE_BYTES,
 	DEFAULT_IMPORT_MAX_FILES,
