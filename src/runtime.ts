@@ -1,5 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { createGoalStateSnapshot, loadGoalState } from "./state.js";
+import { applyGoalUi } from "./ui.js";
 import {
 	compactGoalDetails,
 	GOAL_CONTEXT_CUSTOM_TYPE,
@@ -30,6 +31,7 @@ interface ContinuationContext extends GoalRuntimeContext {
 	hasUI?: boolean;
 	ui?: {
 		setStatus?: (key: string, value: string | undefined) => void;
+		setWidget?: (key: string, value: string[] | undefined) => void;
 		notify?: (message: string, level?: string) => void;
 	};
 }
@@ -145,11 +147,13 @@ export function registerGoalRuntime(pi: ExtensionAPI): void {
 	});
 
 	on("session_start", async (_event, ctx) => {
+		refreshGoalUi(ctx as ContinuationContext);
 		updateContinuationStatus(ctx as ContinuationContext, continuationState);
 	});
 
 	on("session_tree", async (_event, ctx) => {
 		stopGoalContinuation(api, continuationState, "stale-goal");
+		refreshGoalUi(ctx as ContinuationContext);
 		updateContinuationStatus(ctx as ContinuationContext, continuationState);
 	});
 }

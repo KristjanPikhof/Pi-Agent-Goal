@@ -2,11 +2,12 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { importGoalSources } from "./import.js";
 import { loadGoalState, saveGoalState, validateObjective } from "./state.js";
 import {
-	formatGoalStatusLabel,
+	applyGoalUi,
 	GOAL_USAGE,
+	noGoalMessage,
+	nonInteractiveConfirmationMessage,
 	renderGoalStatus,
 	renderGoalSummary,
-	renderGoalWidget,
 } from "./ui.js";
 
 import type { GoalState, GoalStateEvent } from "./types.js";
@@ -272,7 +273,7 @@ async function createOrReplaceGoal(
 
 async function editGoal(pi: ExtensionAPI, ctx: GoalCommandContext, current: GoalState | null): Promise<void> {
 	if (!current) {
-		ctx.ui.notify("No goal exists. Start one with /goal <objective>.", "error");
+		ctx.ui.notify(noGoalMessage("edit"), "error");
 		return;
 	}
 	if (!ctx.hasUI) {
@@ -309,7 +310,7 @@ function mutateExistingGoal(
 	message: string,
 ): void {
 	if (!current) {
-		ctx.ui.notify("No goal exists. Start one with /goal <objective>.", "error");
+		ctx.ui.notify(noGoalMessage(action), "error");
 		return;
 	}
 	const next = saveGoalState(pi, { action, goalId: current.goalId, now: Date.now() }, current);
@@ -327,14 +328,14 @@ async function confirmThenMutate(
 	message: string,
 ): Promise<void> {
 	if (!current) {
-		ctx.ui.notify("No goal exists. Start one with /goal <objective>.", "error");
+		ctx.ui.notify(noGoalMessage(action), "error");
 		return;
 	}
 
 	if (!confirmed) {
 		if (!ctx.hasUI) {
 			ctx.ui.notify(
-				`/${action === "clear" ? "goal clear" : "goal complete"} requires --yes in non-interactive mode.`,
+				nonInteractiveConfirmationMessage(action === "clear" ? "/goal clear" : "/goal complete"),
 				"error",
 			);
 			return;
@@ -361,6 +362,5 @@ async function confirmThenMutate(
 }
 
 function updateGoalUi(ctx: GoalCommandContext, goal: GoalState | null): void {
-	ctx.ui.setStatus("goal", formatGoalStatusLabel(goal));
-	ctx.ui.setWidget("goal", goal ? renderGoalWidget(goal) : undefined);
+	applyGoalUi(ctx, goal);
 }
