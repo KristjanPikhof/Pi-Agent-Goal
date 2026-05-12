@@ -15,12 +15,14 @@ Status key:
 | `/goal` shows usage when no goal exists.                                                             | Automated                                      |
 | `/goal` shows current objective, status, source docs, progress, and next actions when a goal exists. | Automated                                      |
 | `/goal <objective>` creates an active goal with a new `goalId`.                                      | Automated                                      |
+| `/goal <objective>` strips recognized flags such as `--replace` from the saved objective wherever they appear in the input. | Automated                                      |
 | `/goal <objective>` asks before replacing an existing goal.                                          | Automated with harness confirmation            |
 | `/goal edit` requires an existing goal and persists user-confirmed edits.                            | Automated with harness editor                  |
 | `/goal clear` removes the goal and hides status/widget UI.                                           | Automated                                      |
-| `/goal pause` stops hidden context injection and continuation eligibility.                           | Automated                                      |
-| `/goal resume` reactivates the goal without rewriting objective or criteria.                         | Automated                                      |
-| `/goal complete` marks the goal complete and records completion state.                               | Automated                                      |
+| `/goal pause` stops hidden context injection, continuation eligibility, completion, and progress updates. | Automated                                  |
+| `/goal resume` reactivates a paused goal without rewriting objective or criteria.                    | Automated                                      |
+| `/goal complete` marks only active goals complete and records completion state.                       | Automated                                      |
+| Complete goals stay terminal until cleared or replaced.                                              | Automated                                      |
 | Mutating commands avoid active-turn races with `waitForIdle()` and re-read before save.              | Automated by command harness and source review |
 
 ## PRD and docs input
@@ -30,9 +32,11 @@ Status key:
 | `/goal import <file>` reads PRD/markdown/text files.                                                                                  | Automated |
 | File import extracts objective, constraints, acceptance criteria, source paths, risks, and open questions where headings are present. | Automated |
 | `/goal import <directory>` scans supported docs without generated/vendor directories.                                                 | Automated |
+| Directory import fails with a clear overflow error when supported docs exceed `maxFiles`; it does not silently truncate.               | Automated |
 | Imported state stores source paths plus compact briefs, not full repeated document text.                                              | Automated |
+| Import creates a goal when none exists, and merges/dedupes source docs, constraints, and criteria into an existing goal without rewriting the objective. | Automated |
 | User confirms the extracted objective before activation, or uses `--yes` in non-interactive mode.                                     | Automated |
-| Missing, unreadable, binary, oversized, unsupported, or out-of-workspace paths produce clear errors.                                  | Automated |
+| Missing, unreadable, binary, oversized, unsupported, out-of-workspace, or symlink-escaped paths produce clear errors after realpath checks. | Automated |
 
 ## Model tools
 
@@ -40,7 +44,8 @@ Status key:
 | ---------------------------------------------------------------------------------------------- | ----------------------------- |
 | `get_goal` returns current goal state and source paths.                                        | Automated                     |
 | `create_goal` works only when explicitly requested and fails if a goal already exists.         | Automated                     |
-| `complete_goal` can only mark the current goal complete.                                       | Automated                     |
+| `complete_goal` can only mark the current active goal complete.                                | Automated                     |
+| `complete_goal` and `update_goal_progress` reject paused goals.                                | Automated                     |
 | The model cannot silently rewrite objective, source docs, constraints, or acceptance criteria. | Automated by schema and tests |
 | Tool results include enough details for state reconstruction and UI rendering.                 | Automated                     |
 | Tool renderers are concise and readable.                                                       | Automated                     |
@@ -97,11 +102,11 @@ Status key:
 | Integration-style tests for reload/resume/tree/fork reconstruction behavior.                                         | Automated with simulated session events and branch fixtures |
 | Compaction hook tests.                                                                                               | Automated                                                   |
 | Continuation guard tests for idle continuation, no-progress stop, stale `goalId`, duplicate queue, and max-turn cap. | Automated                                                   |
-| Live TUI tests for `/reload`, `/resume`, `/tree`, `/fork`, and `/compact`.                                           | Manual smoke                                                |
+| Live TUI tests for `/reload`, `/resume`, `/tree`, `/fork`, and `/compact`.                                           | Manual smoke, evidence must be recorded before release or release marked blocked |
 
 ## Manual session lifecycle smoke checklist
 
-Automation covers reducer, command, import, tools, hidden context, compaction hooks, continuation guards, UI renderers, and branch-shaped reconstruction. Run these checks in a real TUI session before release:
+Automation covers reducer, command parsing, import safety and merge behavior, tools, hidden context, compaction hooks, continuation guards, UI renderers, and branch-shaped reconstruction. It does not prove the live TUI. Run these checks in a real TUI session before release and record the evidence, or mark release blocked:
 
 1. Start Pi with the extension:
 
@@ -112,7 +117,7 @@ Automation covers reducer, command, import, tools, hidden context, compaction ho
 2. Run `/goal` and confirm usage renders without starting an agent turn.
 3. Run `/goal Ship a multi-turn verification goal`, then confirm footer shows `goal: active` and the active-goal widget appears.
 4. Run `/goal status`, `/goal pause`, `/goal resume`, `/goal complete --yes`, and `/goal clear --yes`; confirm status/widget update or disappear at each step.
-5. Create `docs/prd.md`, run `/goal import docs/prd.md`, review the confirmation, and confirm `/goal status` shows source docs and extracted criteria.
+5. Create `docs/prd.md`, run `/goal import docs/prd.md`, review the confirmation, and confirm `/goal status` shows source docs and extracted criteria. Then import a second doc into the same goal and confirm source docs, constraints, and criteria merge without replacing the objective.
 6. Trigger `/compact`; confirm `/goal status` still shows objective, criteria, source brief, and progress, then send a normal prompt and verify hidden goal context is regenerated for the active goal.
 7. Run `/reload` or restart/resume the session; confirm footer/widget and `/goal status` reconstruct from current branch custom entries.
 8. Use `/fork` or `/tree` to navigate between branches with different goal mutations; confirm the selected branch shows its own goal state and stale context from the other branch is absent.
@@ -133,6 +138,6 @@ Automation covers reducer, command, import, tools, hidden context, compaction ho
 
 ## Definition of done status
 
-The rollout acceptance is met when automated checks pass and the docs accurately mark live TUI lifecycle checks as manual smoke rather than automated proof. The extension currently supports starting a long-running goal from a prompt or docs folder, preserving state through branch-aware session entries and compaction hooks, exposing narrow tools, and optionally continuing while idle behind explicit opt-in.
+The rollout acceptance is met when automated checks pass and the docs accurately mark live TUI lifecycle checks as manual smoke rather than automated proof. Release readiness also requires recorded live TUI smoke evidence, or an explicit blocked status for that evidence. The extension currently supports starting a long-running goal from a prompt or docs folder, preserving state through branch-aware session entries and compaction hooks, exposing narrow tools, and optionally continuing while idle behind explicit opt-in.
 
 Remaining future work is Codex-exact compatibility: app-server RPC, SQLite persistence, exact token/time budgets, and exact Codex goal menu UI.
