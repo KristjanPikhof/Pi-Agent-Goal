@@ -95,8 +95,8 @@ export function registerGoalRuntime(pi: ExtensionAPI): void {
 	});
 	api.registerFlag?.("goal-continuation-max-turns", {
 		description: "Maximum automatic continuation turns per goal",
-		type: "number",
-		default: DEFAULT_GOAL_CONTINUATION_MAX_TURNS,
+		type: "string",
+		default: String(DEFAULT_GOAL_CONTINUATION_MAX_TURNS),
 	});
 
 	on("before_agent_start", async (_event, ctx) => {
@@ -127,12 +127,13 @@ export function registerGoalRuntime(pi: ExtensionAPI): void {
 		),
 	);
 
-	on("input", async (event) => {
+	on("input", async (event, ctx) => {
 		const prompt =
 			(event as { input?: string; prompt?: string }).input ?? (event as { prompt?: string }).prompt ?? "";
 		if (continuationState.queuedGoalId || continuationState.runningGoalId) {
 			if (!prompt.includes("Continue working toward the active goal.")) {
 				stopGoalContinuation(api, continuationState, "user-interrupt");
+				updateContinuationStatus(ctx as ContinuationContext, continuationState);
 			}
 		}
 	});
@@ -382,9 +383,8 @@ function updateContinuationStatus(ctx: ContinuationContext, state: GoalContinuat
 
 function getMaxContinuationTurns(api: ContinuationAPI): number {
 	const configured = api.getFlag?.("goal-continuation-max-turns");
-	return typeof configured === "number" && Number.isFinite(configured) && configured > 0
-		? Math.floor(configured)
-		: DEFAULT_GOAL_CONTINUATION_MAX_TURNS;
+	const value = typeof configured === "number" ? configured : typeof configured === "string" ? Number(configured) : NaN;
+	return Number.isFinite(value) && value > 0 ? Math.floor(value) : DEFAULT_GOAL_CONTINUATION_MAX_TURNS;
 }
 
 function stopDecision(reason: GoalContinuationStopReason, goalId?: string): GoalContinuationDecision {
