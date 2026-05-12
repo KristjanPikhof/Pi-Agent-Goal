@@ -187,6 +187,8 @@ export function executeCompleteGoal(
 	if (!current) return errorResult("No active goal exists to complete.", "no_goal");
 	if (current.status === "complete")
 		return errorResult("The current goal is already complete.", "already_complete", current);
+	if (current.status !== "active")
+		return errorResult("Only active goals can be completed.", "goal_inactive", current);
 
 	const evidence = params.evidence?.trim();
 	const next = saveGoalState(
@@ -214,6 +216,8 @@ export function executeUpdateGoalProgress(
 	if (!current) return errorResult("No active goal exists to update.", "no_goal");
 	if (current.status === "complete")
 		return errorResult("Cannot update progress for a complete goal.", "already_complete", current);
+	if (current.status !== "active")
+		return errorResult("Only active goals can receive progress updates.", "goal_inactive", current);
 
 	const progress: Partial<GoalProgress> = {
 		done: params.done,

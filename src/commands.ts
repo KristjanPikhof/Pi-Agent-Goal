@@ -46,6 +46,7 @@ interface GoalCommandContext {
 }
 
 const CONTROL_COMMANDS = new Set(["status", "edit", "pause", "resume", "clear", "complete", "import"]);
+const RECOGNIZED_FLAGS = new Set(["--yes", "-y", "--replace"]);
 
 export function registerGoalCommand(pi: ExtensionAPI): void {
 	pi.registerCommand("goal", {
@@ -144,7 +145,8 @@ export function parseGoalCommand(args: string): ParsedGoalCommand {
 		return { kind: "import", path: pathArg, confirmed, replace };
 	}
 
-	return { kind: "create", objective: trimmed, confirmed, replace };
+	const objective = tokens.filter((token) => !RECOGNIZED_FLAGS.has(token)).join(" ").trim();
+	return { kind: "create", objective, confirmed, replace };
 }
 
 async function importGoal(
@@ -313,7 +315,20 @@ function mutateExistingGoal(
 		ctx.ui.notify(noGoalMessage(action), "error");
 		return;
 	}
-	const next = saveGoalState(pi, { action, goalId: current.goalId, now: Date.now() }, current);
+	const latest = loadGoalState(ctx);
+	if (!latest || latest.goalId !== current.goalId) {
+		ctx.ui.notify("Goal changed before saving. Re-run the command.", "error");
+		return;
+	}
+	if (action === "pause" && latest.status !== "active") {
+		ctx.ui.notify("Only active goals can be paused.", "error");
+		return;
+	}
+	if (action === "resume" && latest.status !== "paused") {
+		ctx.ui.notify("Only paused goals can be resumed.", "error");
+		return;
+	}
+	const next = saveGoalState(pi, { action, goalId: latest.goalId, now: Date.now() }, latest);
 	updateGoalUi(ctx, next);
 	ctx.ui.notify(message, "success");
 }
@@ -350,6 +365,10 @@ async function confirmThenMutate(
 	const latest = loadGoalState(ctx);
 	if (!latest || latest.goalId !== current.goalId) {
 		ctx.ui.notify("Goal changed before saving. Re-run the command.", "error");
+		return;
+	}
+	if (action === "complete" && latest.status !== "active") {
+		ctx.ui.notify("Only active goals can be completed.", "error");
 		return;
 	}
 	const next = saveGoalState(

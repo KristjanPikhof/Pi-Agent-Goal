@@ -12,6 +12,7 @@ import {
 	registerGoalTools,
 	updateGoalProgressParams,
 } from "../src/tools.js";
+import { saveGoalState } from "../src/state.js";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type { GoalStateEntry } from "../src/types.js";
 
@@ -146,6 +147,26 @@ describe("goal tool execution", () => {
 			sourceDocs: [expect.objectContaining({ path: "docs/a.md" })],
 			progress: { done: ["one"], current: "two", blocked: ["three"], lastSummary: "progress summary" },
 		});
+	});
+
+	it("complete_goal and update_goal_progress reject paused goals", () => {
+		const { pi, ctx, branch } = createHarness();
+		executeCreateGoal({ objective: "Paused", explicit_request: true }, ctx, pi);
+		saveGoalState(
+			pi,
+			{ action: "pause", goalId: latestGoalEntry(branch).state?.goalId ?? "", now: Date.now() },
+			latestGoalEntry(branch).state,
+		);
+
+		expect(executeCompleteGoal({ evidence: "done" }, ctx, pi)).toMatchObject({
+			isError: true,
+			details: { error: "goal_inactive" },
+		});
+		expect(executeUpdateGoalProgress({ summary: "late" }, ctx, pi)).toMatchObject({
+			isError: true,
+			details: { error: "goal_inactive" },
+		});
+		expect(latestGoalEntry(branch).state?.status).toBe("paused");
 	});
 
 	it("update_goal_progress fails with no goal or complete goal", () => {

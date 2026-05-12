@@ -48,7 +48,13 @@ describe("parseGoalCommand", () => {
 		expect(parseGoalCommand("import docs/prd.md")).toMatchObject({ kind: "import", path: "docs/prd.md" });
 		expect(parseGoalCommand("ship a long running feature --replace")).toMatchObject({
 			kind: "create",
-			objective: "ship a long running feature --replace",
+			objective: "ship a long running feature",
+			replace: true,
+		});
+		expect(parseGoalCommand("--replace ship a feature -y --unknown")).toMatchObject({
+			kind: "create",
+			objective: "ship a feature --unknown",
+			confirmed: true,
 			replace: true,
 		});
 	});
@@ -122,6 +128,7 @@ describe("/goal command lifecycle", () => {
 
 		await handleGoalCommand(pi, "second --replace", ctx);
 		expect(latestGoalEntry(branch).action).toBe("replace");
+		expect(latestGoalEntry(branch).state?.objective).toBe("second");
 	});
 
 	it("edits in UI mode and rejects edit in no-UI mode", async () => {
@@ -153,6 +160,11 @@ describe("/goal command lifecycle", () => {
 		expect(ctx.ui.confirm).toHaveBeenCalledWith("Mark goal complete?", "ship");
 		expect(latestGoalEntry(branch).state?.status).toBe("complete");
 
+		const entriesAfterComplete = branch.length;
+		await handleGoalCommand(pi, "resume", ctx);
+		expect(branch).toHaveLength(entriesAfterComplete);
+		expect(ctx.ui.notify).toHaveBeenLastCalledWith("Only paused goals can be resumed.", "error");
+
 		await handleGoalCommand(pi, "clear", ctx);
 		expect(ctx.ui.confirm).toHaveBeenCalledWith("Clear goal?", "ship");
 		expect(latestGoalEntry(branch).state).toBeNull();
@@ -167,5 +179,18 @@ describe("/goal command lifecycle", () => {
 
 		await handleGoalCommand(pi, "complete --yes", ctx);
 		expect(latestGoalEntry(branch).state?.status).toBe("complete");
+	});
+
+	it("refuses to complete paused goals", async () => {
+		const { pi, ctx, branch } = createHarness({ confirm: true });
+		await handleGoalCommand(pi, "ship", ctx);
+		await handleGoalCommand(pi, "pause", ctx);
+		const entriesAfterPause = branch.length;
+
+		await handleGoalCommand(pi, "complete", ctx);
+
+		expect(branch).toHaveLength(entriesAfterPause);
+		expect(latestGoalEntry(branch).state?.status).toBe("paused");
+		expect(ctx.ui.notify).toHaveBeenLastCalledWith("Only active goals can be completed.", "error");
 	});
 });

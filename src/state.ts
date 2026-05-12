@@ -80,21 +80,21 @@ export function reduceGoalState(current: GoalState | null, event: GoalStateEvent
 			};
 		}
 		case "pause": {
-			if (!isCurrentGoal(current, event.goalId)) return current;
+			if (!isCurrentGoal(current, event.goalId) || current.status !== "active") return current;
 			return { ...current, status: "paused", updatedAt: event.now, completedAt: undefined };
 		}
 		case "resume": {
-			if (!isCurrentGoal(current, event.goalId)) return current;
+			if (!isCurrentGoal(current, event.goalId) || current.status !== "paused") return current;
 			return { ...current, status: "active", updatedAt: event.now, completedAt: undefined };
 		}
 		case "clear":
 			return isCurrentGoal(current, event.goalId) ? null : current;
 		case "complete": {
-			if (!isCurrentGoal(current, event.goalId)) return current;
+			if (!isCurrentGoal(current, event.goalId) || current.status !== "active") return current;
 			return { ...current, status: "complete", updatedAt: event.now, completedAt: event.now };
 		}
 		case "progress": {
-			if (!isCurrentGoal(current, event.goalId)) return current;
+			if (!isCurrentGoal(current, event.goalId) || current.status !== "active") return current;
 			return {
 				...current,
 				progress: normalizeProgress(event.progress, current.progress),
