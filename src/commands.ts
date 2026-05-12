@@ -204,6 +204,10 @@ async function importGoal(
 			);
 			return;
 		}
+		if (current?.goalId !== latest?.goalId) {
+			ctx.ui.notify("Goal changed before saving. Re-run /goal import for the current goal.", "error");
+			return;
+		}
 		const next = latest
 			? saveGoalState(
 					pi,
