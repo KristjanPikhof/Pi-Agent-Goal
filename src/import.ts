@@ -100,7 +100,7 @@ export function resolveImportPath(inputPath: string, cwd: string): string {
 async function statImportPath(resolved: string) {
 	try {
 		return await stat(resolved);
-	} catch (error) {
+	} catch {
 		throw new GoalImportError(`Import path is missing or unreadable: ${resolved}`);
 	}
 }
