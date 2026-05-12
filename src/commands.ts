@@ -314,7 +314,7 @@ async function createOrReplaceGoal(
 			ctx.ui.notify("Goal proposal cancelled.", "info");
 			return;
 		}
-	} else if (!ctx.hasUI) {
+	} else {
 		ctx.ui.notify(renderGoalProposalReview(prepared.proposal), "info");
 	}
 

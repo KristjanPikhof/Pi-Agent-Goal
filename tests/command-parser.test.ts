@@ -189,6 +189,23 @@ describe("/goal command lifecycle", () => {
 		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
 	});
 
+	it("shows accepted generated proposals before explicit interactive start", async () => {
+		const generateGoalProposal = vi.fn<GoalProposalGenerator>(async () => ({
+			objective: "Ship accepted proposal",
+			acceptanceCriteria: ["Accepted proposal is shown before start"],
+		}));
+		const { pi, ctx } = createHarness({ confirm: true, generateGoalProposal });
+
+		await handleGoalCommand(pi, "ship accepted proposal --yes --start", ctx);
+
+		expect(ctx.ui.confirm).not.toHaveBeenCalledWith("Use generated goal proposal?", expect.any(String));
+		expect(ctx.ui.notify).toHaveBeenCalledWith(
+			expect.stringContaining("Accepted proposal is shown before start"),
+			"info",
+		);
+		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
+	});
+
 	it("does not queue duplicate start follow-ups after denied handoff or command errors", async () => {
 		const { pi, ctx } = createHarness({ confirm: false });
 
