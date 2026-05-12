@@ -9,6 +9,7 @@ import {
 	executeUpdateGoalProgress,
 	formatGoalToolCall,
 	formatGoalToolResult,
+	formatProposeGoalDraftToolCall,
 	getGoalParams,
 	proposeGoalDraftParams,
 	proposeGoalDraftPromptGuidelines,
@@ -399,6 +400,12 @@ describe("goal tool renderers", () => {
 	it("formats tool calls and results concisely", () => {
 		expect(formatGoalToolCall("create_goal", "Ship it")).toBe("create_goal: Ship it");
 		expect(formatGoalToolCall("get_goal")).toBe("get_goal");
+		expect(
+			formatProposeGoalDraftToolCall({
+				objective: "Review branch",
+				acceptanceCriteria: ["Review the diff", "Report risks"],
+			}),
+		).toBe("propose_goal_draft:\nObjective: Review branch\nAcceptance criteria:\n- Review the diff\n- Report risks");
 		expect(
 			formatGoalToolResult({ content: [{ type: "text", text: "Goal complete." }], details: undefined }),
 		).toBe("Goal complete.");
