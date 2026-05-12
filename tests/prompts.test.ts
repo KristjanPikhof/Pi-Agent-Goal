@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
 	GOAL_CONTEXT_CUSTOM_TYPE,
 	renderCompactGoalSummary,
+	renderGoalAgentDraftingPrompt,
 	renderGoalContext,
 	renderGoalStartPrompt,
 } from "../src/prompts.js";
@@ -39,6 +40,33 @@ function goal(overrides: Partial<GoalState> = {}): GoalState {
 }
 
 describe("goal prompt rendering", () => {
+	it("renders agent drafting prompt with propose_goal_draft tool-call instructions", () => {
+		const prompt = renderGoalAgentDraftingPrompt("Review the deep branch and flag risks, no fixes yet", {
+			start: true,
+		});
+
+		expect(prompt).toContain("Call the propose_goal_draft tool exactly once");
+		expect(prompt).toContain("Do not answer in prose");
+		expect(prompt).toContain("Do not call create_goal for this drafting flow");
+		expect(prompt).toContain("pass start: true");
+		expect(prompt).toContain("Review the deep branch and flag risks, no fixes yet");
+	});
+
+	it("renders agent drafting prompt with meaning-preservation and acceptance criteria guardrails", () => {
+		const prompt = renderGoalAgentDraftingPrompt("Audit src/auth for regressions <only>");
+
+		expect(prompt).toContain("Preserve the user's meaning and boundaries exactly");
+		expect(prompt).toContain("do not add unrelated scope");
+		expect(prompt).toContain("acceptanceCriteria");
+		expect(prompt).toContain("concrete completion checks directly implied by the request");
+		expect(prompt).toContain("do not leave the draft criteria-free");
+		expect(prompt).toContain("deep branch review");
+		expect(prompt).toContain("do not expand into fixing issues unless the user asked for fixes");
+		expect(prompt).toContain("Audit src/auth for regressions &lt;only&gt;");
+		expect(prompt).not.toContain("return an empty acceptanceCriteria array");
+		expect(prompt).not.toContain("criteria-free goal");
+	});
+
 	it("renders escaped concise hidden goal_context", () => {
 		const context = renderGoalContext(goal());
 

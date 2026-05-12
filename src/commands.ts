@@ -330,9 +330,66 @@ async function createOrReplaceGoal(
 	});
 }
 
-async function offerGoalStartHandoff(
+export async function confirmGoalReplacement(
+	ctx: GoalWorkflowContext,
+	current: GoalState | null,
+	replace: boolean,
+	proposedObjective: string,
+): Promise<"create" | "replace" | null> {
+	if (!current) return "create";
+	if (!replace) {
+		if (!ctx.hasUI) {
+			ctx.ui.notify(
+				"A goal already exists. Re-run with --replace to replace it in non-interactive mode.",
+				"error",
+			);
+			return null;
+		}
+		const ok = await ctx.ui.confirm(
+			"Replace current goal?",
+			`Current: ${current.objective}\n\nNew: ${proposedObjective}`,
+		);
+		if (!ok) {
+			ctx.ui.notify("Goal replacement cancelled.", "info");
+			return null;
+		}
+	}
+	return "replace";
+}
+
+export async function saveReviewedGoalAndOfferStart(
+	api: ExtensionAPI & Partial<GoalStartAPI>,
+	ctx: GoalWorkflowContext,
+	options: SaveReviewedGoalOptions,
+): Promise<GoalState | null> {
+	const latest = loadGoalState(ctx);
+	if (options.current?.goalId !== latest?.goalId) {
+		ctx.ui.notify(options.staleMessage ?? "Goal changed before saving. Re-run the command.", "error");
+		return null;
+	}
+
+	const action = latest ? "replace" : options.action;
+	const next = saveGoalState(
+		api,
+		{
+			action,
+			goalId: crypto.randomUUID(),
+			objective: validateObjective(options.proposal.objective),
+			acceptanceCriteria: options.proposal.acceptanceCriteria,
+			now: Date.now(),
+			owner: "user",
+		},
+		latest,
+	);
+	updateGoalUi(ctx, next);
+	ctx.ui.notify(options.successMessage ?? (options.action === "replace" ? "Goal replaced." : "Goal created."), "success");
+	if (next) await offerGoalStartHandoff(api, ctx, next.goalId, options.start);
+	return next;
+}
+
+export async function offerGoalStartHandoff(
 	api: Partial<GoalStartAPI>,
-	ctx: GoalCommandContext,
+	ctx: GoalWorkflowContext,
 	expectedGoalId: string,
 	startImmediately: boolean,
 ): Promise<void> {
@@ -354,7 +411,7 @@ async function offerGoalStartHandoff(
 
 export async function startActiveGoal(
 	api: Partial<GoalStartAPI>,
-	ctx: GoalCommandContext,
+	ctx: GoalWorkflowContext,
 	expectedGoalId?: string,
 ): Promise<boolean> {
 	const latest = loadGoalState(ctx);
@@ -504,14 +561,14 @@ async function confirmThenMutate(
 	ctx.ui.notify(message, "success");
 }
 
-function updateGoalUi(ctx: GoalCommandContext, goal: GoalState | null): void {
+function updateGoalUi(ctx: GoalWorkflowContext, goal: GoalState | null): void {
 	applyGoalUi(ctx, goal);
 }
 
-async function reviewGeneratedGoalProposal(
-	ctx: GoalCommandContext,
+export async function reviewGoalProposal(
+	ctx: GoalWorkflowContext,
 	initialProposal: GoalDraftProposal,
-): Promise<{ proposal: GoalDraftProposal; start: boolean } | null> {
+): Promise<GoalProposalReviewResult | null> {
 	let proposal = initialProposal;
 
 	while (true) {
