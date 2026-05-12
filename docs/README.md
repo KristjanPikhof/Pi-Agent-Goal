@@ -11,14 +11,15 @@ Read in this order:
 ## What shipped
 
 - Branch-aware canonical goal state in Pi custom entries named `goal-state`.
-- `/goal` command lifecycle: create, replace with confirmation, status, edit, pause, resume, complete, clear, and import.
-- Markdown/text PRD and docs-folder import with workspace path validation, generated/vendor ignores, binary and size checks, and compact source briefs.
-- Model tools: `get_goal`, `create_goal`, `complete_goal`, and `update_goal_progress` with narrow permissions.
+- `/goal` command lifecycle: create, clean `--replace` parsing, replace with confirmation, status, edit, pause, resume, complete, clear, and import.
+- Markdown/text PRD and docs-folder import with workspace realpath validation, symlink escape rejection, generated/vendor ignores, binary and size checks, directory `maxFiles` overflow errors, and compact source briefs.
+- Import semantics that create from docs when no goal exists, then merge and dedupe source docs, constraints, and criteria for an existing goal without rewriting the objective.
+- Model tools: `get_goal`, `create_goal`, `complete_goal`, and `update_goal_progress` with narrow permissions. Completion and progress tools reject paused goals.
 - Hidden active-goal context injection plus stale context filtering.
 - `session_before_compact` goal summary/details preservation.
 - Footer status, active-goal widget, actionable command errors, and concise tool renderers.
 - Opt-in safe idle continuation behind `--goal-continuation`.
-- Unit and integration-style tests covering reducer, command, import, tools, prompts, compaction hooks, continuation guards, UI, branch-shaped reconstruction, stale `goalId` behavior, and session lifecycle harness flows.
+- Unit and integration-style tests covering reducer, command parsing and lifecycle, import safety and merge behavior, tools, prompts, compaction hooks, continuation guards, UI, branch-shaped reconstruction, stale `goalId` behavior, and session lifecycle harness flows.
 
 ## Rollout smoke commands
 
@@ -33,7 +34,7 @@ pi --no-session --no-extensions -e ./src/index.ts -p /goal
 pi --no-session --no-extensions -e ./src/index.ts --goal-continuation -p /goal
 ```
 
-For live TUI lifecycle verification, use the manual checklist in [`acceptance-criteria.md`](acceptance-criteria.md#manual-session-lifecycle-smoke-checklist). Those checks cover interactive UI and session manager behavior that is not practical to fully automate in the current test harness.
+For live TUI lifecycle verification, use the manual checklist in [`acceptance-criteria.md`](acceptance-criteria.md#manual-session-lifecycle-smoke-checklist). Those checks cover interactive UI and session manager behavior that is not fully proven by the current test harness. Record the smoke evidence before release, or mark the release blocked.
 
 ## Future work
 
