@@ -144,7 +144,7 @@ describe("/goal command lifecycle", () => {
 
 		expect(ctx.ui.confirm).not.toHaveBeenCalledWith("Start working on this goal now?", "ship interactively");
 		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
-		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("pass start: true"));
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("pass startImmediately: true"));
 	});
 
 	it("queues the same review-only drafting flow in non-interactive mode", async () => {
@@ -154,7 +154,7 @@ describe("/goal command lifecycle", () => {
 
 		expect(branch).toHaveLength(0);
 		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("ship fallback"));
-		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("pass start: true"));
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("pass startImmediately: true"));
 	});
 
 	it("does not invoke local proposal review or proposal generation from the plain command", async () => {
@@ -194,7 +194,7 @@ describe("/goal command lifecycle", () => {
 		expect(ctx.ui.confirm).not.toHaveBeenCalled();
 		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("replacing an existing goal"));
 		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("original objective"));
-		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("pass start: true"));
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("pass startImmediately: true"));
 	});
 
 	it("starts active goals with a one-shot follow-up prompt", async () => {
@@ -281,14 +281,14 @@ describe("/goal command lifecycle", () => {
 
 		expect(branch).toHaveLength(0);
 		expect(ctx.ui.confirm).not.toHaveBeenCalled();
-		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("pass start: false"));
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("pass startImmediately: false"));
 
 		(pi.sendUserMessage as ReturnType<typeof vi.fn>).mockClear();
 		await handleGoalCommand(pi, "second --start", ctx);
 		expect(branch).toHaveLength(0);
 		expect(ctx.ui.confirm).not.toHaveBeenCalled();
 		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
-		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("pass start: true"));
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("pass startImmediately: true"));
 	});
 
 	it("requires --replace for non-interactive replacement and queues when provided", async () => {
@@ -301,13 +301,13 @@ describe("/goal command lifecycle", () => {
 
 		await handleGoalCommand(pi, "second --replace", ctx);
 		expect(latestGoalEntry(branch).state?.objective).toBe("first");
-		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("pass start: false"));
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("pass startImmediately: false"));
 
 		(pi.sendUserMessage as ReturnType<typeof vi.fn>).mockClear();
 		await handleGoalCommand(pi, "third --replace --start", ctx);
 		expect(latestGoalEntry(branch).state?.objective).toBe("first");
 		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
-		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("pass start: true"));
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("pass startImmediately: true"));
 	});
 
 	it("reports unavailable follow-up messaging API without saving", async () => {
