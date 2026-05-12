@@ -34,8 +34,9 @@ Status key:
 | `/goal import <directory>` scans supported docs without generated/vendor directories.                                                                    | Automated |
 | Directory import fails with a clear overflow error when supported docs exceed `maxFiles`; it does not silently truncate.                                 | Automated |
 | Imported state stores source paths plus compact briefs, not full repeated document text.                                                                 | Automated |
-| Import creates a goal when none exists, and merges/dedupes source docs, constraints, and criteria into an existing goal without rewriting the objective. | Automated |
+| Import creates a goal when none exists, and merges/dedupes source docs, constraints, and criteria into an existing active goal without rewriting the objective. | Automated |
 | User confirms the extracted objective before activation, or uses `--yes` in non-interactive mode.                                                        | Automated |
+| Import rejects paused or complete goals without mutation and tells the user to resume, clear, or replace first.                                          | Automated |
 | Missing, unreadable, binary, oversized, unsupported, out-of-workspace, or symlink-escaped paths produce clear errors after realpath checks.              | Automated |
 
 ## Model tools
