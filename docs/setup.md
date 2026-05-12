@@ -1,6 +1,6 @@
 # Setup
 
-This guide installs `pi-goal` as a Pi package and shows the local checkout paths for extension development.
+This guide installs `pi-agent-goal` as a Pi package and shows the local checkout paths for extension development.
 
 ## Requirements
 
@@ -13,19 +13,19 @@ This guide installs `pi-goal` as a Pi package and shows the local checkout paths
 Install the package from npm:
 
 ```bash
-pi install npm:pi-goal
+pi install npm:pi-agent-goal
 ```
 
 By default, Pi writes this to your global settings at `~/.pi/agent/settings.json`. To install it for the current project only, add `-l`:
 
 ```bash
-pi install -l npm:pi-goal
+pi install -l npm:pi-agent-goal
 ```
 
 For a one-off run without writing settings, use:
 
 ```bash
-pi -e npm:pi-goal
+pi -e npm:pi-agent-goal
 ```
 
 After installation, start Pi and run:
@@ -50,9 +50,9 @@ Use `/goal start` when an active goal already exists and you want a one-shot han
 For non-interactive mode, add `--start` to the command that creates, imports, or resumes the goal when you need work to begin immediately:
 
 ```bash
-pi -e npm:pi-goal -p "/goal Ship the onboarding cleanup --start"
-pi -e npm:pi-goal -p "/goal import docs/prd.md --yes --start"
-pi -e npm:pi-goal -p "/goal resume --start"
+pi -e npm:pi-agent-goal -p "/goal Ship the onboarding cleanup --start"
+pi -e npm:pi-agent-goal -p "/goal import docs/prd.md --yes --start"
+pi -e npm:pi-agent-goal -p "/goal resume --start"
 ```
 
 Without `--start`, non-interactive create/import/resume commands only update goal state.
@@ -65,7 +65,7 @@ Global, in `~/.pi/agent/settings.json`:
 
 ```json
 {
-	"packages": ["npm:pi-goal"]
+	"packages": ["npm:pi-agent-goal"]
 }
 ```
 
@@ -73,19 +73,19 @@ Project-local, in `.pi/settings.json`:
 
 ```json
 {
-	"packages": ["npm:pi-goal"]
+	"packages": ["npm:pi-agent-goal"]
 }
 ```
 
-Project settings are local to that workspace. Use them when a repo should always load `pi-goal` for anyone working there.
+Project settings are local to that workspace. Use them when a repo should always load `pi-agent-goal` for anyone working there.
 
 ## Local checkout development
 
 Use a local checkout when you are editing this repository or testing unreleased changes.
 
 ```bash
-git clone <pi-goal-repo-url>
-cd pi-goal
+git clone <pi-agent-goal-repo-url>
+cd pi-agent-goal
 npm install
 ```
 
@@ -99,14 +99,14 @@ Or link the checkout into your global extension directory:
 
 ```bash
 mkdir -p ~/.pi/agent/extensions
-ln -s "$PWD/extensions/index.ts" ~/.pi/agent/extensions/pi-goal.ts
+ln -s "$PWD/extensions/index.ts" ~/.pi/agent/extensions/pi-agent-goal.ts
 ```
 
 For project-local local development, link it under the project:
 
 ```bash
 mkdir -p /path/to/project/.pi/extensions
-ln -s "$PWD/extensions/index.ts" /path/to/project/.pi/extensions/pi-goal.ts
+ln -s "$PWD/extensions/index.ts" /path/to/project/.pi/extensions/pi-agent-goal.ts
 ```
 
 ## Package entry points
