@@ -48,7 +48,7 @@ extensions/pi-goal/index.ts
 
 ## Codex comparison
 
-| Area         | Codex behavior                                                                     | Pi Agent Goal behavior                                                                                                          |
+| Area         | Codex behavior                                                                     | Pi Agent Goal behavior                                                                                                    |
 | ------------ | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | Persistence  | SQLite `thread_goals` table keyed by thread.                                       | Pi custom session entries named `goal-state`, reconstructed from the current branch.                                      |
 | Commands     | `/goal` supports setting, viewing, editing, clearing, pausing, and resuming goals. | Same main lifecycle, with explicit `/goal start`, non-interactive `--start`, confirmation flags, and clean flag parsing.  |
