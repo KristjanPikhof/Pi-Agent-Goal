@@ -383,7 +383,8 @@ function updateContinuationStatus(ctx: ContinuationContext, state: GoalContinuat
 
 function getMaxContinuationTurns(api: ContinuationAPI): number {
 	const configured = api.getFlag?.("goal-continuation-max-turns");
-	const value = typeof configured === "number" ? configured : typeof configured === "string" ? Number(configured) : NaN;
+	const value =
+		typeof configured === "number" ? configured : typeof configured === "string" ? Number(configured) : NaN;
 	return Number.isFinite(value) && value > 0 ? Math.floor(value) : DEFAULT_GOAL_CONTINUATION_MAX_TURNS;
 }
 

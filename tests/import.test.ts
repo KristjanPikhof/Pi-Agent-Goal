@@ -191,7 +191,10 @@ describe("/goal import command", () => {
 		expect(branch).toHaveLength(2);
 		expect(latestGoalEntry(branch).action).toBe("replace");
 		expect(latestGoalEntry(branch).state?.objective).toBe("Replacement objective");
-		expect(ctx.ui.notify).toHaveBeenLastCalledWith(expect.stringContaining("Goal changed before saving"), "error");
+		expect(ctx.ui.notify).toHaveBeenLastCalledWith(
+			expect.stringContaining("Goal changed before saving"),
+			"error",
+		);
 	});
 
 	it("rejects import into paused or complete goals without mutating state", async () => {

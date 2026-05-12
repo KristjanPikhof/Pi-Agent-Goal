@@ -220,7 +220,8 @@ function parseGoalStateEvent(data: unknown): GoalStateEvent | undefined {
 		const progress = readOptionalProgress(data, "progress");
 		if (sourceDocs === null || constraints === null || acceptanceCriteria === null || progress === null)
 			return undefined;
-		const owner: GoalOwner | undefined = data.owner === "model" || data.owner === "user" ? data.owner : undefined;
+		const owner: GoalOwner | undefined =
+			data.owner === "model" || data.owner === "user" ? data.owner : undefined;
 		const base = {
 			goalId: data.goalId,
 			objective: data.objective,
@@ -268,7 +269,13 @@ function parseGoalStateEvent(data: unknown): GoalStateEvent | undefined {
 	if (data.action === "progress") {
 		const progress = readOptionalProgress(data, "progress");
 		if (!progress) return undefined;
-		return { action: "progress", goalId: data.goalId, now: data.now, progress, ...(reason ? { reason } : {}) };
+		return {
+			action: "progress",
+			goalId: data.goalId,
+			now: data.now,
+			progress,
+			...(reason ? { reason } : {}),
+		};
 	}
 
 	if (data.action === "import-docs") {
@@ -309,13 +316,19 @@ function readOptionalStringArray(record: Record<string, unknown>, key: string): 
 	return Array.isArray(value) && value.every((item) => typeof item === "string") ? [...value] : null;
 }
 
-function readOptionalSourceDocs(record: Record<string, unknown>, key: string): GoalSourceDoc[] | null | undefined {
+function readOptionalSourceDocs(
+	record: Record<string, unknown>,
+	key: string,
+): GoalSourceDoc[] | null | undefined {
 	const value = record[key];
 	if (value === undefined) return undefined;
 	return Array.isArray(value) && value.every(isGoalSourceDoc) ? value.map((doc) => ({ ...doc })) : null;
 }
 
-function readOptionalProgress(record: Record<string, unknown>, key: string): Partial<GoalProgress> | null | undefined {
+function readOptionalProgress(
+	record: Record<string, unknown>,
+	key: string,
+): Partial<GoalProgress> | null | undefined {
 	const value = record[key];
 	if (value === undefined) return undefined;
 	if (!isRecord(value)) return null;
