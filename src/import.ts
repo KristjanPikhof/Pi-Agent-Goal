@@ -53,7 +53,10 @@ export class GoalImportError extends Error {
 	}
 }
 
-export async function importGoalSources(inputPath: string, options: GoalImportOptions): Promise<GoalImportResult> {
+export async function importGoalSources(
+	inputPath: string,
+	options: GoalImportOptions,
+): Promise<GoalImportResult> {
 	const resolved = resolveImportPath(inputPath, options.cwd);
 	const entryStat = await statImportPath(resolved);
 	const maxFileBytes = options.maxFileBytes ?? DEFAULT_IMPORT_MAX_FILE_BYTES;
@@ -67,7 +70,10 @@ export async function importGoalSources(inputPath: string, options: GoalImportOp
 	}
 
 	if (!entryStat.isFile()) throw new GoalImportError(`Import path is not a file or directory: ${inputPath}`);
-	return combineImports([await importOneFile(resolved, options.cwd, maxFileBytes)], "Imported goal source document");
+	return combineImports(
+		[await importOneFile(resolved, options.cwd, maxFileBytes)],
+		"Imported goal source document",
+	);
 }
 
 export function extractGoalBrief(content: string, sourcePath: string): ExtractedDoc {
@@ -75,11 +81,24 @@ export function extractGoalBrief(content: string, sourcePath: string): Extracted
 	const sections = parseMarkdownSections(normalized);
 	const objective = firstValue(sections, ["objective", "goal", "problem", "problem statement", "summary"]);
 	const constraints = listValues(sections, ["constraints", "non-goals", "non goals"]);
-	const acceptanceCriteria = listValues(sections, ["acceptance criteria", "acceptance", "definition of done", "success criteria"]);
+	const acceptanceCriteria = listValues(sections, [
+		"acceptance criteria",
+		"acceptance",
+		"definition of done",
+		"success criteria",
+	]);
 	const risks = listValues(sections, ["risks", "risk", "mitigations"]);
 	const openQuestions = listValues(sections, ["open questions", "questions"]);
 	const sourcePaths = extractSourcePaths(normalized);
-	const brief = renderBrief({ sourcePath, objective, constraints, acceptanceCriteria, risks, openQuestions, sourcePaths });
+	const brief = renderBrief({
+		sourcePath,
+		objective,
+		constraints,
+		acceptanceCriteria,
+		risks,
+		openQuestions,
+		sourcePaths,
+	});
 
 	return { objective, constraints, acceptanceCriteria, risks, openQuestions, sourcePaths, brief };
 }
@@ -106,11 +125,15 @@ async function statImportPath(resolved: string) {
 }
 
 async function importOneFile(resolved: string, cwd: string, maxFileBytes: number): Promise<GoalImportResult> {
-	if (!isSupportedTextPath(resolved)) throw new GoalImportError(`Unsupported file type: ${path.relative(cwd, resolved)}`);
+	if (!isSupportedTextPath(resolved))
+		throw new GoalImportError(`Unsupported file type: ${path.relative(cwd, resolved)}`);
 	const fileStat = await statImportPath(resolved);
-	if (!fileStat.isFile()) throw new GoalImportError(`Import path is not a file: ${path.relative(cwd, resolved)}`);
+	if (!fileStat.isFile())
+		throw new GoalImportError(`Import path is not a file: ${path.relative(cwd, resolved)}`);
 	if (fileStat.size > maxFileBytes) {
-		throw new GoalImportError(`Import file is too large (${fileStat.size} bytes): ${path.relative(cwd, resolved)}`);
+		throw new GoalImportError(
+			`Import file is too large (${fileStat.size} bytes): ${path.relative(cwd, resolved)}`,
+		);
 	}
 
 	let buffer: Buffer;
@@ -119,7 +142,8 @@ async function importOneFile(resolved: string, cwd: string, maxFileBytes: number
 	} catch {
 		throw new GoalImportError(`Import file is unreadable: ${path.relative(cwd, resolved)}`);
 	}
-	if (isBinary(buffer)) throw new GoalImportError(`Import file appears to be binary: ${path.relative(cwd, resolved)}`);
+	if (isBinary(buffer))
+		throw new GoalImportError(`Import file appears to be binary: ${path.relative(cwd, resolved)}`);
 
 	const relativePath = path.relative(cwd, resolved).replace(/\\/g, "/");
 	const content = buffer.toString("utf8");
@@ -224,7 +248,9 @@ function extractListItems(lines: string[]): string[] {
 			return match?.[1]?.trim();
 		})
 		.filter((item): item is string => Boolean(item));
-	return items.length > 0 ? items.map((item) => truncate(item, 300)) : linesToParagraph(lines)?.split(/;\s*/) ?? [];
+	return items.length > 0
+		? items.map((item) => truncate(item, 300))
+		: (linesToParagraph(lines)?.split(/;\s*/) ?? []);
 }
 
 function extractSourcePaths(content: string): string[] {

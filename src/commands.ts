@@ -146,7 +146,11 @@ export function parseGoalCommand(args: string): ParsedGoalCommand {
 	return { kind: "create", objective: trimmed, confirmed, replace };
 }
 
-async function importGoal(pi: ExtensionAPI, ctx: GoalCommandContext, parsed: ParsedGoalCommand): Promise<void> {
+async function importGoal(
+	pi: ExtensionAPI,
+	ctx: GoalCommandContext,
+	parsed: ParsedGoalCommand,
+): Promise<void> {
 	await ctx.waitForIdle();
 	try {
 		const imported = await importGoalSources(parsed.path ?? "", { cwd: ctx.cwd });
@@ -162,10 +166,16 @@ async function importGoal(pi: ExtensionAPI, ctx: GoalCommandContext, parsed: Par
 
 		if (!parsed.confirmed) {
 			if (!ctx.hasUI) {
-				ctx.ui.notify("/goal import requires --yes in non-interactive mode after reviewing the source docs.", "error");
+				ctx.ui.notify(
+					"/goal import requires --yes in non-interactive mode after reviewing the source docs.",
+					"error",
+				);
 				return;
 			}
-			const ok = await ctx.ui.confirm(current ? "Import docs into current goal?" : "Create goal from import?", summary);
+			const ok = await ctx.ui.confirm(
+				current ? "Import docs into current goal?" : "Create goal from import?",
+				summary,
+			);
 			if (!ok) {
 				ctx.ui.notify("Goal import cancelled.", "info");
 				return;

@@ -15,7 +15,9 @@ async function makeWorkspace(): Promise<string> {
 function createHarness(cwd: string, options: { hasUI?: boolean; confirm?: boolean } = {}) {
 	const branch: Array<{ type: string; customType?: string; data?: unknown }> = [];
 	const pi = {
-		appendEntry: vi.fn((customType: string, data: unknown) => branch.push({ type: "custom", customType, data })),
+		appendEntry: vi.fn((customType: string, data: unknown) =>
+			branch.push({ type: "custom", customType, data }),
+		),
 	} as unknown as ExtensionAPI;
 	const ctx = {
 		cwd,
@@ -82,7 +84,9 @@ describe("goal import extraction", () => {
 		expect(result.risks).toEqual(["Binary files could be misread."]);
 		expect(result.openQuestions).toEqual(["What size limit is enough?"]);
 		expect(result.sourceDocs[0]).toMatchObject({ path: "docs/prd.md", kind: "prd" });
-		expect(result.sourceDocs[0]?.brief).toContain("Acceptance criteria: Reads markdown PRDs.; Stores source paths.");
+		expect(result.sourceDocs[0]?.brief).toContain(
+			"Acceptance criteria: Reads markdown PRDs.; Stores source paths.",
+		);
 	});
 
 	it("imports docs folders, ignores generated/vendor content, and enforces file count limits", async () => {
@@ -90,7 +94,10 @@ describe("goal import extraction", () => {
 		await mkdir(path.join(cwd, "docs/vendor"), { recursive: true });
 		await mkdir(path.join(cwd, "docs/guides"), { recursive: true });
 		await writeFile(path.join(cwd, "docs/prd.md"), prd);
-		await writeFile(path.join(cwd, "docs/guides/notes.txt"), "# Acceptance Criteria\n- Folder note imported.");
+		await writeFile(
+			path.join(cwd, "docs/guides/notes.txt"),
+			"# Acceptance Criteria\n- Folder note imported.",
+		);
 		await writeFile(path.join(cwd, "docs/vendor/ignored.md"), "# Objective\nDo not import vendor.");
 
 		const result = await importGoalSources("docs", { cwd, maxFiles: 10 });
@@ -132,7 +139,10 @@ describe("/goal import command", () => {
 		await handleGoalCommand(pi, "import docs/prd.md", ctx);
 
 		expect(ctx.waitForIdle).toHaveBeenCalledOnce();
-		expect(ctx.ui.confirm).toHaveBeenCalledWith("Create goal from import?", expect.stringContaining("Ship goal import"));
+		expect(ctx.ui.confirm).toHaveBeenCalledWith(
+			"Create goal from import?",
+			expect.stringContaining("Ship goal import"),
+		);
 		expect(latestGoalEntry(branch).action).toBe("create");
 		expect(latestGoalEntry(branch).state).toMatchObject({
 			objective: "Ship goal import from docs.",
@@ -152,7 +162,9 @@ describe("/goal import command", () => {
 		expect(ctx.ui.confirm).toHaveBeenLastCalledWith("Import docs into current goal?", expect.any(String));
 		expect(latestGoalEntry(branch).action).toBe("import-docs");
 		expect(latestGoalEntry(branch).state?.objective).toBe("Original objective");
-		expect(latestGoalEntry(branch).state?.sourceDocs).toEqual([expect.objectContaining({ path: "notes.md" })]);
+		expect(latestGoalEntry(branch).state?.sourceDocs).toEqual([
+			expect.objectContaining({ path: "notes.md" }),
+		]);
 	});
 
 	it("requires --yes for import in no-UI mode after extraction", async () => {
