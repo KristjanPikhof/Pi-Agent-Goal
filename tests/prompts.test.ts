@@ -58,11 +58,22 @@ describe("goal prompt rendering", () => {
 	it("filters stale and duplicate hidden goal contexts", () => {
 		const current = goal({ goalId: "goal-2" });
 		const stale = { role: "custom", customType: GOAL_CONTEXT_CUSTOM_TYPE, content: 'old goal_id="goal-1"' };
-		const duplicate = { role: "custom", customType: GOAL_CONTEXT_CUSTOM_TYPE, content: 'first goal_id="goal-2"' };
-		const fresh = { role: "custom", customType: GOAL_CONTEXT_CUSTOM_TYPE, content: 'latest goal_id="goal-2"' };
+		const duplicate = {
+			role: "custom",
+			customType: GOAL_CONTEXT_CUSTOM_TYPE,
+			content: 'first goal_id="goal-2"',
+		};
+		const fresh = {
+			role: "custom",
+			customType: GOAL_CONTEXT_CUSTOM_TYPE,
+			content: 'latest goal_id="goal-2"',
+		};
 		const ordinary = { role: "user", content: "hello" };
 
-		expect(filterGoalContextMessages([stale, duplicate, ordinary, fresh], current)).toEqual([ordinary, fresh]);
+		expect(filterGoalContextMessages([stale, duplicate, ordinary, fresh], current)).toEqual([
+			ordinary,
+			fresh,
+		]);
 		expect(filterGoalContextMessages([fresh, ordinary], goal({ status: "paused" }))).toEqual([ordinary]);
 		expect(filterGoalContextMessages([fresh, ordinary], null)).toEqual([ordinary]);
 	});

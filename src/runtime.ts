@@ -21,7 +21,11 @@ interface ContextMessage {
 }
 
 export function registerGoalRuntime(pi: ExtensionAPI): void {
-	pi.on("before_agent_start", async (_event, ctx) => {
+	const on = pi.on as (
+		event: string,
+		handler: (event: unknown, ctx: unknown) => Promise<unknown> | unknown,
+	) => void;
+	on("before_agent_start", async (_event, ctx) => {
 		const goal = loadGoalState(ctx as GoalRuntimeContext);
 		if (!isActiveGoal(goal)) return;
 		return {
@@ -34,20 +38,30 @@ export function registerGoalRuntime(pi: ExtensionAPI): void {
 		};
 	});
 
-	pi.on("context", async (event, ctx) => {
+	on("context", async (event, ctx) => {
 		const goal = loadGoalState(ctx as GoalRuntimeContext);
-		return { messages: filterGoalContextMessages(event.messages as ContextMessage[], goal) };
+		const messages = (event as { messages: ContextMessage[] }).messages;
+		return { messages: filterGoalContextMessages(messages, goal) };
 	});
 
-	pi.on("session_before_compact", async (event) => createGoalCompaction(event));
+	on("session_before_compact", async (event) =>
+		createGoalCompaction(
+			event as {
+				preparation: { previousSummary?: string; firstKeptEntryId: string; tokensBefore: number };
+				branchEntries: Array<{ type: string; customType?: string; data?: unknown }>;
+			},
+		),
+	);
 }
 
-export function createGoalContextMessage(goal: GoalState): {
-	customType: string;
-	content: string;
-	display: false;
-	details: { goalId: string };
-} | undefined {
+export function createGoalContextMessage(goal: GoalState):
+	| {
+			customType: string;
+			content: string;
+			display: false;
+			details: { goalId: string };
+	  }
+	| undefined {
 	if (!isActiveGoal(goal)) return undefined;
 	return {
 		customType: GOAL_CONTEXT_CUSTOM_TYPE,
@@ -57,7 +71,10 @@ export function createGoalContextMessage(goal: GoalState): {
 	};
 }
 
-export function filterGoalContextMessages<T extends ContextMessage>(messages: T[], goal: GoalState | null): T[] {
+export function filterGoalContextMessages<T extends ContextMessage>(
+	messages: T[],
+	goal: GoalState | null,
+): T[] {
 	const activeGoalId = isActiveGoal(goal) ? goal.goalId : undefined;
 	let lastCurrentContextIndex = -1;
 

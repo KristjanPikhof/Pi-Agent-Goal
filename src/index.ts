@@ -4,7 +4,12 @@ import { registerGoalTools } from "./tools.js";
 import { registerGoalRuntime } from "./runtime.js";
 
 export { handleGoalCommand, parseGoalCommand, registerGoalCommand } from "./commands.js";
-export { createGoalCompaction, createGoalContextMessage, filterGoalContextMessages, registerGoalRuntime } from "./runtime.js";
+export {
+	createGoalCompaction,
+	createGoalContextMessage,
+	filterGoalContextMessages,
+	registerGoalRuntime,
+} from "./runtime.js";
 export {
 	compactGoalDetails,
 	escapeXml,

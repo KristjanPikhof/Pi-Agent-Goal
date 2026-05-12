@@ -88,7 +88,9 @@ function formatXmlList(items: string[]): string[] {
 
 function formatSourceDocs(sourceDocs: GoalSourceDoc[]): string[] {
 	if (sourceDocs.length === 0) return ["- none"];
-	return sourceDocs.map((doc) => `- ${escapeXml(doc.path)} (${escapeXml(doc.kind)}): ${escapeXml(doc.brief)}`);
+	return sourceDocs.map(
+		(doc) => `- ${escapeXml(doc.path)} (${escapeXml(doc.kind)}): ${escapeXml(doc.brief)}`,
+	);
 }
 
 function formatMarkdownList(items: string[]): string[] {

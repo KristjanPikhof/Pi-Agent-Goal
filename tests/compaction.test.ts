@@ -16,7 +16,7 @@ function customEntry(data: GoalStateEntry) {
 }
 
 function createRuntimeHarness(branch: Array<{ type: string; customType?: string; data?: unknown }>) {
-	const handlers = new Map<string, (event: any, ctx: any) => Promise<any>>();
+	const handlers = new Map<string, (event: unknown, ctx?: unknown) => Promise<unknown>>();
 	const pi = {
 		on: vi.fn((event: string, handler) => handlers.set(event, handler)),
 	} as unknown as ExtensionAPI;
@@ -40,13 +40,15 @@ describe("goal runtime hooks", () => {
 		const branch = [customEntry(create.entry)];
 		const { handlers, ctx } = createRuntimeHarness(branch);
 
-		const injected = await handlers.get("before_agent_start")?.({}, ctx);
+		const injected = (await handlers.get("before_agent_start")?.({}, ctx)) as {
+			message: { content: string; customType: string; display: false; details: { goalId: string } };
+		};
 		expect(injected).toMatchObject({
 			message: { customType: "goal-context", display: false, details: { goalId: "goal-1" } },
 		});
 		expect(injected?.message.content).toContain("Objective: Preserve context");
 
-		const filtered = await handlers.get("context")?.(
+		const filtered = (await handlers.get("context")?.(
 			{
 				messages: [
 					{ role: "custom", customType: "goal-context", content: 'goal_id="old"' },
@@ -56,7 +58,7 @@ describe("goal runtime hooks", () => {
 				],
 			},
 			ctx,
-		);
+		)) as { messages: unknown[] };
 		expect(filtered.messages).toEqual([
 			{ role: "user", content: "hello" },
 			{ role: "custom", customType: "goal-context", content: 'goal_id="goal-1" latest' },
@@ -71,7 +73,9 @@ describe("goal runtime hooks", () => {
 
 		const complete = persist({ action: "complete", goalId: "goal-1", now: 3 }, create.state);
 		const completeHarness = createRuntimeHarness([customEntry(create.entry), customEntry(complete.entry)]);
-		expect(await completeHarness.handlers.get("before_agent_start")?.({}, completeHarness.ctx)).toBeUndefined();
+		expect(
+			await completeHarness.handlers.get("before_agent_start")?.({}, completeHarness.ctx),
+		).toBeUndefined();
 
 		const clear = persist({ action: "clear", goalId: "goal-1", now: 4 }, create.state);
 		const clearHarness = createRuntimeHarness([customEntry(create.entry), customEntry(clear.entry)]);
@@ -93,10 +97,16 @@ describe("goal runtime hooks", () => {
 		);
 		const { handlers } = createRuntimeHarness([customEntry(create.entry)]);
 
-		const result = await handlers.get("session_before_compact")?.({
+		const result = (await handlers.get("session_before_compact")?.({
 			branchEntries: [customEntry(create.entry)],
-			preparation: { previousSummary: "## Previous\nKeep this.", firstKeptEntryId: "entry-1", tokensBefore: 123 },
-		});
+			preparation: {
+				previousSummary: "## Previous\nKeep this.",
+				firstKeptEntryId: "entry-1",
+				tokensBefore: 123,
+			},
+		})) as {
+			compaction: { summary: string; details: unknown; firstKeptEntryId: string; tokensBefore: number };
+		};
 
 		expect(result.compaction).toMatchObject({ firstKeptEntryId: "entry-1", tokensBefore: 123 });
 		expect(result.compaction.summary).toContain("## Previous\nKeep this.");
