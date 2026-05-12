@@ -15,7 +15,7 @@
 		"goal",
 		"pi-package"
 	],
-	"license": "UNLICENSED",
+	"license": "MIT",
 	"pi": {
 		"extensions": [
 			"./extensions/index.ts"
@@ -25,7 +25,8 @@
 		"extensions",
 		"src",
 		"docs",
-		"README.md"
+		"README.md",
+		"LICENSE"
 	],
 	"devDependencies": {
 		"@earendil-works/pi-coding-agent": "^0.74.0",
