@@ -12,8 +12,6 @@ import {
 	registerGoalTools,
 	updateGoalProgressParams,
 } from "../src/tools.js";
-import { GOAL_CUSTOM_TYPE } from "../src/state.js";
-
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type { GoalStateEntry } from "../src/types.js";
 
@@ -34,7 +32,7 @@ function latestGoalEntry(branch: Array<{ data?: unknown }>): GoalStateEntry {
 
 describe("goal tool schemas and registration", () => {
 	it("defines narrow schemas and registers all goal tools", () => {
-		expect(getGoalParams.additionalProperties).toBe(false);
+		expect((getGoalParams as { additionalProperties?: boolean }).additionalProperties).toBe(false);
 		expect(Object.keys(createGoalParams.properties)).toEqual([
 			"objective",
 			"explicit_request",
@@ -156,8 +154,10 @@ describe("goal tool renderers", () => {
 	it("formats tool calls and results concisely", () => {
 		expect(formatGoalToolCall("create_goal", "Ship it")).toBe("create_goal: Ship it");
 		expect(formatGoalToolCall("get_goal")).toBe("get_goal");
-		expect(formatGoalToolResult({ content: [{ type: "text", text: "Goal complete." }] })).toBe("Goal complete.");
-		expect(formatGoalToolResult({ content: [{ type: "text", text: "Denied" }], isError: true })).toBe(
+		expect(formatGoalToolResult({ content: [{ type: "text", text: "Goal complete." }], details: undefined })).toBe(
+			"Goal complete.",
+		);
+		expect(formatGoalToolResult({ content: [{ type: "text", text: "Denied" }], details: undefined, isError: true })).toBe(
 			"Error: Denied",
 		);
 	});

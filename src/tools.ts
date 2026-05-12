@@ -1,4 +1,5 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { Text } from "@earendil-works/pi-tui";
 import { Type, type Static } from "typebox";
 import { loadGoalState, saveGoalState } from "./state.js";
 import { renderGoalStatus } from "./ui.js";
@@ -47,7 +48,7 @@ interface GoalToolContext {
 
 type GoalToolResult = {
 	content: Array<{ type: "text"; text: string }>;
-	details?: Record<string, unknown>;
+	details: Record<string, unknown> | undefined;
 	isError?: boolean;
 };
 
@@ -64,8 +65,8 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 		async execute(_toolCallId, _params, _signal, _onUpdate, ctx) {
 			return executeGetGoal(ctx as GoalToolContext);
 		},
-		renderCall: () => formatGoalToolCall("get_goal"),
-		renderResult: (result) => formatGoalToolResult(result as GoalToolResult),
+		renderCall: () => new Text(formatGoalToolCall("get_goal"), 0, 0),
+		renderResult: (result) => new Text(formatGoalToolResult(result as GoalToolResult), 0, 0),
 	});
 
 	pi.registerTool({
@@ -82,8 +83,8 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
 			return executeCreateGoal(params as CreateGoalToolInput, ctx as GoalToolContext, pi);
 		},
-		renderCall: (args) => formatGoalToolCall("create_goal", (args as CreateGoalToolInput | undefined)?.objective),
-		renderResult: (result) => formatGoalToolResult(result as GoalToolResult),
+		renderCall: (args) => new Text(formatGoalToolCall("create_goal", args.objective), 0, 0),
+		renderResult: (result) => new Text(formatGoalToolResult(result as GoalToolResult), 0, 0),
 	});
 
 	pi.registerTool({
@@ -99,8 +100,8 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
 			return executeCompleteGoal(params as CompleteGoalToolInput, ctx as GoalToolContext, pi);
 		},
-		renderCall: () => formatGoalToolCall("complete_goal"),
-		renderResult: (result) => formatGoalToolResult(result as GoalToolResult),
+		renderCall: () => new Text(formatGoalToolCall("complete_goal"), 0, 0),
+		renderResult: (result) => new Text(formatGoalToolResult(result as GoalToolResult), 0, 0),
 	});
 
 	pi.registerTool({
@@ -115,8 +116,8 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
 			return executeUpdateGoalProgress(params as UpdateGoalProgressToolInput, ctx as GoalToolContext, pi);
 		},
-		renderCall: () => formatGoalToolCall("update_goal_progress"),
-		renderResult: (result) => formatGoalToolResult(result as GoalToolResult),
+		renderCall: () => new Text(formatGoalToolCall("update_goal_progress"), 0, 0),
+		renderResult: (result) => new Text(formatGoalToolResult(result as GoalToolResult), 0, 0),
 	});
 }
 
