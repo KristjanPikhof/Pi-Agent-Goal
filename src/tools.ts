@@ -152,7 +152,7 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
 			return executeProposeGoalDraft(params as ProposeGoalDraftToolInput, ctx as GoalToolContext, pi);
 		},
-		renderCall: (args) => new Text(formatGoalToolCall("propose_goal_draft", args.objective), 0, 0),
+		renderCall: (args) => new Text(formatProposeGoalDraftToolCall(args as ProposeGoalDraftToolInput), 0, 0),
 		renderResult: (result) => new Text(formatGoalToolResult(result as GoalToolResult), 0, 0),
 	});
 
@@ -395,6 +395,15 @@ export function executeUpdateGoalProgress(
 
 export function formatGoalToolCall(toolName: string, objective?: string): string {
 	return objective ? `${toolName}: ${objective}` : toolName;
+}
+
+export function formatProposeGoalDraftToolCall(input: ProposeGoalDraftToolInput): string {
+	const lines = ["propose_goal_draft:", `Objective: ${input.objective}`];
+	const criteria = normalizeStringList(input.acceptanceCriteria);
+	if (criteria.length > 0) {
+		lines.push("Acceptance criteria:", ...criteria.map((item) => `- ${item}`));
+	}
+	return lines.join("\n");
 }
 
 export function formatGoalToolResult(result: GoalToolResult): string {
