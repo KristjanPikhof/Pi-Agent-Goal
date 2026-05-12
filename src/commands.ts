@@ -382,7 +382,10 @@ export async function saveReviewedGoalAndOfferStart(
 		latest,
 	);
 	updateGoalUi(ctx, next);
-	ctx.ui.notify(options.successMessage ?? (options.action === "replace" ? "Goal replaced." : "Goal created."), "success");
+	ctx.ui.notify(
+		options.successMessage ?? (options.action === "replace" ? "Goal replaced." : "Goal created."),
+		"success",
+	);
 	if (next) await offerGoalStartHandoff(api, ctx, next.goalId, options.start);
 	return next;
 }
