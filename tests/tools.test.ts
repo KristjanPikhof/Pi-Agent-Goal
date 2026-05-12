@@ -73,8 +73,23 @@ describe("goal tool schemas and registration", () => {
 
 		const { pi, tools } = createHarness();
 		registerGoalTools(pi);
-		expect([...tools.keys()]).toEqual(["get_goal", "create_goal", "complete_goal", "update_goal_progress"]);
-		expect(pi.registerTool).toHaveBeenCalledTimes(4);
+		expect(Object.keys(proposeGoalDraftParams.properties)).toEqual([
+			"objective",
+			"description",
+			"acceptanceCriteria",
+			"sourcePaths",
+			"startImmediately",
+			"draftId",
+			"commandId",
+		]);
+		expect([...tools.keys()]).toEqual([
+			"get_goal",
+			"create_goal",
+			"propose_goal_draft",
+			"complete_goal",
+			"update_goal_progress",
+		]);
+		expect(pi.registerTool).toHaveBeenCalledTimes(5);
 	});
 
 	it("documents propose_goal_draft as the review-only drafting path separate from create_goal", () => {
@@ -134,6 +149,129 @@ describe("goal tool execution", () => {
 		const duplicate = executeCreateGoal({ objective: "Rewrite", explicit_request: true }, ctx, pi);
 		expect(duplicate).toMatchObject({ isError: true, details: { error: "goal_exists" } });
 		expect(latestGoalEntry(branch).state?.objective).toBe("Allowed");
+	});
+
+	it("propose_goal_draft saves and starts only after Start review", async () => {
+		const { pi, ctx, branch, ui } = createHarness();
+		const sendUserMessage = vi.fn();
+		const result = await executeProposeGoalDraft(
+			{
+				objective: " Ship reviewed goal ",
+				acceptanceCriteria: [" done ", "done", " tests pass "],
+				sourcePaths: [" docs/prd.md "],
+				draftId: " draft-1 ",
+				commandId: " command-1 ",
+			},
+			ctx,
+			{ ...pi, sendUserMessage },
+		);
+
+		expect(ui.select).toHaveBeenCalledWith("Review generated goal proposal", ["Start", "Edit", "Cancel"]);
+		expect(latestGoalEntry(branch).action).toBe("create");
+		expect(latestGoalEntry(branch).state).toMatchObject({
+			objective: "Ship reviewed goal",
+			acceptanceCriteria: ["done", "tests pass"],
+			sourceDocs: [expect.objectContaining({ path: "docs/prd.md" })],
+		});
+		expect(sendUserMessage).toHaveBeenCalledOnce();
+		expect(result).toMatchObject({
+			terminate: true,
+			details: {
+				status: "saved",
+				action: "create",
+				started: true,
+				draftId: "draft-1",
+				commandId: "command-1",
+			},
+		});
+	});
+
+	it("propose_goal_draft supports Edit review and retries invalid edits", async () => {
+		const { pi, ctx, branch, ui } = createHarness();
+		ui.select.mockResolvedValueOnce("Edit").mockResolvedValueOnce("Edit").mockResolvedValueOnce("Start");
+		ui.editor
+			.mockResolvedValueOnce("# Acceptance criteria\n- missing objective")
+			.mockResolvedValueOnce("# Objective\nEdited goal\n\n# Acceptance criteria\n- edited criterion");
+
+		const result = await executeProposeGoalDraft(
+			{ objective: "Initial", acceptanceCriteria: ["initial criterion"] },
+			ctx,
+			{ ...pi, sendUserMessage: vi.fn() },
+		);
+
+		expect(ui.notify).toHaveBeenCalledWith("Goal draft must include a non-empty Objective section.", "error");
+		expect(ui.editor).toHaveBeenCalledTimes(2);
+		expect(latestGoalEntry(branch).state).toMatchObject({
+			objective: "Edited goal",
+			acceptanceCriteria: ["edited criterion"],
+		});
+		expect(result.details).toMatchObject({ status: "saved" });
+	});
+
+	it("propose_goal_draft cancellation and no-UI policy do not save", async () => {
+		const cancelled = createHarness();
+		cancelled.ui.select.mockResolvedValueOnce("Cancel");
+		const cancelResult = await executeProposeGoalDraft(
+			{ objective: "Cancel me", acceptanceCriteria: ["criterion"] },
+			cancelled.ctx,
+			cancelled.pi,
+		);
+		expect(cancelled.branch).toHaveLength(0);
+		expect(cancelResult).toMatchObject({
+			terminate: true,
+			details: { status: "cancelled", reason: "user_cancelled" },
+		});
+
+		const noUi = createHarness();
+		const noUiCtx = { ...noUi.ctx, hasUI: false };
+		const noUiResult = await executeProposeGoalDraft(
+			{ objective: "No UI", acceptanceCriteria: ["criterion"] },
+			noUiCtx,
+			noUi.pi,
+		);
+		expect(noUi.branch).toHaveLength(0);
+		expect(noUiResult).toMatchObject({
+			terminate: true,
+			details: { status: "cancelled", reason: "review_ui_unavailable" },
+		});
+	});
+
+	it("propose_goal_draft confirms existing goal replacement and rejects stale state", async () => {
+		const replace = createHarness();
+		executeCreateGoal({ objective: "Old goal", explicit_request: true }, replace.ctx, replace.pi);
+		const replacement = await executeProposeGoalDraft(
+			{ objective: "New goal", acceptanceCriteria: ["new criterion"] },
+			replace.ctx,
+			{ ...replace.pi, sendUserMessage: vi.fn() },
+		);
+		expect(replace.ui.confirm).toHaveBeenCalledWith(
+			"Replace current goal?",
+			expect.stringContaining("Old goal"),
+		);
+		expect(latestGoalEntry(replace.branch).action).toBe("replace");
+		expect(latestGoalEntry(replace.branch).state?.objective).toBe("New goal");
+		expect(replacement.details).toMatchObject({ status: "saved", action: "replace" });
+
+		const stale = createHarness();
+		stale.ui.select.mockImplementationOnce(async () => {
+			executeCreateGoal({ objective: "Concurrent goal", explicit_request: true }, stale.ctx, stale.pi);
+			return "Start";
+		});
+		const staleResult = await executeProposeGoalDraft(
+			{ objective: "Stale draft", acceptanceCriteria: ["criterion"] },
+			stale.ctx,
+			{ ...stale.pi, sendUserMessage: vi.fn() },
+		);
+		expect(staleResult).toMatchObject({ isError: true, terminate: true, details: { error: "stale_goal" } });
+		expect(latestGoalEntry(stale.branch).state?.objective).toBe("Concurrent goal");
+	});
+
+	it("propose_goal_draft validates result shape before review", async () => {
+		const { pi, ctx, branch, ui } = createHarness();
+		const result = await executeProposeGoalDraft({ objective: "   ", acceptanceCriteria: [" "] }, ctx, pi);
+		expect(branch).toHaveLength(0);
+		expect(ui.select).not.toHaveBeenCalled();
+		expect(result).toMatchObject({ isError: true, terminate: true, details: { error: "invalid_objective" } });
 	});
 
 	it("complete_goal handles no-goal cases and persists evidence without rewriting scope", () => {

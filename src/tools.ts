@@ -147,11 +147,7 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 		promptGuidelines: [...proposeGoalDraftPromptGuidelines],
 		parameters: proposeGoalDraftParams,
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
-			return executeProposeGoalDraft(
-				params as ProposeGoalDraftToolInput,
-				ctx as GoalToolContext,
-				pi,
-			);
+			return executeProposeGoalDraft(params as ProposeGoalDraftToolInput, ctx as GoalToolContext, pi);
 		},
 		renderCall: (args) => new Text(formatGoalToolCall("propose_goal_draft", args.objective), 0, 0),
 		renderResult: (result) => new Text(formatGoalToolResult(result as GoalToolResult), 0, 0),
@@ -265,7 +261,12 @@ export async function executeProposeGoalDraft(
 	}
 
 	const current = loadGoalState(ctx);
-	const action = await confirmGoalReplacement(ctx as GoalWorkflowContext, current, false, normalized.proposal.objective);
+	const action = await confirmGoalReplacement(
+		ctx as GoalWorkflowContext,
+		current,
+		false,
+		normalized.proposal.objective,
+	);
 	if (!action) {
 		return {
 			content: [{ type: "text", text: "Goal draft cancelled. No goal was saved." }],
@@ -284,19 +285,29 @@ export async function executeProposeGoalDraft(
 	}
 
 	const reviewed = normalizeReviewedProposal(review.proposal);
-	if (!reviewed.ok) return errorResult(reviewed.message, reviewed.code, current, true);
+	if (!reviewed.ok) return errorResult(reviewed.message, reviewed.code, current ?? undefined, true);
 
-	const next = await saveReviewedGoalAndOfferStart(pi as ExtensionAPI & Partial<GoalStartAPI>, ctx as GoalWorkflowContext, {
-		current,
-		proposal: reviewed.proposal,
-		action,
-		start: true,
-		sourceDocs: sourceDocsFromPaths(normalized.sourcePaths),
-		successMessage: action === "replace" ? "Goal draft accepted and replaced." : "Goal draft accepted and saved.",
-		staleMessage: "Goal changed before saving. Re-run /goal draft for the current goal.",
-	});
+	const next = await saveReviewedGoalAndOfferStart(
+		pi as ExtensionAPI & Partial<GoalStartAPI>,
+		ctx as GoalWorkflowContext,
+		{
+			current,
+			proposal: reviewed.proposal,
+			action,
+			start: true,
+			sourceDocs: sourceDocsFromPaths(normalized.sourcePaths),
+			successMessage:
+				action === "replace" ? "Goal draft accepted and replaced." : "Goal draft accepted and saved.",
+			staleMessage: "Goal changed before saving. Re-run /goal draft for the current goal.",
+		},
+	);
 	if (!next) {
-		return errorResult("Goal changed before saving. No goal was saved.", "stale_goal", current, true);
+		return errorResult(
+			"Goal changed before saving. No goal was saved.",
+			"stale_goal",
+			current ?? undefined,
+			true,
+		);
 	}
 
 	return {
@@ -389,7 +400,12 @@ export function formatGoalToolResult(result: GoalToolResult): string {
 }
 
 function errorResult(message: string, code: string, goal?: GoalState, terminate = false): GoalToolResult {
-	return { content: [{ type: "text", text: message }], details: { error: code, goal }, isError: true, terminate };
+	return {
+		content: [{ type: "text", text: message }],
+		details: { error: code, goal },
+		isError: true,
+		terminate,
+	};
 }
 
 function normalizeGoalDraftParams(
@@ -398,7 +414,8 @@ function normalizeGoalDraftParams(
 	| { ok: true; proposal: GoalDraftProposal; sourcePaths?: string[]; draftId?: string; commandId?: string }
 	| { ok: false; code: string; message: string } {
 	const objective = safeValidateObjective(params.objective);
-	if (!objective) return { ok: false, code: "invalid_objective", message: "Goal draft objective is required." };
+	if (!objective)
+		return { ok: false, code: "invalid_objective", message: "Goal draft objective is required." };
 	const acceptanceCriteria = normalizeStringList(params.acceptanceCriteria);
 	if (acceptanceCriteria.length === 0) {
 		return {
@@ -420,7 +437,8 @@ function normalizeReviewedProposal(
 	proposal: GoalDraftProposal,
 ): { ok: true; proposal: GoalDraftProposal } | { ok: false; code: string; message: string } {
 	const objective = safeValidateObjective(proposal.objective);
-	if (!objective) return { ok: false, code: "invalid_objective", message: "Edited goal objective is required." };
+	if (!objective)
+		return { ok: false, code: "invalid_objective", message: "Edited goal objective is required." };
 	const acceptanceCriteria = normalizeStringList(proposal.acceptanceCriteria);
 	if (acceptanceCriteria.length === 0) {
 		return {
