@@ -90,6 +90,11 @@ describe("goal import extraction", () => {
 			objective: "plain objective remains supported",
 			acceptanceCriteria: [],
 		});
+		const longObjective = "objective ".repeat(80).trim();
+		const longCriterion = "criterion ".repeat(50).trim();
+		expect(
+			parseEditableGoalDraft(`# Objective\n${longObjective}\n\n# Acceptance criteria\n- ${longCriterion}`),
+		).toEqual({ objective: longObjective, acceptanceCriteria: [longCriterion] });
 		expect(() => parseEditableGoalDraft(`# Acceptance criteria\n- Missing objective`)).toThrow(
 			"Objective section",
 		);
