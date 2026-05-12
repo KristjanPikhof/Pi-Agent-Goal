@@ -330,7 +330,10 @@ function editableListValues(sections: Map<string, string[]>, keys: string[]): st
 	return unique(keys.flatMap((key) => extractListItems(sections.get(key) ?? [], { truncate: false })));
 }
 
-function linesToParagraph(lines: string[] | undefined, options: { truncate: boolean } = { truncate: true }): string | undefined {
+function linesToParagraph(
+	lines: string[] | undefined,
+	options: { truncate: boolean } = { truncate: true },
+): string | undefined {
 	const text = (lines ?? [])
 		.map((line) => line.replace(/^[-*+]\s+/, "").trim())
 		.filter(Boolean)
