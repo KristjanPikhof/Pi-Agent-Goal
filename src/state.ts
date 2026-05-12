@@ -1,4 +1,5 @@
 import type {
+	GoalOwner,
 	GoalProgress,
 	GoalSourceDoc,
 	GoalState,
@@ -219,7 +220,7 @@ function parseGoalStateEvent(data: unknown): GoalStateEvent | undefined {
 		const progress = readOptionalProgress(data, "progress");
 		if (sourceDocs === null || constraints === null || acceptanceCriteria === null || progress === null)
 			return undefined;
-		const owner = data.owner === "model" || data.owner === "user" ? data.owner : undefined;
+		const owner: GoalOwner | undefined = data.owner === "model" || data.owner === "user" ? data.owner : undefined;
 		const base = {
 			goalId: data.goalId,
 			objective: data.objective,
@@ -234,8 +235,17 @@ function parseGoalStateEvent(data: unknown): GoalStateEvent | undefined {
 		return data.action === "create" ? { action: "create", ...base } : { action: "replace", ...base };
 	}
 
-	if (["pause", "resume", "clear", "complete"].includes(data.action)) {
-		return { action: data.action, goalId: data.goalId, now: data.now, ...(reason ? { reason } : {}) };
+	if (data.action === "pause") {
+		return { action: "pause", goalId: data.goalId, now: data.now, ...(reason ? { reason } : {}) };
+	}
+	if (data.action === "resume") {
+		return { action: "resume", goalId: data.goalId, now: data.now, ...(reason ? { reason } : {}) };
+	}
+	if (data.action === "clear") {
+		return { action: "clear", goalId: data.goalId, now: data.now, ...(reason ? { reason } : {}) };
+	}
+	if (data.action === "complete") {
+		return { action: "complete", goalId: data.goalId, now: data.now, ...(reason ? { reason } : {}) };
 	}
 
 	if (data.action === "edit") {
