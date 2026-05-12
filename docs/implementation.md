@@ -29,7 +29,7 @@ pi --no-session --no-extensions -e ./extensions/index.ts -p /goal
 pi --no-session --no-extensions -e ./extensions/index.ts --goal-continuation -p /goal
 ```
 
-The package metadata exposes the extension through the same source-extension layout as Pi Agents Team:
+The package metadata exposes the extension through this source-extension layout:
 
 ```json
 {
