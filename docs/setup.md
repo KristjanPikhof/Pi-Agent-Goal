@@ -84,8 +84,8 @@ Project settings are local to that workspace. Use them when a repo should always
 Use a local checkout when you are editing this repository or testing unreleased changes.
 
 ```bash
-git clone <pi-agent-goal-repo-url>
-cd pi-agent-goal
+git clone git@github.com:KristjanPikhof/Pi-Agent-Goal.git
+cd Pi-Agent-Goal
 npm install
 ```
 
