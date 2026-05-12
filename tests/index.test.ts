@@ -21,18 +21,14 @@ function createPiStub() {
 }
 
 describe("goalExtension", () => {
-	it("registers a loadable /goal placeholder command", async () => {
+	it("registers a loadable /goal command", () => {
 		const { pi, commands } = createPiStub();
 		goalExtension(pi);
 
 		expect(commands.has("goal")).toBe(true);
 		expect(pi.registerCommand).toHaveBeenCalledWith(
 			"goal",
-			expect.objectContaining({ description: expect.stringContaining("Placeholder") }),
+			expect.objectContaining({ description: expect.stringContaining("long-running task") }),
 		);
-
-		const notify = vi.fn();
-		await commands.get("goal")?.handler("", { ui: { notify } });
-		expect(notify).toHaveBeenCalledWith(expect.stringContaining("intentionally not implemented"), "info");
 	});
 });
