@@ -1,4 +1,5 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { importGoalSources } from "./import.js";
 import { loadGoalState, saveGoalState, validateObjective } from "./state.js";
 import {
 	formatGoalStatusLabel,
@@ -30,6 +31,7 @@ export interface ParsedGoalCommand {
 }
 
 interface GoalCommandContext {
+	cwd: string;
 	hasUI: boolean;
 	sessionManager: { getBranch(): Array<{ type: string; customType?: string; data?: unknown }> };
 	waitForIdle(): Promise<void>;
@@ -75,7 +77,7 @@ export async function handleGoalCommand(
 	}
 
 	if (parsed.kind === "import") {
-		ctx.ui.notify("/goal import is planned but not implemented in this command lifecycle step.", "warning");
+		await importGoal(pi, ctx, parsed);
 		return;
 	}
 
@@ -132,10 +134,80 @@ export function parseGoalCommand(args: string): ParsedGoalCommand {
 	if (first === "resume") return { kind: "resume", confirmed, replace };
 	if (first === "clear") return { kind: "clear", confirmed, replace };
 	if (first === "complete") return { kind: "complete", confirmed, replace };
-	if (first === "import")
-		return { kind: "import", path: tokens.slice(1).join(" ").trim(), confirmed, replace };
+	if (first === "import") {
+		const pathArg = tokens
+			.slice(1)
+			.filter((token) => !token.startsWith("-"))
+			.join(" ")
+			.trim();
+		return { kind: "import", path: pathArg, confirmed, replace };
+	}
 
 	return { kind: "create", objective: trimmed, confirmed, replace };
+}
+
+async function importGoal(pi: ExtensionAPI, ctx: GoalCommandContext, parsed: ParsedGoalCommand): Promise<void> {
+	await ctx.waitForIdle();
+	try {
+		const imported = await importGoalSources(parsed.path ?? "", { cwd: ctx.cwd });
+		const current = loadGoalState(ctx);
+		const summary = [
+			`Objective: ${imported.objective}`,
+			`Source docs: ${imported.sourceDocs.map((doc) => doc.path).join(", ")}`,
+			`Acceptance criteria: ${imported.acceptanceCriteria.length}`,
+			`Constraints: ${imported.constraints.length}`,
+			`Risks: ${imported.risks.length}`,
+			`Open questions: ${imported.openQuestions.length}`,
+		].join("\n");
+
+		if (!parsed.confirmed) {
+			if (!ctx.hasUI) {
+				ctx.ui.notify("/goal import requires --yes in non-interactive mode after reviewing the source docs.", "error");
+				return;
+			}
+			const ok = await ctx.ui.confirm(current ? "Import docs into current goal?" : "Create goal from import?", summary);
+			if (!ok) {
+				ctx.ui.notify("Goal import cancelled.", "info");
+				return;
+			}
+		}
+
+		const latest = loadGoalState(ctx);
+		const next = latest
+			? saveGoalState(
+					pi,
+					{
+						action: "import-docs",
+						goalId: latest.goalId,
+						now: Date.now(),
+						sourceDocs: imported.sourceDocs,
+						constraints: imported.constraints.length > 0 ? imported.constraints : undefined,
+						acceptanceCriteria:
+							imported.acceptanceCriteria.length > 0 ? imported.acceptanceCriteria : undefined,
+						reason: `Imported docs: ${imported.sourceDocs.map((doc) => doc.path).join(", ")}`,
+					},
+					latest,
+				)
+			: saveGoalState(
+					pi,
+					{
+						action: "create",
+						goalId: crypto.randomUUID(),
+						objective: imported.objective,
+						now: Date.now(),
+						owner: "user",
+						sourceDocs: imported.sourceDocs,
+						constraints: imported.constraints,
+						acceptanceCriteria: imported.acceptanceCriteria,
+						reason: `Created from import: ${imported.sourceDocs.map((doc) => doc.path).join(", ")}`,
+					},
+					null,
+				);
+		updateGoalUi(ctx, next);
+		ctx.ui.notify(latest ? "Goal docs imported." : "Goal created from import.", "success");
+	} catch (error) {
+		ctx.ui.notify(error instanceof Error ? error.message : String(error), "error");
+	}
 }
 
 async function createOrReplaceGoal(

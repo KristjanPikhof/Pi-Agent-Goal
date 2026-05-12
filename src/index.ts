@@ -4,6 +4,14 @@ import { registerGoalTools } from "./tools.js";
 
 export { handleGoalCommand, parseGoalCommand, registerGoalCommand } from "./commands.js";
 export {
+	DEFAULT_IMPORT_MAX_FILE_BYTES,
+	DEFAULT_IMPORT_MAX_FILES,
+	extractGoalBrief,
+	GoalImportError,
+	importGoalSources,
+	resolveImportPath,
+} from "./import.js";
+export {
 	completeGoalParams,
 	createGoalParams,
 	executeCompleteGoal,

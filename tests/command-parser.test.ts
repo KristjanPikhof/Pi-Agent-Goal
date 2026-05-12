@@ -18,6 +18,7 @@ function createHarness(options: { hasUI?: boolean; confirm?: boolean; editor?: s
 		}),
 	} as unknown as ExtensionAPI;
 	const ctx = {
+		cwd: process.cwd(),
 		hasUI: options.hasUI ?? true,
 		sessionManager: { getBranch: vi.fn(() => branch) },
 		waitForIdle: vi.fn(async () => undefined),
