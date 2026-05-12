@@ -277,6 +277,29 @@ describe("goal state persistence helpers", () => {
 		expect(loaded).toMatchObject({ goalId: "goal-1", objective: "Reloaded goal", status: "paused" });
 	});
 
+	it("ignores malformed persisted event records instead of crashing reload", () => {
+		const create = persist(createEvent("goal-1", "Reloaded goal"), null);
+		const malformedEvent = {
+			action: "progress",
+			state: create.state,
+			event: { action: "progress", goalId: "goal-1", now: baseTime + 1, progress: "bad" },
+		} as unknown as GoalStateEntry;
+		const unknownEvent = {
+			action: "progress",
+			state: null,
+			event: { action: "unknown", goalId: "goal-1", now: baseTime + 2 },
+		} as unknown as GoalStateEntry;
+
+		const snapshot = createGoalStateSnapshot([
+			customEntry(create.entry),
+			customEntry(malformedEvent),
+			customEntry(unknownEvent),
+		]);
+
+		expect(snapshot.current).toMatchObject({ goalId: "goal-1", objective: "Reloaded goal" });
+		expect(snapshot.current?.progress.done).toEqual([]);
+	});
+
 	it("returns cloned current snapshots", () => {
 		const create = persist(createEvent(), null);
 		const snapshot = createGoalStateSnapshot([customEntry(create.entry)]);
