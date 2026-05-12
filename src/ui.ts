@@ -10,7 +10,7 @@ export const GOAL_USAGE = [
 	"  /goal clear [--yes]        Clear the current goal",
 	"  /goal complete [--yes]     Mark the current goal complete",
 	"",
-	"Interactive mode: review, edit, or cancel the criteria-free draft before starting.",
+	"Interactive mode: review, edit, or cancel the drafted objective and acceptance criteria before starting.",
 	"Non-interactive mode: use --yes for destructive/import confirmations and --replace to replace goals.",
 ].join("\n");
 
