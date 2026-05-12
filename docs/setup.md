@@ -38,7 +38,7 @@ You should see the `/goal` command help if no goal exists yet.
 
 ## Starting a goal
 
-Setting a goal from plain text asks the chat agent to draft a reviewable objective, short context, and acceptance criteria with `propose_goal_draft`. In an interactive Pi session with select/editor support, the callback shows Start, Edit, and Cancel: Start saves and starts one agent handoff, Edit opens a prefilled markdown editor for the objective and acceptance criteria, and Cancel saves nothing. If the model does not call the tool, or if review UI is unavailable, no goal is saved.
+Setting a goal from plain text asks the chat agent to draft a reviewable objective and acceptance criteria with `propose_goal_draft`. In an interactive Pi session with select/editor support, the callback shows Start, Edit, and Cancel: Start saves and starts one agent handoff, Edit opens a prefilled markdown editor for the objective and acceptance criteria, and Cancel saves nothing. If the model does not call the tool, or if review UI is unavailable, no goal is saved.
 
 ```text
 /goal Ship the onboarding cleanup
