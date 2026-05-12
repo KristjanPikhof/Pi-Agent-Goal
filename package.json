@@ -16,6 +16,14 @@
 		"pi-package"
 	],
 	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "git+ssh://git@github.com/KristjanPikhof/Pi-Agent-Goal.git"
+	},
+	"bugs": {
+		"url": "https://github.com/KristjanPikhof/Pi-Agent-Goal/issues"
+	},
+	"homepage": "https://github.com/KristjanPikhof/Pi-Agent-Goal#readme",
 	"pi": {
 		"extensions": [
 			"./extensions/index.ts"
