@@ -16,7 +16,8 @@ function createHarness(options: { hasUI?: boolean; confirm?: boolean; editor?: s
 		appendEntry: vi.fn((customType: string, data: unknown) => {
 			branch.push({ type: "custom", customType, data });
 		}),
-	} as unknown as ExtensionAPI;
+		sendUserMessage: vi.fn(),
+	} as unknown as ExtensionAPI & { sendUserMessage: ReturnType<typeof vi.fn> };
 	const ctx = {
 		cwd: process.cwd(),
 		hasUI: options.hasUI ?? true,
@@ -45,11 +46,17 @@ describe("parseGoalCommand", () => {
 		expect(parseGoalCommand("resume")).toMatchObject({ kind: "resume" });
 		expect(parseGoalCommand("clear --yes")).toMatchObject({ kind: "clear", confirmed: true });
 		expect(parseGoalCommand("complete -y")).toMatchObject({ kind: "complete", confirmed: true });
-		expect(parseGoalCommand("import docs/prd.md")).toMatchObject({ kind: "import", path: "docs/prd.md" });
-		expect(parseGoalCommand("ship a long running feature --replace")).toMatchObject({
+		expect(parseGoalCommand("start")).toMatchObject({ kind: "start", start: true });
+		expect(parseGoalCommand("import docs/prd.md --start")).toMatchObject({
+			kind: "import",
+			path: "docs/prd.md",
+			start: true,
+		});
+		expect(parseGoalCommand("ship a long running feature --replace --start")).toMatchObject({
 			kind: "create",
 			objective: "ship a long running feature",
 			replace: true,
+			start: true,
 		});
 		expect(parseGoalCommand("--replace ship a feature -y --unknown")).toMatchObject({
 			kind: "create",

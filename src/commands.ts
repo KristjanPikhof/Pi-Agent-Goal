@@ -1,5 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { importGoalSources } from "./import.js";
+import { renderGoalStartPrompt } from "./prompts.js";
 import { loadGoalState, saveGoalState, validateObjective } from "./state.js";
 import {
 	applyGoalUi,
@@ -19,6 +20,7 @@ export type GoalCommandKind =
 	| "edit"
 	| "pause"
 	| "resume"
+	| "start"
 	| "clear"
 	| "complete"
 	| "import";
@@ -29,6 +31,7 @@ export interface ParsedGoalCommand {
 	path?: string;
 	confirmed: boolean;
 	replace: boolean;
+	start: boolean;
 }
 
 interface GoalCommandContext {
@@ -45,8 +48,12 @@ interface GoalCommandContext {
 	};
 }
 
-const CONTROL_COMMANDS = new Set(["status", "edit", "pause", "resume", "clear", "complete", "import"]);
-const RECOGNIZED_FLAGS = new Set(["--yes", "-y", "--replace"]);
+interface GoalStartAPI {
+	sendUserMessage(message: string, options?: { deliverAs?: "followUp" | "steer" }): unknown;
+}
+
+const CONTROL_COMMANDS = new Set(["status", "edit", "pause", "resume", "start", "clear", "complete", "import"]);
+const RECOGNIZED_FLAGS = new Set(["--yes", "-y", "--replace", "--start"]);
 
 export function registerGoalCommand(pi: ExtensionAPI): void {
 	pi.registerCommand("goal", {
@@ -91,6 +98,9 @@ export async function handleGoalCommand(
 			case "create":
 				await createOrReplaceGoal(pi, ctx, parsed, current);
 				return;
+			case "start":
+				await startActiveGoal(pi, ctx, current?.goalId);
+				return;
 			case "edit":
 				await editGoal(pi, ctx, current);
 				return;
@@ -122,34 +132,36 @@ export async function handleGoalCommand(
 
 export function parseGoalCommand(args: string): ParsedGoalCommand {
 	const trimmed = args.trim();
-	if (!trimmed) return { kind: "show", confirmed: false, replace: false };
+	if (!trimmed) return { kind: "show", confirmed: false, replace: false, start: false };
 
 	const tokens = trimmed.split(/\s+/);
 	const [first = ""] = tokens;
 	const flags = new Set(tokens.filter((token) => token.startsWith("-")));
 	const confirmed = flags.has("--yes") || flags.has("-y");
 	const replace = flags.has("--replace");
+	const start = flags.has("--start");
 
-	if (first === "status") return { kind: "status", confirmed, replace };
-	if (first === "edit") return { kind: "edit", confirmed, replace };
-	if (first === "pause") return { kind: "pause", confirmed, replace };
-	if (first === "resume") return { kind: "resume", confirmed, replace };
-	if (first === "clear") return { kind: "clear", confirmed, replace };
-	if (first === "complete") return { kind: "complete", confirmed, replace };
+	if (first === "status") return { kind: "status", confirmed, replace, start };
+	if (first === "edit") return { kind: "edit", confirmed, replace, start };
+	if (first === "pause") return { kind: "pause", confirmed, replace, start };
+	if (first === "resume") return { kind: "resume", confirmed, replace, start };
+	if (first === "start") return { kind: "start", confirmed, replace, start: true };
+	if (first === "clear") return { kind: "clear", confirmed, replace, start };
+	if (first === "complete") return { kind: "complete", confirmed, replace, start };
 	if (first === "import") {
 		const pathArg = tokens
 			.slice(1)
 			.filter((token) => !token.startsWith("-"))
 			.join(" ")
 			.trim();
-		return { kind: "import", path: pathArg, confirmed, replace };
+		return { kind: "import", path: pathArg, confirmed, replace, start };
 	}
 
 	const objective = tokens
 		.filter((token) => !RECOGNIZED_FLAGS.has(token))
 		.join(" ")
 		.trim();
-	return { kind: "create", objective, confirmed, replace };
+	return { kind: "create", objective, confirmed, replace, start };
 }
 
 async function importGoal(
@@ -293,6 +305,35 @@ async function createOrReplaceGoal(
 	);
 	updateGoalUi(ctx, next);
 	ctx.ui.notify(action === "replace" ? "Goal replaced." : "Goal created.", "success");
+	if (parsed.start) await startActiveGoal(pi, ctx, next.goalId);
+}
+
+export async function startActiveGoal(
+	api: Partial<GoalStartAPI>,
+	ctx: GoalCommandContext,
+	expectedGoalId?: string,
+): Promise<boolean> {
+	const latest = loadGoalState(ctx);
+	if (!latest) {
+		ctx.ui.notify(noGoalMessage("start"), "error");
+		return false;
+	}
+	if (expectedGoalId && latest.goalId !== expectedGoalId) {
+		ctx.ui.notify("Goal changed before starting. Re-run /goal start for the current goal.", "error");
+		return false;
+	}
+	if (latest.status !== "active") {
+		ctx.ui.notify(`Cannot start a ${latest.status} goal. Run /goal resume first or choose an active goal.`, "error");
+		return false;
+	}
+	if (!api.sendUserMessage) {
+		ctx.ui.notify("Cannot start goal: follow-up messaging API is unavailable.", "error");
+		return false;
+	}
+
+	api.sendUserMessage(renderGoalStartPrompt(latest), { deliverAs: "followUp" });
+	ctx.ui.notify("Goal start queued.", "success");
+	return true;
 }
 
 async function editGoal(pi: ExtensionAPI, ctx: GoalCommandContext, current: GoalState | null): Promise<void> {

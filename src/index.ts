@@ -3,7 +3,7 @@ import { registerGoalCommand } from "./commands.js";
 import { registerGoalTools } from "./tools.js";
 import { registerGoalRuntime } from "./runtime.js";
 
-export { handleGoalCommand, parseGoalCommand, registerGoalCommand } from "./commands.js";
+export { handleGoalCommand, parseGoalCommand, registerGoalCommand, startActiveGoal } from "./commands.js";
 export {
 	createGoalCompaction,
 	createGoalContextMessage,
@@ -24,6 +24,7 @@ export {
 	renderCompactGoalSummary,
 	renderContinuationPrompt,
 	renderGoalContext,
+	renderGoalStartPrompt,
 } from "./prompts.js";
 export {
 	DEFAULT_IMPORT_MAX_FILE_BYTES,
