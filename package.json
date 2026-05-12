@@ -1,7 +1,7 @@
 {
 	"name": "pi-agent-goal",
 	"version": "2026.5.12",
-	"description": "Pi extension for branch-aware long-running /goal workflows.",
+	"description": "Pi extension that gives coding agents persistent /goal workflows with branch-aware state, source imports, progress tools, and explicit start handoffs.",
 	"type": "module",
 	"scripts": {
 		"typecheck": "tsc --noEmit",
@@ -11,19 +11,45 @@
 	},
 	"keywords": [
 		"pi",
+		"pi-package",
 		"pi-extension",
+		"pi-extensions",
+		"pi-coding-agent",
+		"coding-agent",
+		"ai",
+		"agents",
+		"agentic-ai",
 		"goal",
-		"pi-package"
+		"goals",
+		"goal-tracking",
+		"goal-management",
+		"long-running-tasks",
+		"workflow",
+		"automation",
+		"developer-tools",
+		"pi-agent-goal"
 	],
 	"license": "MIT",
+	"author": {
+		"name": "Kristjan Pikhof",
+		"url": "https://github.com/KristjanPikhof"
+	},
 	"repository": {
 		"type": "git",
-		"url": "git+ssh://git@github.com/KristjanPikhof/Pi-Agent-Goal.git"
+		"url": "git+https://github.com/KristjanPikhof/Pi-Agent-Goal.git"
 	},
 	"bugs": {
 		"url": "https://github.com/KristjanPikhof/Pi-Agent-Goal/issues"
 	},
 	"homepage": "https://github.com/KristjanPikhof/Pi-Agent-Goal#readme",
+	"main": "./extensions/index.ts",
+	"exports": {
+		".": "./extensions/index.ts",
+		"./package.json": "./package.json"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
 	"pi": {
 		"extensions": [
 			"./extensions/index.ts"
@@ -50,8 +76,8 @@
 		"node": ">=22.0.0"
 	},
 	"peerDependencies": {
-		"@earendil-works/pi-coding-agent": "*",
-		"@earendil-works/pi-tui": "*",
-		"typebox": "*"
+		"@earendil-works/pi-coding-agent": ">=0.74.0",
+		"@earendil-works/pi-tui": ">=0.74.0",
+		"typebox": ">=1.0.0"
 	}
 }
