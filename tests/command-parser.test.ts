@@ -2,15 +2,27 @@ import { describe, expect, it, vi } from "vitest";
 import { handleGoalCommand, parseGoalCommand, registerGoalCommand } from "../src/commands.js";
 import { GOAL_CUSTOM_TYPE } from "../src/state.js";
 
+import type { GoalProposalGenerator } from "../src/goal-prep.js";
+
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type { GoalStateEntry } from "../src/types.js";
 
-function createHarness(options: { hasUI?: boolean; confirm?: boolean; editor?: string } = {}) {
+function createHarness(
+	options: {
+		hasUI?: boolean;
+		confirm?: boolean;
+		select?: Array<string | undefined>;
+		editor?: string | string[];
+		generateGoalProposal?: GoalProposalGenerator;
+	} = {},
+) {
 	const branch: Array<{ type: string; customType?: string; data?: unknown }> = [];
 	const commands = new Map<
 		string,
 		{ handler: (args: string, ctx: unknown) => Promise<void>; description?: string }
 	>();
+	const selectResults = [...(options.select ?? [])];
+	const editorResults = Array.isArray(options.editor) ? [...options.editor] : undefined;
 	const pi = {
 		registerCommand: vi.fn((name: string, command) => commands.set(name, command)),
 		appendEntry: vi.fn((customType: string, data: unknown) => {
@@ -26,16 +38,41 @@ function createHarness(options: { hasUI?: boolean; confirm?: boolean; editor?: s
 		ui: {
 			notify: vi.fn(),
 			confirm: vi.fn(async () => options.confirm ?? true),
-			editor: vi.fn(async () => options.editor),
+			select: options.select === undefined ? undefined : vi.fn(async () => selectResults.shift()),
+			editor: vi.fn(async () => editorResults?.shift() ?? (options.editor as string | undefined)),
 			setStatus: vi.fn(),
 			setWidget: vi.fn(),
 		},
+		generateGoalProposal: options.generateGoalProposal,
 	};
 	return { pi, ctx, branch, commands };
 }
 
 function latestGoalEntry(branch: Array<{ data?: unknown }>): GoalStateEntry {
 	return branch.at(-1)?.data as GoalStateEntry;
+}
+
+function seedGoal(
+	branch: Array<{ type: string; customType?: string; data?: unknown }>,
+	overrides: Partial<NonNullable<GoalStateEntry["state"]>> = {},
+): NonNullable<GoalStateEntry["state"]> {
+	const now = Date.now();
+	const state: NonNullable<GoalStateEntry["state"]> = {
+		version: 1,
+		goalId: "goal-1",
+		objective: "ship",
+		status: "active",
+		sourceDocs: [],
+		constraints: [],
+		acceptanceCriteria: ["Done is verifiable"],
+		progress: { done: [], blocked: [], lastSummary: "" },
+		createdAt: now,
+		updatedAt: now,
+		owner: "user",
+		...overrides,
+	};
+	branch.push({ type: "custom", customType: GOAL_CUSTOM_TYPE, data: { action: "create", state } });
+	return state;
 }
 
 describe("parseGoalCommand", () => {
@@ -87,38 +124,56 @@ describe("/goal command lifecycle", () => {
 		expect(ctx.ui.notify).toHaveBeenCalledWith(expect.stringContaining("Usage:"), "info");
 	});
 
-	it("creates an active goal after waiting for idle", async () => {
+	it("queues a plain goal drafting turn after waiting for idle without saving state", async () => {
 		const { pi, ctx, branch } = createHarness({ confirm: false });
 		await handleGoalCommand(pi, "  ship the feature  ", ctx);
 
 		expect(ctx.waitForIdle).toHaveBeenCalledOnce();
-		expect(pi.appendEntry).toHaveBeenCalledWith(
-			GOAL_CUSTOM_TYPE,
-			expect.objectContaining({ action: "create" }),
+		expect(pi.appendEntry).not.toHaveBeenCalled();
+		expect(branch).toHaveLength(0);
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(
+			expect.stringContaining("Call the propose_goal_draft tool exactly once"),
 		);
-		expect(latestGoalEntry(branch).state).toMatchObject({ objective: "ship the feature", status: "active" });
-		expect(ctx.ui.setStatus).toHaveBeenLastCalledWith("goal", "goal: active");
-		expect(ctx.ui.confirm).toHaveBeenCalledWith("Start working on this goal now?", "ship the feature");
-		expect(pi.sendUserMessage).not.toHaveBeenCalled();
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("ship the feature"));
+		expect(ctx.ui.notify).toHaveBeenCalledWith("Goal draft queued for review.", "info");
 	});
 
-	it("offers start handoff after create and queues it when accepted", async () => {
+	it("carries --start intent into the agent drafting prompt", async () => {
 		const { pi, ctx } = createHarness({ confirm: true });
-		await handleGoalCommand(pi, "ship interactively", ctx);
+		await handleGoalCommand(pi, "ship interactively --start", ctx);
 
-		expect(ctx.ui.confirm).toHaveBeenCalledWith("Start working on this goal now?", "ship interactively");
+		expect(ctx.ui.confirm).not.toHaveBeenCalledWith("Start working on this goal now?", "ship interactively");
 		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
-		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("ship interactively"), {
-			deliverAs: "followUp",
-		});
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("pass startImmediately: true"));
 	});
 
-	it("does not queue duplicate start follow-ups after denied handoff or command errors", async () => {
-		const { pi, ctx } = createHarness({ confirm: false });
+	it("queues the same review-only drafting flow in non-interactive mode", async () => {
+		const { pi, ctx, branch } = createHarness({ hasUI: false });
 
-		await handleGoalCommand(pi, "ship later", ctx);
-		expect(ctx.ui.confirm).toHaveBeenCalledWith("Start working on this goal now?", "ship later");
-		expect(pi.sendUserMessage).not.toHaveBeenCalled();
+		await handleGoalCommand(pi, "ship fallback --start", ctx);
+
+		expect(branch).toHaveLength(0);
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("ship fallback"));
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("pass startImmediately: true"));
+	});
+
+	it("does not invoke local proposal review or proposal generation from the plain command", async () => {
+		const generateGoalProposal = vi.fn<GoalProposalGenerator>(async () => ({
+			objective: "Ignored non-public generator",
+			acceptanceCriteria: ["Ignored criteria"],
+		}));
+		const { pi, ctx, branch } = createHarness({ select: ["Cancel"], generateGoalProposal });
+
+		await handleGoalCommand(pi, "ship delegated proposal --start", ctx);
+
+		expect(generateGoalProposal).not.toHaveBeenCalled();
+		expect(ctx.ui.select).not.toHaveBeenCalled();
+		expect(branch).toHaveLength(0);
+		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
+	});
+
+	it("prevalidates obvious objective errors before queueing a drafting turn", async () => {
+		const { pi, ctx } = createHarness({ confirm: false });
 
 		await handleGoalCommand(pi, "--replace", ctx);
 
@@ -129,31 +184,23 @@ describe("/goal command lifecycle", () => {
 		);
 	});
 
-	it("does not start when the goal changes while create start confirmation is pending", async () => {
-		const { pi, ctx, branch } = createHarness({ confirm: false });
-		await handleGoalCommand(pi, "original", ctx);
-		ctx.ui.confirm.mockClear();
-		ctx.ui.confirm.mockResolvedValueOnce(true).mockImplementationOnce(async () => {
-			ctx.hasUI = false;
-			await handleGoalCommand(pi, "replacement --replace --yes", ctx);
-			ctx.hasUI = true;
-			return true;
-		});
+	it("preserves current-goal replacement context in the queued drafting prompt", async () => {
+		const { pi, ctx, branch } = createHarness({ confirm: true });
+		seedGoal(branch, { goalId: "existing-goal", objective: "original objective" });
 
-		await handleGoalCommand(pi, "next", ctx);
+		await handleGoalCommand(pi, "next objective --replace --start", ctx);
 
-		expect(branch).toHaveLength(3);
-		expect(latestGoalEntry(branch).state?.objective).toBe("replacement");
-		expect(pi.sendUserMessage).not.toHaveBeenCalled();
-		expect(ctx.ui.notify).toHaveBeenLastCalledWith(
-			expect.stringContaining("Goal changed before starting"),
-			"error",
-		);
+		expect(branch).toHaveLength(1);
+		expect(ctx.ui.confirm).not.toHaveBeenCalled();
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("replacing an existing goal"));
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("original objective"));
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("pass startImmediately: true"));
 	});
 
 	it("starts active goals with a one-shot follow-up prompt", async () => {
-		const { pi, ctx } = createHarness();
-		await handleGoalCommand(pi, "ship --start", ctx);
+		const { pi, ctx, branch } = createHarness();
+		seedGoal(branch);
+		await handleGoalCommand(pi, "start", ctx);
 
 		expect(ctx.ui.confirm).not.toHaveBeenCalledWith("Start working on this goal now?", "ship");
 		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
@@ -164,18 +211,18 @@ describe("/goal command lifecycle", () => {
 		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("ship"), {
 			deliverAs: "followUp",
 		});
-		expect(ctx.ui.notify).toHaveBeenLastCalledWith("Goal start queued.", "success");
+		expect(ctx.ui.notify).toHaveBeenLastCalledWith("Goal start queued.", "info");
 	});
 
 	it("starts an existing active goal and rejects inactive states", async () => {
 		const active = createHarness();
-		await handleGoalCommand(active.pi, "ship", active.ctx);
+		seedGoal(active.branch);
 		(active.pi.sendUserMessage as ReturnType<typeof vi.fn>).mockClear();
 		await handleGoalCommand(active.pi, "start", active.ctx);
 		expect(active.pi.sendUserMessage).toHaveBeenCalledOnce();
 
 		const paused = createHarness();
-		await handleGoalCommand(paused.pi, "ship", paused.ctx);
+		seedGoal(paused.branch);
 		await handleGoalCommand(paused.pi, "pause", paused.ctx);
 		(paused.pi.sendUserMessage as ReturnType<typeof vi.fn>).mockClear();
 		await handleGoalCommand(paused.pi, "start", paused.ctx);
@@ -183,7 +230,7 @@ describe("/goal command lifecycle", () => {
 		expect(paused.ctx.ui.notify).toHaveBeenLastCalledWith(expect.stringContaining("paused goal"), "error");
 
 		const complete = createHarness({ confirm: true });
-		await handleGoalCommand(complete.pi, "ship", complete.ctx);
+		seedGoal(complete.branch);
 		await handleGoalCommand(complete.pi, "complete", complete.ctx);
 		(complete.pi.sendUserMessage as ReturnType<typeof vi.fn>).mockClear();
 		await handleGoalCommand(complete.pi, "start", complete.ctx);
@@ -203,8 +250,8 @@ describe("/goal command lifecycle", () => {
 	});
 
 	it("shows summary and expanded status for an existing goal", async () => {
-		const { pi, ctx } = createHarness();
-		await handleGoalCommand(pi, "ship", ctx);
+		const { pi, ctx, branch } = createHarness();
+		seedGoal(branch);
 		ctx.ui.notify.mockClear();
 
 		await handleGoalCommand(pi, "", ctx);
@@ -214,112 +261,104 @@ describe("/goal command lifecycle", () => {
 		expect(ctx.ui.notify).toHaveBeenCalledWith(expect.stringContaining("Acceptance criteria:"), "info");
 	});
 
-	it("asks confirmation before replacing an existing goal and then offers start handoff", async () => {
+	it("asks confirmation before queueing a replacement drafting turn", async () => {
 		const { pi, ctx, branch } = createHarness({ confirm: false });
-		await handleGoalCommand(pi, "first", ctx);
-		ctx.ui.confirm.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+		seedGoal(branch, { objective: "first" });
+		ctx.ui.confirm.mockResolvedValueOnce(true);
 		await handleGoalCommand(pi, "second", ctx);
 
 		expect(ctx.ui.confirm).toHaveBeenCalledWith(
 			"Replace current goal?",
 			expect.stringContaining("New: second"),
 		);
-		expect(ctx.ui.confirm).toHaveBeenCalledWith("Start working on this goal now?", "second");
-		expect(latestGoalEntry(branch).action).toBe("replace");
-		expect(latestGoalEntry(branch).state?.objective).toBe("second");
-		expect(pi.sendUserMessage).not.toHaveBeenCalled();
+		expect(latestGoalEntry(branch).state?.objective).toBe("first");
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("second"));
 	});
 
-	it("does not prompt or start non-interactive creates unless --start is explicit", async () => {
+	it("does not prompt in non-interactive draft creation and carries --start only when explicit", async () => {
 		const { pi, ctx, branch } = createHarness({ hasUI: false });
 		await handleGoalCommand(pi, "first", ctx);
 
-		expect(latestGoalEntry(branch).state?.objective).toBe("first");
+		expect(branch).toHaveLength(0);
 		expect(ctx.ui.confirm).not.toHaveBeenCalled();
-		expect(pi.sendUserMessage).not.toHaveBeenCalled();
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("pass startImmediately: false"));
 
-		await handleGoalCommand(pi, "second --replace --start", ctx);
-		expect(latestGoalEntry(branch).state?.objective).toBe("second");
+		(pi.sendUserMessage as ReturnType<typeof vi.fn>).mockClear();
+		await handleGoalCommand(pi, "second --start", ctx);
+		expect(branch).toHaveLength(0);
 		expect(ctx.ui.confirm).not.toHaveBeenCalled();
 		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
-		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("second"), {
-			deliverAs: "followUp",
-		});
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("pass startImmediately: true"));
 	});
 
-	it("requires --replace for non-interactive replacement and only starts with --start", async () => {
+	it("requires --replace for non-interactive replacement and queues when provided", async () => {
 		const { pi, ctx, branch } = createHarness({ hasUI: false });
-		await handleGoalCommand(pi, "first", ctx);
+		seedGoal(branch, { objective: "first" });
 		await handleGoalCommand(pi, "second", ctx);
 
 		expect(latestGoalEntry(branch).state?.objective).toBe("first");
 		expect(ctx.ui.notify).toHaveBeenLastCalledWith(expect.stringContaining("--replace"), "error");
 
 		await handleGoalCommand(pi, "second --replace", ctx);
-		expect(latestGoalEntry(branch).action).toBe("replace");
-		expect(latestGoalEntry(branch).state?.objective).toBe("second");
-		expect(pi.sendUserMessage).not.toHaveBeenCalled();
+		expect(latestGoalEntry(branch).state?.objective).toBe("first");
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("pass startImmediately: false"));
 
+		(pi.sendUserMessage as ReturnType<typeof vi.fn>).mockClear();
 		await handleGoalCommand(pi, "third --replace --start", ctx);
-		expect(latestGoalEntry(branch).state?.objective).toBe("third");
+		expect(latestGoalEntry(branch).state?.objective).toBe("first");
 		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("pass startImmediately: true"));
 	});
 
-	it("aborts stale --replace when the goal changes before save", async () => {
+	it("reports unavailable follow-up messaging API without saving", async () => {
 		const { pi, ctx, branch } = createHarness({ hasUI: false });
-		await handleGoalCommand(pi, "original", ctx);
-		(pi.sendUserMessage as ReturnType<typeof vi.fn>).mockClear();
-		ctx.ui.notify.mockClear();
-		const entriesBeforeReplace = branch.length;
-		const externalState = {
-			...latestGoalEntry(branch).state!,
-			goalId: "external-goal",
-			objective: "external replacement",
-			updatedAt: Date.now(),
-		};
-		let reads = 0;
-		ctx.sessionManager.getBranch.mockImplementation(() => {
-			reads += 1;
-			if (reads === 2) {
-				branch.push({
-					type: "custom",
-					customType: GOAL_CUSTOM_TYPE,
-					data: {
-						action: "replace",
-						state: externalState,
-						event: {
-							action: "replace",
-							goalId: externalState.goalId,
-							objective: externalState.objective,
-							now: externalState.updatedAt,
-							owner: "user",
-						},
-					},
-				});
-			}
-			return branch;
-		});
+		// Simulate an older API shape at runtime.
+		delete (pi as Partial<typeof pi>).sendUserMessage;
 
-		await handleGoalCommand(pi, "intended replacement --replace --start", ctx);
+		await handleGoalCommand(pi, "intended replacement --start", ctx);
 
-		expect(branch).toHaveLength(entriesBeforeReplace + 1);
-		expect(latestGoalEntry(branch).state?.objective).toBe("external replacement");
+		expect(branch).toHaveLength(0);
 		expect(ctx.ui.notify).toHaveBeenLastCalledWith(
-			"Goal changed before saving. Re-run /goal with your objective.",
+			"Cannot draft goal: follow-up messaging API is unavailable.",
 			"error",
 		);
-		expect(pi.sendUserMessage).not.toHaveBeenCalled();
 	});
 
 	it("edits in UI mode and rejects edit in no-UI mode", async () => {
 		const interactive = createHarness({ editor: "edited objective" });
-		await handleGoalCommand(interactive.pi, "original", interactive.ctx);
+		seedGoal(interactive.branch, { objective: "original" });
 		await handleGoalCommand(interactive.pi, "edit", interactive.ctx);
 		expect(latestGoalEntry(interactive.branch).action).toBe("edit");
 		expect(latestGoalEntry(interactive.branch).state?.objective).toBe("edited objective");
 
+		const criteriaEditor = `# Objective
+edited objective with criteria
+
+# Acceptance criteria
+- First criterion
+- Second criterion`;
+		const withCriteria = createHarness({ editor: criteriaEditor });
+		seedGoal(withCriteria.branch, { objective: "original" });
+		await handleGoalCommand(withCriteria.pi, "edit", withCriteria.ctx);
+		expect(withCriteria.ctx.ui.editor).toHaveBeenCalledWith(
+			"Edit goal",
+			expect.stringContaining("# Acceptance criteria"),
+		);
+		expect(latestGoalEntry(withCriteria.branch).action).toBe("edit");
+		expect(latestGoalEntry(withCriteria.branch).state).toMatchObject({
+			objective: "edited objective with criteria",
+			acceptanceCriteria: ["First criterion", "Second criterion"],
+		});
+
+		const emptyCriteria = createHarness({
+			editor: "# Objective\ncriteria can be cleared\n\n# Acceptance criteria\n",
+		});
+		seedGoal(emptyCriteria.branch, { objective: "original" });
+		await handleGoalCommand(emptyCriteria.pi, "edit", emptyCriteria.ctx);
+		expect(latestGoalEntry(emptyCriteria.branch).state?.acceptanceCriteria).toEqual([]);
+
 		const noUi = createHarness({ hasUI: false });
-		await handleGoalCommand(noUi.pi, "original", noUi.ctx);
+		seedGoal(noUi.branch, { objective: "original" });
 		await handleGoalCommand(noUi.pi, "edit", noUi.ctx);
 		expect(noUi.ctx.ui.notify).toHaveBeenLastCalledWith(
 			expect.stringContaining("requires interactive UI"),
@@ -328,9 +367,10 @@ describe("/goal command lifecycle", () => {
 	});
 
 	it("offers start handoff after resume and skips it for pause", async () => {
-		const { pi, ctx } = createHarness({ confirm: false });
-		await handleGoalCommand(pi, "ship", ctx);
+		const { pi, ctx, branch } = createHarness({ confirm: false });
+		seedGoal(branch);
 		ctx.ui.confirm.mockClear();
+		(pi.sendUserMessage as ReturnType<typeof vi.fn>).mockClear();
 
 		await handleGoalCommand(pi, "pause", ctx);
 		expect(ctx.ui.confirm).not.toHaveBeenCalled();
@@ -344,7 +384,7 @@ describe("/goal command lifecycle", () => {
 
 	it("pauses, resumes, clears, and completes with safe confirmation behavior", async () => {
 		const { pi, ctx, branch } = createHarness({ confirm: true });
-		await handleGoalCommand(pi, "ship", ctx);
+		seedGoal(branch);
 		await handleGoalCommand(pi, "pause", ctx);
 		expect(latestGoalEntry(branch).state?.status).toBe("paused");
 
@@ -367,7 +407,7 @@ describe("/goal command lifecycle", () => {
 
 	it("requires --yes for destructive no-UI commands", async () => {
 		const { pi, ctx, branch } = createHarness({ hasUI: false });
-		await handleGoalCommand(pi, "ship", ctx);
+		seedGoal(branch);
 		await handleGoalCommand(pi, "complete", ctx);
 		expect(latestGoalEntry(branch).state?.status).toBe("active");
 		expect(ctx.ui.notify).toHaveBeenLastCalledWith(expect.stringContaining("requires --yes"), "error");
@@ -378,7 +418,7 @@ describe("/goal command lifecycle", () => {
 
 	it("refuses to complete paused goals", async () => {
 		const { pi, ctx, branch } = createHarness({ confirm: true });
-		await handleGoalCommand(pi, "ship", ctx);
+		seedGoal(branch);
 		await handleGoalCommand(pi, "pause", ctx);
 		const entriesAfterPause = branch.length;
 

@@ -35,6 +35,7 @@ function createCommandHarness(branch: BranchEntry[] = [], options: { cwd?: strin
 		appendEntry: vi.fn((customType: string, data: unknown) =>
 			branch.push({ type: "custom", customType, data }),
 		),
+		sendUserMessage: vi.fn(),
 	} as unknown as ExtensionAPI;
 	const ctx = {
 		cwd: options.cwd ?? process.cwd(),
@@ -75,11 +76,21 @@ describe("session lifecycle integration coverage", () => {
 		const { pi, ctx, branch } = createCommandHarness();
 
 		await handleGoalCommand(pi, "ship lifecycle support", ctx);
-		const first = latestGoal(branch);
+		expect(latestGoal(branch)).toBeNull();
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("propose_goal_draft"));
+
+		const first = saveGoalState(
+			pi,
+			{ action: "create", goalId: "first", objective: "ship lifecycle support", now: 1 },
+			null,
+		);
 		expect(first).toMatchObject({ objective: "ship lifecycle support", status: "active" });
 
-		await handleGoalCommand(pi, "replacement objective", ctx);
-		const replacement = latestGoal(branch);
+		const replacement = saveGoalState(
+			pi,
+			{ action: "replace", goalId: "replacement", objective: "replacement objective", now: 2 },
+			first,
+		);
 		expect(replacement?.goalId).not.toBe(first?.goalId);
 		expect(replacement).toMatchObject({ objective: "replacement objective", status: "active" });
 

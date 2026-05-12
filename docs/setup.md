@@ -38,7 +38,7 @@ You should see the `/goal` command help if no goal exists yet.
 
 ## Starting a goal
 
-Setting a goal stores context first. In an interactive Pi session, the goal flow asks whether to start work now. If you choose not to start yet, the active goal still appears in status/widgets and supplies context to later turns.
+Setting a goal from plain text asks the chat agent to draft a reviewable objective and acceptance criteria with `propose_goal_draft`. In an interactive Pi session with select/editor support, the callback shows Start, Edit, and Cancel: Start saves and starts one agent handoff, Edit opens a prefilled markdown editor for the objective and acceptance criteria, and Cancel saves nothing. If the model does not call the tool, or if review UI is unavailable, no goal is saved.
 
 ```text
 /goal Ship the onboarding cleanup
@@ -55,7 +55,7 @@ pi -e npm:pi-agent-goal -p "/goal import docs/prd.md --yes --start"
 pi -e npm:pi-agent-goal -p "/goal resume --start"
 ```
 
-Without `--start`, non-interactive create/import/resume commands only update goal state.
+Without `--start`, non-interactive import/resume commands only update goal state. Plain `/goal` text still needs the agent-mediated review callback before anything is saved, so use an interactive Pi session for that drafting path.
 
 ## Settings.json form
 

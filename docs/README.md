@@ -12,10 +12,10 @@ Read in this order:
 ## What shipped
 
 - Branch-aware canonical goal state in Pi custom entries named `goal-state`.
-- `/goal` command lifecycle: create, clean `--replace` parsing, replace with confirmation, status, edit, pause, resume, complete, clear, and import.
+- `/goal` command lifecycle: plain text asks the chat agent to draft objective and acceptance criteria through `propose_goal_draft`; Start/Edit/Cancel review runs through public Pi UI APIs before persistence; clean `--replace` parsing, replace with confirmation, status, edit, pause, resume, complete, clear, and import.
 - Markdown/text PRD and docs-folder import with workspace realpath validation, symlink escape rejection, generated/vendor ignores, binary and size checks, directory `maxFiles` overflow errors, and compact source briefs.
 - Import semantics that create from docs when no goal exists, then merge and dedupe source docs, constraints, and criteria for an existing goal without rewriting the objective.
-- Model tools: `get_goal`, `create_goal`, `complete_goal`, and `update_goal_progress` with narrow permissions. Completion and progress tools reject paused goals.
+- Model tools: `get_goal`, `create_goal`, `propose_goal_draft`, `complete_goal`, and `update_goal_progress` with narrow permissions. Draft proposals save only after Start; completion and progress tools reject paused goals.
 - Hidden active-goal context injection plus stale context filtering.
 - `session_before_compact` goal summary/details preservation.
 - Footer status, active-goal widget, actionable command errors, and concise tool renderers.

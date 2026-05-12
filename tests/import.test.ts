@@ -3,7 +3,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { handleGoalCommand, parseGoalCommand } from "../src/commands.js";
-import { extractGoalBrief, importGoalSources } from "../src/import.js";
+import { extractGoalBrief, importGoalSources, parseEditableGoalDraft } from "../src/import.js";
+import { GOAL_CUSTOM_TYPE } from "../src/state.js";
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type { GoalStateEntry } from "../src/types.js";
@@ -40,6 +41,29 @@ function latestGoalEntry(branch: Array<{ data?: unknown }>): GoalStateEntry {
 	return branch.at(-1)?.data as GoalStateEntry;
 }
 
+function seedGoal(
+	branch: Array<{ type: string; customType?: string; data?: unknown }>,
+	overrides: Partial<NonNullable<GoalStateEntry["state"]>> = {},
+): NonNullable<GoalStateEntry["state"]> {
+	const now = Date.now();
+	const state: NonNullable<GoalStateEntry["state"]> = {
+		version: 1,
+		goalId: "goal-1",
+		objective: "Original objective",
+		status: "active",
+		sourceDocs: [],
+		constraints: [],
+		acceptanceCriteria: ["Done is verifiable"],
+		progress: { done: [], blocked: [], lastSummary: "" },
+		createdAt: now,
+		updatedAt: now,
+		owner: "user",
+		...overrides,
+	};
+	branch.push({ type: "custom", customType: GOAL_CUSTOM_TYPE, data: { action: "create", state } });
+	return state;
+}
+
 const prd = `# Objective
 Ship goal import from docs.
 
@@ -71,6 +95,33 @@ describe("goal import extraction", () => {
 		expect(extracted.openQuestions).toEqual(["What size limit is enough?"]);
 		expect(extracted.sourcePaths).toContain("src/import.ts");
 		expect(extracted.brief).toContain("Source: docs/prd.md");
+	});
+
+	it("parses editable goal drafts with objective and acceptance criteria sections", () => {
+		expect(
+			parseEditableGoalDraft(
+				`# Objective\nShip edited draft.\n\n# Acceptance criteria\n- Saves criteria.\n- Allows edits.`,
+			),
+		).toEqual({
+			objective: "Ship edited draft.",
+			acceptanceCriteria: ["Saves criteria.", "Allows edits."],
+		});
+		expect(parseEditableGoalDraft(`# Objective\nShip without criteria.\n\n# Acceptance criteria\n`)).toEqual({
+			objective: "Ship without criteria.",
+			acceptanceCriteria: [],
+		});
+		expect(parseEditableGoalDraft("plain objective remains supported")).toEqual({
+			objective: "plain objective remains supported",
+			acceptanceCriteria: [],
+		});
+		const longObjective = "objective ".repeat(80).trim();
+		const longCriterion = "criterion ".repeat(50).trim();
+		expect(
+			parseEditableGoalDraft(`# Objective\n${longObjective}\n\n# Acceptance criteria\n- ${longCriterion}`),
+		).toEqual({ objective: longObjective, acceptanceCriteria: [longCriterion] });
+		expect(() => parseEditableGoalDraft(`# Acceptance criteria\n- Missing objective`)).toThrow(
+			"Objective section",
+		);
 	});
 
 	it("imports a single markdown PRD file with compact source metadata", async () => {
@@ -171,7 +222,7 @@ describe("/goal import command", () => {
 		const cwd = await makeWorkspace();
 		await writeFile(path.join(cwd, "notes.md"), prd);
 		const { pi, ctx, branch } = createHarness(cwd, { confirm: false });
-		await handleGoalCommand(pi, "Original objective", ctx);
+		seedGoal(branch, { objective: "Original objective" });
 		ctx.ui.confirm.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
 
 		await handleGoalCommand(pi, "import notes.md", ctx);
@@ -252,9 +303,7 @@ describe("/goal import command", () => {
 		await writeFile(path.join(cwd, "prd.md"), prd);
 		const { pi, ctx, branch } = createHarness(cwd, { confirm: true });
 		ctx.ui.confirm.mockResolvedValueOnce(true).mockImplementationOnce(async () => {
-			ctx.hasUI = false;
-			await handleGoalCommand(pi, "Replacement objective --replace --yes", ctx);
-			ctx.hasUI = true;
+			seedGoal(branch, { goalId: "replacement-goal", objective: "Replacement objective" });
 			return true;
 		});
 
@@ -273,19 +322,17 @@ describe("/goal import command", () => {
 		const cwd = await makeWorkspace();
 		await writeFile(path.join(cwd, "notes.md"), prd);
 		const { pi, ctx, branch } = createHarness(cwd, { confirm: false });
-		await handleGoalCommand(pi, "Original objective", ctx);
+		seedGoal(branch, { objective: "Original objective" });
 		ctx.ui.confirm.mockClear();
 
 		ctx.ui.confirm.mockImplementationOnce(async () => {
-			ctx.hasUI = false;
-			await handleGoalCommand(pi, "Replacement objective --replace --yes", ctx);
-			ctx.hasUI = true;
+			seedGoal(branch, { goalId: "replacement-goal", objective: "Replacement objective" });
 			return true;
 		});
 		await handleGoalCommand(pi, "import notes.md", ctx);
 
 		expect(branch).toHaveLength(2);
-		expect(latestGoalEntry(branch).action).toBe("replace");
+		expect(latestGoalEntry(branch).action).toBe("create");
 		expect(latestGoalEntry(branch).state?.objective).toBe("Replacement objective");
 		expect(ctx.ui.notify).toHaveBeenLastCalledWith(
 			expect.stringContaining("Goal changed before saving"),
@@ -298,7 +345,7 @@ describe("/goal import command", () => {
 		await writeFile(path.join(cwd, "prd.md"), prd);
 
 		const paused = createHarness(cwd, { confirm: true });
-		await handleGoalCommand(paused.pi, "Paused objective", paused.ctx);
+		seedGoal(paused.branch, { objective: "Paused objective" });
 		await handleGoalCommand(paused.pi, "pause", paused.ctx);
 		const pausedEntries = paused.branch.length;
 
@@ -312,7 +359,7 @@ describe("/goal import command", () => {
 		);
 
 		const complete = createHarness(cwd, { confirm: true });
-		await handleGoalCommand(complete.pi, "Complete objective", complete.ctx);
+		seedGoal(complete.branch, { objective: "Complete objective" });
 		await handleGoalCommand(complete.pi, "complete --yes", complete.ctx);
 		const completeEntries = complete.branch.length;
 

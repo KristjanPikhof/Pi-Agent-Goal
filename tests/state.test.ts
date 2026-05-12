@@ -103,6 +103,46 @@ describe("goal state reducer", () => {
 		expect(state).toMatchObject({ goalId: "goal-2", objective: "Next goal", status: "active" });
 	});
 
+	it("persists acceptance criteria through create, replace, edit, and snapshot reload", () => {
+		let state = reduceGoalState(null, {
+			action: "create",
+			goalId: "goal-1",
+			objective: "Ship with criteria",
+			now: baseTime,
+			acceptanceCriteria: ["Create keeps criteria", "State exposes criteria"],
+		});
+		expect(state?.acceptanceCriteria).toEqual(["Create keeps criteria", "State exposes criteria"]);
+
+		state = reduceGoalState(state, {
+			action: "edit",
+			goalId: "goal-1",
+			now: baseTime + 1,
+			acceptanceCriteria: [],
+		});
+		expect(state?.acceptanceCriteria).toEqual([]);
+
+		state = reduceGoalState(state, {
+			action: "edit",
+			goalId: "goal-1",
+			now: baseTime + 2,
+			objective: "Renamed but criteria stay empty",
+		});
+		expect(state?.acceptanceCriteria).toEqual([]);
+
+		const replaced = persist(
+			{
+				action: "replace",
+				goalId: "goal-2",
+				objective: "Replacement with criteria",
+				now: baseTime + 3,
+				acceptanceCriteria: ["Replacement criteria"],
+			},
+			state,
+		);
+		const snapshot = createGoalStateSnapshot([customEntry(replaced.entry)]);
+		expect(snapshot.current?.acceptanceCriteria).toEqual(["Replacement criteria"]);
+	});
+
 	it("treats complete goals as terminal until clear or replace", () => {
 		let state = reduceGoalState(null, createEvent("goal-1", "Terminal"));
 		state = reduceGoalState(state, { action: "complete", goalId: "goal-1", now: baseTime + 1 });

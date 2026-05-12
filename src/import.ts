@@ -46,6 +46,11 @@ interface ExtractedDoc {
 	brief: string;
 }
 
+export interface EditableGoalDraft {
+	objective: string;
+	acceptanceCriteria: string[];
+}
+
 export class GoalImportError extends Error {
 	constructor(message: string) {
 		super(message);
@@ -81,7 +86,7 @@ export async function importGoalSources(
 }
 
 export function extractGoalBrief(content: string, sourcePath: string): ExtractedDoc {
-	const normalized = content.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+	const normalized = normalizeMarkdown(content);
 	const sections = parseMarkdownSections(normalized);
 	const objective = firstValue(sections, ["objective", "goal", "problem", "problem statement", "summary"]);
 	const constraints = listValues(sections, ["constraints", "non-goals", "non goals"]);
@@ -105,6 +110,33 @@ export function extractGoalBrief(content: string, sourcePath: string): Extracted
 	});
 
 	return { objective, constraints, acceptanceCriteria, risks, openQuestions, sourcePaths, brief };
+}
+
+export function parseEditableGoalDraft(content: string): EditableGoalDraft {
+	const normalized = normalizeMarkdown(content);
+	const sections = parseMarkdownSections(normalized);
+	const hasHeadings = /^#{1,6}\s+.+$/m.test(normalized);
+	const objective =
+		firstEditableValue(sections, ["objective", "goal"]) ?? (!hasHeadings ? normalized.trim() : undefined);
+	if (!objective) {
+		throw new GoalImportError("Goal draft must include a non-empty Objective section.");
+	}
+	return {
+		objective,
+		acceptanceCriteria: editableListValues(sections, [
+			"acceptance criteria",
+			"acceptance",
+			"definition of done",
+			"success criteria",
+		]),
+	};
+}
+
+export function renderEditableGoalDraft(input: EditableGoalDraft): string {
+	const acceptanceCriteria = input.acceptanceCriteria.map((item) => `- ${item}`).join("\n");
+	return [`# Objective`, input.objective, ``, `# Acceptance criteria`, acceptanceCriteria]
+		.join("\n")
+		.trimEnd();
 }
 
 export function resolveImportPath(inputPath: string, cwd: string): string {
@@ -250,6 +282,10 @@ function combineImports(results: GoalImportResult[], fallbackObjective: string):
 	};
 }
 
+function normalizeMarkdown(content: string): string {
+	return content.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+}
+
 function parseMarkdownSections(content: string): Map<string, string[]> {
 	const sections = new Map<string, string[]>();
 	let current = "summary";
@@ -281,16 +317,33 @@ function listValues(sections: Map<string, string[]>, keys: string[]): string[] {
 	return unique(keys.flatMap((key) => extractListItems(sections.get(key) ?? [])));
 }
 
-function linesToParagraph(lines: string[] | undefined): string | undefined {
+function firstEditableValue(sections: Map<string, string[]>, keys: string[]): string | undefined {
+	for (const key of keys) {
+		const lines = sections.get(key);
+		const value = linesToParagraph(lines, { truncate: false });
+		if (value) return value;
+	}
+	return undefined;
+}
+
+function editableListValues(sections: Map<string, string[]>, keys: string[]): string[] {
+	return unique(keys.flatMap((key) => extractListItems(sections.get(key) ?? [], { truncate: false })));
+}
+
+function linesToParagraph(
+	lines: string[] | undefined,
+	options: { truncate: boolean } = { truncate: true },
+): string | undefined {
 	const text = (lines ?? [])
 		.map((line) => line.replace(/^[-*+]\s+/, "").trim())
 		.filter(Boolean)
 		.join(" ")
 		.trim();
-	return text.length > 0 ? truncate(text, 500) : undefined;
+	if (text.length === 0) return undefined;
+	return options.truncate ? truncate(text, 500) : text;
 }
 
-function extractListItems(lines: string[]): string[] {
+function extractListItems(lines: string[], options: { truncate: boolean } = { truncate: true }): string[] {
 	const items = lines
 		.map((line) => {
 			const match = line.match(/^\s*(?:[-*+]\s+|\d+[.)]\s+)(.+)$/);
@@ -298,8 +351,8 @@ function extractListItems(lines: string[]): string[] {
 		})
 		.filter((item): item is string => Boolean(item));
 	return items.length > 0
-		? items.map((item) => truncate(item, 300))
-		: (linesToParagraph(lines)?.split(/;\s*/) ?? []);
+		? items.map((item) => (options.truncate ? truncate(item, 300) : item))
+		: (linesToParagraph(lines, options)?.split(/;\s*/) ?? []);
 }
 
 function extractSourcePaths(content: string): string[] {

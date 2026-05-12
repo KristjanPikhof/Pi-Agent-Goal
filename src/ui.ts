@@ -2,7 +2,7 @@ import type { GoalState } from "./types.js";
 
 export const GOAL_USAGE = [
 	"Usage:",
-	"  /goal <objective>          Start a long-running goal",
+	"  /goal <objective>          Start a long-running goal; interactive UI can edit before start",
 	"  /goal status               Show expanded goal status",
 	"  /goal import <path> [--yes] Import a PRD/docs file or folder",
 	"  /goal edit                 Edit the objective (interactive UI only)",
@@ -10,6 +10,7 @@ export const GOAL_USAGE = [
 	"  /goal clear [--yes]        Clear the current goal",
 	"  /goal complete [--yes]     Mark the current goal complete",
 	"",
+	"Interactive mode: review, edit, or cancel the drafted objective and acceptance criteria before starting.",
 	"Non-interactive mode: use --yes for destructive/import confirmations and --replace to replace goals.",
 ].join("\n");
 
@@ -43,7 +44,7 @@ export function renderGoalStatus(goal: GoalState): string {
 		renderGoalSummary(goal),
 		"",
 		"Acceptance criteria:",
-		...formatList(goal.acceptanceCriteria),
+		...formatAcceptanceCriteriaList(goal.acceptanceCriteria),
 		"",
 		"Constraints:",
 		...formatList(goal.constraints),
@@ -108,6 +109,12 @@ function formatSourceHint(goal: GoalState): string {
 
 function formatList(items: string[]): string[] {
 	return items.length === 0 ? ["- none"] : items.map((item) => `- ${item}`);
+}
+
+function formatAcceptanceCriteriaList(items: string[]): string[] {
+	return items.length === 0
+		? ["- No acceptance criteria were specified for this goal; use the objective as the source of truth."]
+		: formatList(items);
 }
 
 function truncate(value: string, maxLength: number): string {

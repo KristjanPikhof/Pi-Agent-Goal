@@ -5,10 +5,15 @@ import {
 	executeCompleteGoal,
 	executeCreateGoal,
 	executeGetGoal,
+	executeProposeGoalDraft,
 	executeUpdateGoalProgress,
 	formatGoalToolCall,
 	formatGoalToolResult,
+	formatProposeGoalDraftToolCall,
 	getGoalParams,
+	proposeGoalDraftParams,
+	proposeGoalDraftPromptGuidelines,
+	proposeGoalDraftPromptSnippet,
 	registerGoalTools,
 	updateGoalProgressParams,
 } from "../src/tools.js";
@@ -20,7 +25,13 @@ function createHarness() {
 	const branch: Array<{ type: string; customType?: string; data?: unknown }> = [];
 	const tools = new Map<
 		string,
-		{ name: string; parameters: unknown; execute: (...args: never[]) => Promise<unknown> }
+		{
+			name: string;
+			parameters: unknown;
+			promptSnippet?: string;
+			promptGuidelines?: string[];
+			execute: (...args: never[]) => Promise<unknown>;
+		}
 	>();
 	const pi = {
 		registerTool: vi.fn((tool) => tools.set(tool.name, tool)),
@@ -28,8 +39,16 @@ function createHarness() {
 			branch.push({ type: "custom", customType, data }),
 		),
 	} as unknown as ExtensionAPI;
-	const ctx = { sessionManager: { getBranch: vi.fn(() => branch) } };
-	return { branch, tools, pi, ctx };
+	const ui = {
+		notify: vi.fn(),
+		confirm: vi.fn(async () => true),
+		select: vi.fn(async () => "Start"),
+		editor: vi.fn(),
+		setStatus: vi.fn(),
+		setWidget: vi.fn(),
+	};
+	const ctx = { hasUI: true, sessionManager: { getBranch: vi.fn(() => branch) }, ui };
+	return { branch, tools, pi, ctx, ui };
 }
 
 function latestGoalEntry(branch: Array<{ data?: unknown }>): GoalStateEntry {
@@ -55,8 +74,45 @@ describe("goal tool schemas and registration", () => {
 
 		const { pi, tools } = createHarness();
 		registerGoalTools(pi);
-		expect([...tools.keys()]).toEqual(["get_goal", "create_goal", "complete_goal", "update_goal_progress"]);
-		expect(pi.registerTool).toHaveBeenCalledTimes(4);
+		expect(Object.keys(proposeGoalDraftParams.properties)).toEqual([
+			"objective",
+			"description",
+			"acceptanceCriteria",
+			"sourcePaths",
+			"startImmediately",
+			"draftId",
+			"commandId",
+		]);
+		expect([...tools.keys()]).toEqual([
+			"get_goal",
+			"create_goal",
+			"propose_goal_draft",
+			"complete_goal",
+			"update_goal_progress",
+		]);
+		expect(pi.registerTool).toHaveBeenCalledTimes(5);
+	});
+
+	it("documents propose_goal_draft as the review-only drafting path separate from create_goal", () => {
+		expect(proposeGoalDraftPromptSnippet).toContain("call propose_goal_draft exactly once");
+		expect(proposeGoalDraftPromptSnippet).toContain("do not persist");
+		expect(proposeGoalDraftPromptGuidelines).toEqual(
+			expect.arrayContaining([
+				expect.stringContaining("Use propose_goal_draft for plain /goal drafting turns"),
+				expect.stringContaining("Preserve the user's meaning and boundaries"),
+				expect.stringContaining("editable acceptanceCriteria"),
+				expect.stringContaining("Do not leave acceptanceCriteria empty"),
+				expect.stringContaining("Call propose_goal_draft exactly once"),
+				expect.stringContaining("create_goal persists an already-approved goal"),
+			]),
+		);
+
+		const { pi, tools } = createHarness();
+		registerGoalTools(pi);
+		const createGoalGuidance = tools.get("create_goal")?.promptGuidelines?.join("\n") ?? "";
+		expect(createGoalGuidance).toContain("persist an already-approved goal");
+		expect(createGoalGuidance).toContain("Do not use create_goal for agent-drafted /goal proposals");
+		expect(createGoalGuidance).toContain("use propose_goal_draft");
 	});
 });
 
@@ -94,6 +150,160 @@ describe("goal tool execution", () => {
 		const duplicate = executeCreateGoal({ objective: "Rewrite", explicit_request: true }, ctx, pi);
 		expect(duplicate).toMatchObject({ isError: true, details: { error: "goal_exists" } });
 		expect(latestGoalEntry(branch).state?.objective).toBe("Allowed");
+	});
+
+	it("propose_goal_draft saves and starts only after Start review", async () => {
+		const { pi, ctx, branch, ui } = createHarness();
+		const sendUserMessage = vi.fn();
+		const result = await executeProposeGoalDraft(
+			{
+				objective: " Ship reviewed goal ",
+				acceptanceCriteria: [" done ", "done", " tests pass "],
+				sourcePaths: [" docs/prd.md "],
+				draftId: " draft-1 ",
+				commandId: " command-1 ",
+			},
+			ctx,
+			{ ...pi, sendUserMessage },
+		);
+
+		expect(ui.select).toHaveBeenCalledWith("Review generated goal proposal", ["Start", "Edit", "Cancel"]);
+		expect(latestGoalEntry(branch).action).toBe("create");
+		expect(latestGoalEntry(branch).state).toMatchObject({
+			objective: "Ship reviewed goal",
+			acceptanceCriteria: ["done", "tests pass"],
+			sourceDocs: [expect.objectContaining({ path: "docs/prd.md" })],
+		});
+		expect(sendUserMessage).toHaveBeenCalledOnce();
+		expect(sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("Ship reviewed goal"), {
+			deliverAs: "followUp",
+		});
+		expect(sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("- done"), {
+			deliverAs: "followUp",
+		});
+		expect(sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("- tests pass"), {
+			deliverAs: "followUp",
+		});
+		expect(result).toMatchObject({
+			terminate: true,
+			details: {
+				status: "saved",
+				action: "create",
+				started: true,
+				draftId: "draft-1",
+				commandId: "command-1",
+			},
+		});
+	});
+
+	it("propose_goal_draft supports Edit review and retries invalid edits", async () => {
+		const { pi, ctx, branch, ui } = createHarness();
+		const sendUserMessage = vi.fn();
+		ui.select.mockResolvedValueOnce("Edit").mockResolvedValueOnce("Edit").mockResolvedValueOnce("Start");
+		ui.editor
+			.mockResolvedValueOnce("# Acceptance criteria\n- missing objective")
+			.mockResolvedValueOnce("# Objective\nEdited goal\n\n# Acceptance criteria\n- edited criterion");
+
+		const result = await executeProposeGoalDraft(
+			{ objective: "Initial", acceptanceCriteria: ["initial criterion"] },
+			ctx,
+			{ ...pi, sendUserMessage },
+		);
+
+		expect(ui.notify).toHaveBeenCalledWith("Goal draft must include a non-empty Objective section.", "error");
+		expect(ui.editor).toHaveBeenCalledTimes(2);
+		expect(latestGoalEntry(branch).state).toMatchObject({
+			objective: "Edited goal",
+			acceptanceCriteria: ["edited criterion"],
+		});
+		expect(sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("Edited goal"), {
+			deliverAs: "followUp",
+		});
+		expect(sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("- edited criterion"), {
+			deliverAs: "followUp",
+		});
+		expect(result.details).toMatchObject({ status: "saved", started: true });
+	});
+
+	it("propose_goal_draft cancellation and no-UI policy do not save", async () => {
+		const cancelled = createHarness();
+		cancelled.ui.select.mockResolvedValueOnce("Cancel");
+		const cancelResult = await executeProposeGoalDraft(
+			{ objective: "Cancel me", acceptanceCriteria: ["criterion"] },
+			cancelled.ctx,
+			cancelled.pi,
+		);
+		expect(cancelled.branch).toHaveLength(0);
+		expect(cancelResult).toMatchObject({
+			terminate: true,
+			details: { status: "cancelled", reason: "user_cancelled" },
+		});
+
+		const noUi = createHarness();
+		const noUiCtx = { ...noUi.ctx, hasUI: false };
+		const noUiResult = await executeProposeGoalDraft(
+			{ objective: "No UI", acceptanceCriteria: ["criterion"] },
+			noUiCtx,
+			noUi.pi,
+		);
+		expect(noUi.branch).toHaveLength(0);
+		expect(noUiResult).toMatchObject({
+			terminate: true,
+			details: { status: "cancelled", reason: "review_ui_unavailable" },
+		});
+	});
+
+	it("propose_goal_draft confirms existing goal replacement and rejects stale state", async () => {
+		const denied = createHarness();
+		denied.ui.confirm.mockResolvedValueOnce(false);
+		executeCreateGoal({ objective: "Old goal", explicit_request: true }, denied.ctx, denied.pi);
+		const deniedResult = await executeProposeGoalDraft(
+			{ objective: "Denied replacement", acceptanceCriteria: ["new criterion"] },
+			denied.ctx,
+			{ ...denied.pi, sendUserMessage: vi.fn() },
+		);
+		expect(denied.branch).toHaveLength(1);
+		expect(latestGoalEntry(denied.branch).state?.objective).toBe("Old goal");
+		expect(deniedResult).toMatchObject({
+			terminate: true,
+			details: { status: "cancelled", reason: "replacement_not_confirmed" },
+		});
+
+		const replace = createHarness();
+		executeCreateGoal({ objective: "Old goal", explicit_request: true }, replace.ctx, replace.pi);
+		const replacement = await executeProposeGoalDraft(
+			{ objective: "New goal", acceptanceCriteria: ["new criterion"] },
+			replace.ctx,
+			{ ...replace.pi, sendUserMessage: vi.fn() },
+		);
+		expect(replace.ui.confirm).toHaveBeenCalledWith(
+			"Replace current goal?",
+			expect.stringContaining("Old goal"),
+		);
+		expect(latestGoalEntry(replace.branch).action).toBe("replace");
+		expect(latestGoalEntry(replace.branch).state?.objective).toBe("New goal");
+		expect(replacement.details).toMatchObject({ status: "saved", action: "replace" });
+
+		const stale = createHarness();
+		stale.ui.select.mockImplementationOnce(async () => {
+			executeCreateGoal({ objective: "Concurrent goal", explicit_request: true }, stale.ctx, stale.pi);
+			return "Start";
+		});
+		const staleResult = await executeProposeGoalDraft(
+			{ objective: "Stale draft", acceptanceCriteria: ["criterion"] },
+			stale.ctx,
+			{ ...stale.pi, sendUserMessage: vi.fn() },
+		);
+		expect(staleResult).toMatchObject({ isError: true, terminate: true, details: { error: "stale_goal" } });
+		expect(latestGoalEntry(stale.branch).state?.objective).toBe("Concurrent goal");
+	});
+
+	it("propose_goal_draft validates result shape before review", async () => {
+		const { pi, ctx, branch, ui } = createHarness();
+		const result = await executeProposeGoalDraft({ objective: "   ", acceptanceCriteria: [" "] }, ctx, pi);
+		expect(branch).toHaveLength(0);
+		expect(ui.select).not.toHaveBeenCalled();
+		expect(result).toMatchObject({ isError: true, terminate: true, details: { error: "invalid_objective" } });
 	});
 
 	it("complete_goal handles no-goal cases and persists evidence without rewriting scope", () => {
@@ -190,6 +400,14 @@ describe("goal tool renderers", () => {
 	it("formats tool calls and results concisely", () => {
 		expect(formatGoalToolCall("create_goal", "Ship it")).toBe("create_goal: Ship it");
 		expect(formatGoalToolCall("get_goal")).toBe("get_goal");
+		expect(
+			formatProposeGoalDraftToolCall({
+				objective: "Review branch",
+				acceptanceCriteria: ["Review the diff", "Report risks"],
+			}),
+		).toBe(
+			"propose_goal_draft:\nObjective: Review branch\nAcceptance criteria:\n- Review the diff\n- Report risks",
+		);
 		expect(
 			formatGoalToolResult({ content: [{ type: "text", text: "Goal complete." }], details: undefined }),
 		).toBe("Goal complete.");

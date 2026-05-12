@@ -1,6 +1,7 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { importGoalSources } from "./import.js";
-import { renderGoalStartPrompt } from "./prompts.js";
+import type { GoalDraftProposal } from "./goal-prep.js";
+import { importGoalSources, parseEditableGoalDraft, renderEditableGoalDraft } from "./import.js";
+import { renderGoalAgentDraftingPrompt, renderGoalStartPrompt } from "./prompts.js";
 import { loadGoalState, saveGoalState, validateObjective } from "./state.js";
 import {
 	applyGoalUi,
@@ -11,7 +12,7 @@ import {
 	renderGoalSummary,
 } from "./ui.js";
 
-import type { GoalState, GoalStateEvent } from "./types.js";
+import type { GoalSourceDoc, GoalState, GoalStateEvent } from "./types.js";
 
 export type GoalCommandKind =
 	| "show"
@@ -34,22 +35,41 @@ export interface ParsedGoalCommand {
 	start: boolean;
 }
 
-interface GoalCommandContext {
-	cwd: string;
+export interface GoalWorkflowContext {
 	hasUI: boolean;
 	sessionManager: { getBranch(): Array<{ type: string; customType?: string; data?: unknown }> };
-	waitForIdle(): Promise<void>;
 	ui: {
-		notify(message: string, level?: "info" | "success" | "warning" | "error"): void;
+		notify(message: string, level?: "info" | "warning" | "error"): void;
 		confirm(title: string, message: string): Promise<boolean>;
+		select?(title: string, options: string[]): Promise<string | undefined>;
 		editor(title: string, initialValue: string): Promise<string | undefined>;
 		setStatus(key: string, value: string | undefined): void;
 		setWidget(key: string, value: string[] | undefined): void;
 	};
 }
 
-interface GoalStartAPI {
+interface GoalCommandContext extends GoalWorkflowContext {
+	cwd: string;
+	waitForIdle(): Promise<void>;
+}
+
+export interface GoalStartAPI {
 	sendUserMessage(message: string, options?: { deliverAs?: "followUp" | "steer" }): unknown;
+}
+
+export interface GoalProposalReviewResult {
+	proposal: GoalDraftProposal;
+	start: boolean;
+}
+
+export interface SaveReviewedGoalOptions {
+	current: GoalState | null;
+	proposal: GoalDraftProposal;
+	action: "create" | "replace";
+	start: boolean;
+	sourceDocs?: GoalSourceDoc[];
+	successMessage?: string;
+	staleMessage?: string;
 }
 
 const CONTROL_COMMANDS = new Set([
@@ -262,7 +282,7 @@ async function importGoal(
 					null,
 				);
 		updateGoalUi(ctx, next);
-		ctx.ui.notify(latest ? "Goal docs imported." : "Goal created from import.", "success");
+		ctx.ui.notify(latest ? "Goal docs imported." : "Goal created from import.", "info");
 		if (next) await offerGoalStartHandoff(pi, ctx, next.goalId, parsed.start);
 	} catch (error) {
 		ctx.ui.notify(error instanceof Error ? error.message : String(error), "error");
@@ -276,53 +296,87 @@ async function createOrReplaceGoal(
 	current: GoalState | null,
 ): Promise<void> {
 	const objective = validateObjective(parsed.objective ?? "");
-	let action: "create" | "replace" = "create";
-
-	if (current) {
-		if (!parsed.replace) {
-			if (!ctx.hasUI) {
-				ctx.ui.notify(
-					"A goal already exists. Re-run with --replace to replace it in non-interactive mode.",
-					"error",
-				);
-				return;
-			}
-			const ok = await ctx.ui.confirm(
-				"Replace current goal?",
-				`Current: ${current.objective}\n\nNew: ${objective}`,
-			);
-			if (!ok) {
-				ctx.ui.notify("Goal replacement cancelled.", "info");
-				return;
-			}
-		}
-		action = "replace";
-	}
-
-	const latest = loadGoalState(ctx);
-	if (current?.goalId !== latest?.goalId) {
-		ctx.ui.notify("Goal changed before saving. Re-run /goal with your objective.", "error");
+	const action = await confirmGoalReplacement(ctx, current, parsed.replace, objective);
+	if (!action) return;
+	if (!pi.sendUserMessage) {
+		ctx.ui.notify("Cannot draft goal: follow-up messaging API is unavailable.", "error");
 		return;
 	}
+
+	pi.sendUserMessage(
+		renderGoalAgentDraftingPrompt(objective, {
+			start: parsed.start,
+			replacingExistingGoal: action === "replace",
+			currentGoal: current ?? undefined,
+		}),
+	);
+	ctx.ui.notify("Goal draft queued for review.", "info");
+}
+
+export async function confirmGoalReplacement(
+	ctx: GoalWorkflowContext,
+	current: GoalState | null,
+	replace: boolean,
+	proposedObjective: string,
+): Promise<"create" | "replace" | null> {
+	if (!current) return "create";
+	if (!replace) {
+		if (!ctx.hasUI) {
+			ctx.ui.notify(
+				"A goal already exists. Re-run with --replace to replace it in non-interactive mode.",
+				"error",
+			);
+			return null;
+		}
+		const ok = await ctx.ui.confirm(
+			"Replace current goal?",
+			`Current: ${current.objective}\n\nNew: ${proposedObjective}`,
+		);
+		if (!ok) {
+			ctx.ui.notify("Goal replacement cancelled.", "info");
+			return null;
+		}
+	}
+	return "replace";
+}
+
+export async function saveReviewedGoalAndOfferStart(
+	api: ExtensionAPI & Partial<GoalStartAPI>,
+	ctx: GoalWorkflowContext,
+	options: SaveReviewedGoalOptions,
+): Promise<GoalState | null> {
+	const latest = loadGoalState(ctx);
+	if (options.current?.goalId !== latest?.goalId) {
+		ctx.ui.notify(options.staleMessage ?? "Goal changed before saving. Re-run the command.", "error");
+		return null;
+	}
+
+	const action = latest ? "replace" : options.action;
 	const next = saveGoalState(
-		pi,
+		api,
 		{
-			action: latest ? "replace" : action,
+			action,
 			goalId: crypto.randomUUID(),
-			objective,
+			objective: validateObjective(options.proposal.objective),
+			sourceDocs: options.sourceDocs,
+			acceptanceCriteria: options.proposal.acceptanceCriteria,
 			now: Date.now(),
 			owner: "user",
 		},
 		latest,
 	);
 	updateGoalUi(ctx, next);
-	ctx.ui.notify(action === "replace" ? "Goal replaced." : "Goal created.", "success");
-	if (next) await offerGoalStartHandoff(pi, ctx, next.goalId, parsed.start);
+	ctx.ui.notify(
+		options.successMessage ?? (options.action === "replace" ? "Goal replaced." : "Goal created."),
+		"info",
+	);
+	if (next) await offerGoalStartHandoff(api, ctx, next.goalId, options.start);
+	return next;
 }
 
-async function offerGoalStartHandoff(
+export async function offerGoalStartHandoff(
 	api: Partial<GoalStartAPI>,
-	ctx: GoalCommandContext,
+	ctx: GoalWorkflowContext,
 	expectedGoalId: string,
 	startImmediately: boolean,
 ): Promise<void> {
@@ -344,7 +398,7 @@ async function offerGoalStartHandoff(
 
 export async function startActiveGoal(
 	api: Partial<GoalStartAPI>,
-	ctx: GoalCommandContext,
+	ctx: GoalWorkflowContext,
 	expectedGoalId?: string,
 ): Promise<boolean> {
 	const latest = loadGoalState(ctx);
@@ -369,7 +423,7 @@ export async function startActiveGoal(
 	}
 
 	api.sendUserMessage(renderGoalStartPrompt(latest), { deliverAs: "followUp" });
-	ctx.ui.notify("Goal start queued.", "success");
+	ctx.ui.notify("Goal start queued.", "info");
 	return true;
 }
 
@@ -383,7 +437,13 @@ async function editGoal(pi: ExtensionAPI, ctx: GoalCommandContext, current: Goal
 		return;
 	}
 
-	const edited = await ctx.ui.editor("Edit goal objective", current.objective);
+	const edited = await ctx.ui.editor(
+		"Edit goal",
+		renderEditableGoalDraft({
+			objective: current.objective,
+			acceptanceCriteria: current.acceptanceCriteria,
+		}),
+	);
 	if (edited === undefined) {
 		ctx.ui.notify("Goal edit cancelled.", "info");
 		return;
@@ -395,13 +455,20 @@ async function editGoal(pi: ExtensionAPI, ctx: GoalCommandContext, current: Goal
 		return;
 	}
 
+	const draft = parseEditableGoalDraft(edited);
 	const next = saveGoalState(
 		pi,
-		{ action: "edit", goalId: latest.goalId, objective: edited, now: Date.now() },
+		{
+			action: "edit",
+			goalId: latest.goalId,
+			objective: draft.objective,
+			acceptanceCriteria: draft.acceptanceCriteria,
+			now: Date.now(),
+		},
 		latest,
 	);
 	updateGoalUi(ctx, next);
-	ctx.ui.notify("Goal updated.", "success");
+	ctx.ui.notify("Goal updated.", "info");
 }
 
 function mutateExistingGoal(
@@ -430,7 +497,7 @@ function mutateExistingGoal(
 	}
 	const next = saveGoalState(pi, { action, goalId: latest.goalId, now: Date.now() }, latest);
 	updateGoalUi(ctx, next);
-	ctx.ui.notify(message, "success");
+	ctx.ui.notify(message, "info");
 	return next;
 }
 
@@ -478,9 +545,35 @@ async function confirmThenMutate(
 		latest,
 	);
 	updateGoalUi(ctx, next);
-	ctx.ui.notify(message, "success");
+	ctx.ui.notify(message, "info");
 }
 
-function updateGoalUi(ctx: GoalCommandContext, goal: GoalState | null): void {
+function updateGoalUi(ctx: GoalWorkflowContext, goal: GoalState | null): void {
 	applyGoalUi(ctx, goal);
+}
+
+export async function reviewGoalProposal(
+	ctx: GoalWorkflowContext,
+	initialProposal: GoalDraftProposal,
+): Promise<GoalProposalReviewResult | null> {
+	let proposal = initialProposal;
+
+	while (true) {
+		const choice = await ctx.ui.select?.("Review generated goal proposal", ["Start", "Edit", "Cancel"]);
+		if (choice === "Start") return { proposal, start: true };
+		if (choice === "Cancel" || choice === undefined) {
+			// Product decision for this lane: cancelling review does not persist the unsaved generated proposal.
+			ctx.ui.notify("Goal proposal cancelled; no goal was saved.", "info");
+			return null;
+		}
+		if (choice !== "Edit") continue;
+
+		const edited = await ctx.ui.editor("Edit goal proposal", renderEditableGoalDraft(proposal));
+		if (edited === undefined) continue;
+		try {
+			proposal = parseEditableGoalDraft(edited);
+		} catch (error) {
+			ctx.ui.notify(error instanceof Error ? error.message : String(error), "error");
+		}
+	}
 }

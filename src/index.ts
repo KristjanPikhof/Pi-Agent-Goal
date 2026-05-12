@@ -3,7 +3,23 @@ import { registerGoalCommand } from "./commands.js";
 import { registerGoalTools } from "./tools.js";
 import { registerGoalRuntime } from "./runtime.js";
 
-export { handleGoalCommand, parseGoalCommand, registerGoalCommand, startActiveGoal } from "./commands.js";
+export {
+	confirmGoalReplacement,
+	handleGoalCommand,
+	offerGoalStartHandoff,
+	parseGoalCommand,
+	registerGoalCommand,
+	reviewGoalProposal,
+	saveReviewedGoalAndOfferStart,
+	startActiveGoal,
+} from "./commands.js";
+export type {
+	GoalProposalReviewResult,
+	GoalStartAPI,
+	GoalWorkflowContext,
+	ParsedGoalCommand,
+	SaveReviewedGoalOptions,
+} from "./commands.js";
 export {
 	createGoalCompaction,
 	createGoalContextMessage,
@@ -23,15 +39,20 @@ export {
 	GOAL_CONTEXT_CUSTOM_TYPE,
 	renderCompactGoalSummary,
 	renderContinuationPrompt,
+	renderGoalAgentDraftingPrompt,
 	renderGoalContext,
 	renderGoalStartPrompt,
 } from "./prompts.js";
+export { preparePlainGoalDraft } from "./goal-prep.js";
+export type { GoalDraftProposal, GoalProposalGenerator, PreparedGoalDraft } from "./goal-prep.js";
 export {
 	DEFAULT_IMPORT_MAX_FILE_BYTES,
 	DEFAULT_IMPORT_MAX_FILES,
 	extractGoalBrief,
 	GoalImportError,
 	importGoalSources,
+	parseEditableGoalDraft,
+	renderEditableGoalDraft,
 	resolveImportPath,
 } from "./import.js";
 export {
@@ -40,10 +61,14 @@ export {
 	executeCompleteGoal,
 	executeCreateGoal,
 	executeGetGoal,
+	executeProposeGoalDraft,
 	executeUpdateGoalProgress,
 	formatGoalToolCall,
 	formatGoalToolResult,
 	getGoalParams,
+	proposeGoalDraftParams,
+	proposeGoalDraftPromptGuidelines,
+	proposeGoalDraftPromptSnippet,
 	registerGoalTools,
 	updateGoalProgressParams,
 } from "./tools.js";

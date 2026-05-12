@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { GOAL_CONTEXT_CUSTOM_TYPE, renderCompactGoalSummary, renderGoalContext } from "../src/prompts.js";
+import {
+	GOAL_CONTEXT_CUSTOM_TYPE,
+	renderCompactGoalSummary,
+	renderGoalAgentDraftingPrompt,
+	renderGoalContext,
+	renderGoalStartPrompt,
+} from "../src/prompts.js";
 import { createGoalContextMessage, filterGoalContextMessages } from "../src/runtime.js";
 
 import type { GoalState } from "../src/types.js";
@@ -34,6 +40,35 @@ function goal(overrides: Partial<GoalState> = {}): GoalState {
 }
 
 describe("goal prompt rendering", () => {
+	it("renders agent drafting prompt with propose_goal_draft tool-call instructions", () => {
+		const prompt = renderGoalAgentDraftingPrompt("Review the deep branch and flag risks, no fixes yet", {
+			start: true,
+		});
+
+		expect(prompt).toContain("Call the propose_goal_draft tool exactly once");
+		expect(prompt).toContain("Do not answer in prose");
+		expect(prompt).toContain("Do not call create_goal for this drafting flow");
+		expect(prompt).toContain("Set startImmediately to true");
+		expect(prompt).toContain("pass startImmediately: true");
+		expect(prompt).not.toContain("Set start to true");
+		expect(prompt).toContain("Review the deep branch and flag risks, no fixes yet");
+	});
+
+	it("renders agent drafting prompt with meaning-preservation and acceptance criteria guardrails", () => {
+		const prompt = renderGoalAgentDraftingPrompt("Audit src/auth for regressions <only>");
+
+		expect(prompt).toContain("Preserve the user's meaning and boundaries exactly");
+		expect(prompt).toContain("do not add unrelated scope");
+		expect(prompt).toContain("acceptanceCriteria");
+		expect(prompt).toContain("concrete checks directly implied by the user's request");
+		expect(prompt).toContain("do not leave the draft criteria-free");
+		expect(prompt).toContain("deep branch review");
+		expect(prompt).toContain("do not expand into fixing issues unless the user asked for fixes");
+		expect(prompt).toContain("Audit src/auth for regressions &lt;only&gt;");
+		expect(prompt).not.toContain("return an empty acceptanceCriteria array");
+		expect(prompt).not.toContain("criteria-free goal");
+	});
+
 	it("renders escaped concise hidden goal_context", () => {
 		const context = renderGoalContext(goal());
 
@@ -76,6 +111,32 @@ describe("goal prompt rendering", () => {
 		]);
 		expect(filterGoalContextMessages([fresh, ordinary], goal({ status: "paused" }))).toEqual([ordinary]);
 		expect(filterGoalContextMessages([fresh, ordinary], null)).toEqual([ordinary]);
+	});
+
+	it("renders start handoff with concrete generated acceptance criteria", () => {
+		const prompt = renderGoalStartPrompt(
+			goal({ acceptanceCriteria: ["Build the thing", "Tests prove the behavior"] }),
+		);
+
+		expect(prompt).toContain("Acceptance criteria:\n- Build the thing\n- Tests prove the behavior");
+		expect(prompt).not.toContain("No acceptance criteria were specified");
+		expect(prompt).not.toContain("- none");
+	});
+
+	it("renders intentional empty acceptance criteria copy in prompts", () => {
+		const emptyGoal = goal({ acceptanceCriteria: [] });
+		const startPrompt = renderGoalStartPrompt(emptyGoal);
+		const context = renderGoalContext(emptyGoal);
+		const summary = renderCompactGoalSummary(emptyGoal);
+
+		for (const rendered of [startPrompt, context, summary]) {
+			expect(rendered).toContain(
+				"No acceptance criteria were specified for this goal; use the objective as the source of truth.",
+			);
+		}
+		expect(startPrompt).not.toContain("Acceptance criteria:\n- none");
+		expect(context).not.toContain("Acceptance criteria:\n- none");
+		expect(summary).not.toContain("Acceptance criteria:\n- none");
 	});
 
 	it("renders compact goal summaries with objective, criteria, source brief, and progress", () => {
