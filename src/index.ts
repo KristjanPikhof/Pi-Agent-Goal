@@ -32,6 +32,8 @@ export {
 	extractGoalBrief,
 	GoalImportError,
 	importGoalSources,
+	parseEditableGoalDraft,
+	renderEditableGoalDraft,
 	resolveImportPath,
 } from "./import.js";
 export {

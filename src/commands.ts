@@ -1,5 +1,5 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { importGoalSources } from "./import.js";
+import { importGoalSources, parseEditableGoalDraft, renderEditableGoalDraft } from "./import.js";
 import { renderGoalStartPrompt } from "./prompts.js";
 import { loadGoalState, saveGoalState, validateObjective } from "./state.js";
 import {
@@ -383,7 +383,13 @@ async function editGoal(pi: ExtensionAPI, ctx: GoalCommandContext, current: Goal
 		return;
 	}
 
-	const edited = await ctx.ui.editor("Edit goal objective", current.objective);
+	const edited = await ctx.ui.editor(
+		"Edit goal",
+		renderEditableGoalDraft({
+			objective: current.objective,
+			acceptanceCriteria: current.acceptanceCriteria,
+		}),
+	);
 	if (edited === undefined) {
 		ctx.ui.notify("Goal edit cancelled.", "info");
 		return;
@@ -395,9 +401,16 @@ async function editGoal(pi: ExtensionAPI, ctx: GoalCommandContext, current: Goal
 		return;
 	}
 
+	const draft = parseEditableGoalDraft(edited);
 	const next = saveGoalState(
 		pi,
-		{ action: "edit", goalId: latest.goalId, objective: edited, now: Date.now() },
+		{
+			action: "edit",
+			goalId: latest.goalId,
+			objective: draft.objective,
+			acceptanceCriteria: draft.acceptanceCriteria,
+			now: Date.now(),
+		},
 		latest,
 	);
 	updateGoalUi(ctx, next);

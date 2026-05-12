@@ -46,6 +46,11 @@ interface ExtractedDoc {
 	brief: string;
 }
 
+export interface EditableGoalDraft {
+	objective: string;
+	acceptanceCriteria: string[];
+}
+
 export class GoalImportError extends Error {
 	constructor(message: string) {
 		super(message);
@@ -81,7 +86,7 @@ export async function importGoalSources(
 }
 
 export function extractGoalBrief(content: string, sourcePath: string): ExtractedDoc {
-	const normalized = content.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+	const normalized = normalizeMarkdown(content);
 	const sections = parseMarkdownSections(normalized);
 	const objective = firstValue(sections, ["objective", "goal", "problem", "problem statement", "summary"]);
 	const constraints = listValues(sections, ["constraints", "non-goals", "non goals"]);
@@ -105,6 +110,30 @@ export function extractGoalBrief(content: string, sourcePath: string): Extracted
 	});
 
 	return { objective, constraints, acceptanceCriteria, risks, openQuestions, sourcePaths, brief };
+}
+
+export function parseEditableGoalDraft(content: string): EditableGoalDraft {
+	const normalized = normalizeMarkdown(content);
+	const sections = parseMarkdownSections(normalized);
+	const hasHeadings = /^#{1,6}\s+.+$/m.test(normalized);
+	const objective = firstValue(sections, ["objective", "goal"]) ?? (!hasHeadings ? normalized.trim() : undefined);
+	if (!objective) {
+		throw new GoalImportError("Goal draft must include a non-empty Objective section.");
+	}
+	return {
+		objective,
+		acceptanceCriteria: listValues(sections, [
+			"acceptance criteria",
+			"acceptance",
+			"definition of done",
+			"success criteria",
+		]),
+	};
+}
+
+export function renderEditableGoalDraft(input: EditableGoalDraft): string {
+	const acceptanceCriteria = input.acceptanceCriteria.map((item) => `- ${item}`).join("\n");
+	return [`# Objective`, input.objective, ``, `# Acceptance criteria`, acceptanceCriteria].join("\n").trimEnd();
 }
 
 export function resolveImportPath(inputPath: string, cwd: string): string {
@@ -248,6 +277,10 @@ function combineImports(results: GoalImportResult[], fallbackObjective: string):
 		sourcePaths: unique(results.flatMap((result) => result.sourcePaths)),
 		sourceDocs: results.flatMap((result) => result.sourceDocs),
 	};
+}
+
+function normalizeMarkdown(content: string): string {
+	return content.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 }
 
 function parseMarkdownSections(content: string): Map<string, string[]> {
