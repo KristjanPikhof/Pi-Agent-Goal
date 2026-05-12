@@ -1,13 +1,13 @@
-# Pi Goal
+# Pi Agent Goal
 
-Pi Goal adds Codex-style `/goal` support to Pi as an installable package. It lets a user set a long-running objective, import goal context from docs, preserve state through branch-aware session history and compaction, expose narrow model tools, and optionally continue work when Pi is idle.
+Pi Agent Goal adds Codex-style `/goal` support to Pi as an installable package. It lets a user set a long-running objective, import goal context from docs, preserve state through branch-aware session history and compaction, expose narrow model tools, and optionally continue work when Pi is idle.
 
 ## Quick start
 
 Install the package, then start Pi:
 
 ```bash
-pi install npm:pi-goal
+pi install npm:pi-agent-goal
 pi
 ```
 
@@ -27,7 +27,7 @@ You should see usage when no goal exists yet. Store a goal, then start it when y
 For non-interactive runs that should begin work immediately, opt in with `--start`:
 
 ```bash
-pi -e npm:pi-goal -p "/goal Ship the onboarding cleanup --start"
+pi -e npm:pi-agent-goal -p "/goal Ship the onboarding cleanup --start"
 ```
 
 ## Install
@@ -35,9 +35,9 @@ pi -e npm:pi-goal -p "/goal Ship the onboarding cleanup --start"
 The full install reference, including settings.json edits, project-local installs, one-off runs, and local-checkout symlinks, lives in [`docs/setup.md`](./docs/setup.md). The short version:
 
 ```bash
-pi install npm:pi-goal      # recommended global install
-pi install -l npm:pi-goal   # project-local install
-pi -e npm:pi-goal           # one-off run, nothing written to settings
+pi install npm:pi-agent-goal      # recommended global install
+pi install -l npm:pi-agent-goal   # project-local install
+pi -e npm:pi-agent-goal           # one-off run, nothing written to settings
 ```
 
 For local checkout development:
@@ -92,13 +92,13 @@ Starting a goal and automatic continuation are separate controls. `/goal start` 
 Automatic continuation is a separate opt-in. Start Pi with:
 
 ```bash
-pi -e npm:pi-goal --goal-continuation
+pi -e npm:pi-agent-goal --goal-continuation
 ```
 
 Optional cap:
 
 ```bash
-pi -e npm:pi-goal --goal-continuation --goal-continuation-max-turns 3
+pi -e npm:pi-agent-goal --goal-continuation --goal-continuation-max-turns 3
 ```
 
 Continuation only queues when the goal is active, Pi is idle, and no pending user messages exist. It rechecks the goal ID before starting and stops on no progress, completion, pause, clear, replacement, user interrupt, duplicate queue, busy state, disabled flag, pending messages, or max-turn cap.
