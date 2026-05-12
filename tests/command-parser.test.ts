@@ -157,94 +157,23 @@ describe("/goal command lifecycle", () => {
 		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("pass start: true"));
 	});
 
-	it("reviews criteria-free drafts with Start/Edit/Cancel select flow and starts edited criteria", async () => {
-		const editedDraft = `# Objective
-Edited generated proposal
-
-# Acceptance criteria
-- Edited criterion
-- Start prompt uses edited criteria`;
-		const { pi, ctx, branch } = createHarness({
-			select: ["Edit", "Start"],
-			editor: editedDraft,
-		});
-
-		await handleGoalCommand(pi, "ship edited proposal", ctx);
-
-		expect(ctx.ui.select).toHaveBeenCalledWith("Review generated goal proposal", ["Start", "Edit", "Cancel"]);
-		expect(ctx.ui.editor).toHaveBeenCalledWith(
-			"Edit goal proposal",
-			expect.stringContaining("ship edited proposal"),
-		);
-		expect(latestGoalEntry(branch).state).toMatchObject({
-			objective: "Edited generated proposal",
-			acceptanceCriteria: ["Edited criterion", "Start prompt uses edited criteria"],
-		});
-		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
-		expect(pi.sendUserMessage).toHaveBeenCalledWith(
-			expect.stringContaining("Start prompt uses edited criteria"),
-			{ deliverAs: "followUp" },
-		);
-	});
-
-	it("notifies on invalid modal edit content and returns to proposal review", async () => {
-		const validDraft = `# Objective
-Recovered proposal
-
-# Acceptance criteria
-- Valid after retry`;
-		const { pi, ctx, branch } = createHarness({
-			select: ["Edit", "Edit", "Start"],
-			editor: ["# Acceptance criteria\n- missing objective", validDraft],
-		});
-
-		await handleGoalCommand(pi, "ship retry proposal", ctx);
-
-		expect(ctx.ui.notify).toHaveBeenCalledWith(expect.stringContaining("Objective section"), "error");
-		expect(ctx.ui.select).toHaveBeenCalledTimes(3);
-		expect(latestGoalEntry(branch).state).toMatchObject({
-			objective: "Recovered proposal",
-			acceptanceCriteria: ["Valid after retry"],
-		});
-	});
-
-	it("falls back when hasUI is true but select is unavailable", async () => {
+	it("does not invoke local proposal review or proposal generation from the plain command", async () => {
 		const generateGoalProposal = vi.fn<GoalProposalGenerator>(async () => ({
 			objective: "Ignored non-public generator",
 			acceptanceCriteria: ["Ignored criteria"],
 		}));
-		const { pi, ctx, branch } = createHarness({ confirm: false, generateGoalProposal });
-
-		await handleGoalCommand(pi, "ship no select shape", ctx);
-
-		expect(generateGoalProposal).not.toHaveBeenCalled();
-		expect(latestGoalEntry(branch).state).toMatchObject({
-			objective: "ship no select shape",
-			acceptanceCriteria: [],
-		});
-		expect(ctx.ui.confirm).toHaveBeenCalledWith("Start working on this goal now?", "ship no select shape");
-	});
-
-	it("cancels generated proposal review without saving or starting", async () => {
-		const generateGoalProposal = vi.fn<GoalProposalGenerator>(async () => ({
-			objective: "Generated but cancelled",
-			acceptanceCriteria: ["Should not persist"],
-		}));
 		const { pi, ctx, branch } = createHarness({ select: ["Cancel"], generateGoalProposal });
 
-		await handleGoalCommand(pi, "ship cancelled proposal --start", ctx);
+		await handleGoalCommand(pi, "ship delegated proposal --start", ctx);
 
-		expect(ctx.ui.notify).toHaveBeenCalledWith("Goal proposal cancelled; no goal was saved.", "info");
+		expect(generateGoalProposal).not.toHaveBeenCalled();
+		expect(ctx.ui.select).not.toHaveBeenCalled();
 		expect(branch).toHaveLength(0);
-		expect(pi.sendUserMessage).not.toHaveBeenCalled();
+		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
 	});
 
-	it("does not queue duplicate start follow-ups after denied handoff or command errors", async () => {
+	it("prevalidates obvious objective errors before queueing a drafting turn", async () => {
 		const { pi, ctx } = createHarness({ confirm: false });
-
-		await handleGoalCommand(pi, "ship later", ctx);
-		expect(ctx.ui.confirm).toHaveBeenCalledWith("Start working on this goal now?", "ship later");
-		expect(pi.sendUserMessage).not.toHaveBeenCalled();
 
 		await handleGoalCommand(pi, "--replace", ctx);
 
@@ -255,31 +184,23 @@ Recovered proposal
 		);
 	});
 
-	it("does not start when the goal changes while create start confirmation is pending", async () => {
-		const { pi, ctx, branch } = createHarness({ confirm: false });
-		await handleGoalCommand(pi, "original", ctx);
-		ctx.ui.confirm.mockClear();
-		ctx.ui.confirm.mockResolvedValueOnce(true).mockImplementationOnce(async () => {
-			ctx.hasUI = false;
-			await handleGoalCommand(pi, "replacement --replace --yes", ctx);
-			ctx.hasUI = true;
-			return true;
-		});
+	it("preserves current-goal replacement context in the queued drafting prompt", async () => {
+		const { pi, ctx, branch } = createHarness({ confirm: true });
+		seedGoal(branch, { goalId: "existing-goal", objective: "original objective" });
 
-		await handleGoalCommand(pi, "next", ctx);
+		await handleGoalCommand(pi, "next objective --replace --start", ctx);
 
-		expect(branch).toHaveLength(3);
-		expect(latestGoalEntry(branch).state?.objective).toBe("replacement");
-		expect(pi.sendUserMessage).not.toHaveBeenCalled();
-		expect(ctx.ui.notify).toHaveBeenLastCalledWith(
-			expect.stringContaining("Goal changed before starting"),
-			"error",
-		);
+		expect(branch).toHaveLength(1);
+		expect(ctx.ui.confirm).not.toHaveBeenCalled();
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("replacing an existing goal"));
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("original objective"));
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("pass start: true"));
 	});
 
 	it("starts active goals with a one-shot follow-up prompt", async () => {
-		const { pi, ctx } = createHarness();
-		await handleGoalCommand(pi, "ship --start", ctx);
+		const { pi, ctx, branch } = createHarness();
+		seedGoal(branch);
+		await handleGoalCommand(pi, "start", ctx);
 
 		expect(ctx.ui.confirm).not.toHaveBeenCalledWith("Start working on this goal now?", "ship");
 		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
@@ -295,13 +216,13 @@ Recovered proposal
 
 	it("starts an existing active goal and rejects inactive states", async () => {
 		const active = createHarness();
-		await handleGoalCommand(active.pi, "ship", active.ctx);
+		seedGoal(active.branch);
 		(active.pi.sendUserMessage as ReturnType<typeof vi.fn>).mockClear();
 		await handleGoalCommand(active.pi, "start", active.ctx);
 		expect(active.pi.sendUserMessage).toHaveBeenCalledOnce();
 
 		const paused = createHarness();
-		await handleGoalCommand(paused.pi, "ship", paused.ctx);
+		seedGoal(paused.branch);
 		await handleGoalCommand(paused.pi, "pause", paused.ctx);
 		(paused.pi.sendUserMessage as ReturnType<typeof vi.fn>).mockClear();
 		await handleGoalCommand(paused.pi, "start", paused.ctx);
@@ -309,7 +230,7 @@ Recovered proposal
 		expect(paused.ctx.ui.notify).toHaveBeenLastCalledWith(expect.stringContaining("paused goal"), "error");
 
 		const complete = createHarness({ confirm: true });
-		await handleGoalCommand(complete.pi, "ship", complete.ctx);
+		seedGoal(complete.branch);
 		await handleGoalCommand(complete.pi, "complete", complete.ctx);
 		(complete.pi.sendUserMessage as ReturnType<typeof vi.fn>).mockClear();
 		await handleGoalCommand(complete.pi, "start", complete.ctx);
@@ -329,8 +250,8 @@ Recovered proposal
 	});
 
 	it("shows summary and expanded status for an existing goal", async () => {
-		const { pi, ctx } = createHarness();
-		await handleGoalCommand(pi, "ship", ctx);
+		const { pi, ctx, branch } = createHarness();
+		seedGoal(branch);
 		ctx.ui.notify.mockClear();
 
 		await handleGoalCommand(pi, "", ctx);
@@ -340,101 +261,67 @@ Recovered proposal
 		expect(ctx.ui.notify).toHaveBeenCalledWith(expect.stringContaining("Acceptance criteria:"), "info");
 	});
 
-	it("asks confirmation before replacing an existing goal and then offers start handoff", async () => {
+	it("asks confirmation before queueing a replacement drafting turn", async () => {
 		const { pi, ctx, branch } = createHarness({ confirm: false });
-		await handleGoalCommand(pi, "first", ctx);
-		ctx.ui.confirm.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+		seedGoal(branch, { objective: "first" });
+		ctx.ui.confirm.mockResolvedValueOnce(true);
 		await handleGoalCommand(pi, "second", ctx);
 
 		expect(ctx.ui.confirm).toHaveBeenCalledWith(
 			"Replace current goal?",
 			expect.stringContaining("New: second"),
 		);
-		expect(ctx.ui.confirm).toHaveBeenCalledWith("Start working on this goal now?", "second");
-		expect(latestGoalEntry(branch).action).toBe("replace");
-		expect(latestGoalEntry(branch).state?.objective).toBe("second");
-		expect(pi.sendUserMessage).not.toHaveBeenCalled();
+		expect(latestGoalEntry(branch).state?.objective).toBe("first");
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("second"));
 	});
 
-	it("does not prompt or start non-interactive creates unless --start is explicit", async () => {
+	it("does not prompt in non-interactive draft creation and carries --start only when explicit", async () => {
 		const { pi, ctx, branch } = createHarness({ hasUI: false });
 		await handleGoalCommand(pi, "first", ctx);
 
-		expect(latestGoalEntry(branch).state?.objective).toBe("first");
+		expect(branch).toHaveLength(0);
 		expect(ctx.ui.confirm).not.toHaveBeenCalled();
-		expect(pi.sendUserMessage).not.toHaveBeenCalled();
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("pass start: false"));
 
-		await handleGoalCommand(pi, "second --replace --start", ctx);
-		expect(latestGoalEntry(branch).state?.objective).toBe("second");
+		(pi.sendUserMessage as ReturnType<typeof vi.fn>).mockClear();
+		await handleGoalCommand(pi, "second --start", ctx);
+		expect(branch).toHaveLength(0);
 		expect(ctx.ui.confirm).not.toHaveBeenCalled();
 		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
-		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("second"), {
-			deliverAs: "followUp",
-		});
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("pass start: true"));
 	});
 
-	it("requires --replace for non-interactive replacement and only starts with --start", async () => {
+	it("requires --replace for non-interactive replacement and queues when provided", async () => {
 		const { pi, ctx, branch } = createHarness({ hasUI: false });
-		await handleGoalCommand(pi, "first", ctx);
+		seedGoal(branch, { objective: "first" });
 		await handleGoalCommand(pi, "second", ctx);
 
 		expect(latestGoalEntry(branch).state?.objective).toBe("first");
 		expect(ctx.ui.notify).toHaveBeenLastCalledWith(expect.stringContaining("--replace"), "error");
 
 		await handleGoalCommand(pi, "second --replace", ctx);
-		expect(latestGoalEntry(branch).action).toBe("replace");
-		expect(latestGoalEntry(branch).state?.objective).toBe("second");
-		expect(pi.sendUserMessage).not.toHaveBeenCalled();
+		expect(latestGoalEntry(branch).state?.objective).toBe("first");
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("pass start: false"));
 
+		(pi.sendUserMessage as ReturnType<typeof vi.fn>).mockClear();
 		await handleGoalCommand(pi, "third --replace --start", ctx);
-		expect(latestGoalEntry(branch).state?.objective).toBe("third");
+		expect(latestGoalEntry(branch).state?.objective).toBe("first");
 		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("pass start: true"));
 	});
 
-	it("aborts stale --replace when the goal changes before save", async () => {
+	it("reports unavailable follow-up messaging API without saving", async () => {
 		const { pi, ctx, branch } = createHarness({ hasUI: false });
-		await handleGoalCommand(pi, "original", ctx);
-		(pi.sendUserMessage as ReturnType<typeof vi.fn>).mockClear();
-		ctx.ui.notify.mockClear();
-		const entriesBeforeReplace = branch.length;
-		const externalState = {
-			...latestGoalEntry(branch).state!,
-			goalId: "external-goal",
-			objective: "external replacement",
-			updatedAt: Date.now(),
-		};
-		let reads = 0;
-		ctx.sessionManager.getBranch.mockImplementation(() => {
-			reads += 1;
-			if (reads === 2) {
-				branch.push({
-					type: "custom",
-					customType: GOAL_CUSTOM_TYPE,
-					data: {
-						action: "replace",
-						state: externalState,
-						event: {
-							action: "replace",
-							goalId: externalState.goalId,
-							objective: externalState.objective,
-							now: externalState.updatedAt,
-							owner: "user",
-						},
-					},
-				});
-			}
-			return branch;
-		});
+		// Simulate an older API shape at runtime.
+		delete (pi as Partial<typeof pi>).sendUserMessage;
 
-		await handleGoalCommand(pi, "intended replacement --replace --start", ctx);
+		await handleGoalCommand(pi, "intended replacement --start", ctx);
 
-		expect(branch).toHaveLength(entriesBeforeReplace + 1);
-		expect(latestGoalEntry(branch).state?.objective).toBe("external replacement");
+		expect(branch).toHaveLength(0);
 		expect(ctx.ui.notify).toHaveBeenLastCalledWith(
-			"Goal changed before saving. Re-run /goal with your objective.",
+			"Cannot draft goal: follow-up messaging API is unavailable.",
 			"error",
 		);
-		expect(pi.sendUserMessage).not.toHaveBeenCalled();
 	});
 
 	it("edits in UI mode and rejects edit in no-UI mode", async () => {
