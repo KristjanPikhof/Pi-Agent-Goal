@@ -7,14 +7,22 @@ export { handleGoalCommand, parseGoalCommand, registerGoalCommand } from "./comm
 export {
 	createGoalCompaction,
 	createGoalContextMessage,
+	createGoalContinuationState,
+	DEFAULT_GOAL_CONTINUATION_MAX_TURNS,
 	filterGoalContextMessages,
+	finishRunningGoalContinuation,
+	GOAL_CONTINUATION_CUSTOM_TYPE,
+	maybeQueueGoalContinuation,
 	registerGoalRuntime,
+	startQueuedGoalContinuation,
+	stopGoalContinuation,
 } from "./runtime.js";
 export {
 	compactGoalDetails,
 	escapeXml,
 	GOAL_CONTEXT_CUSTOM_TYPE,
 	renderCompactGoalSummary,
+	renderContinuationPrompt,
 	renderGoalContext,
 } from "./prompts.js";
 export {
