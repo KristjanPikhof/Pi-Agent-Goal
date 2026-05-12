@@ -1,9 +1,17 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 import { Type, type Static } from "typebox";
-import { loadGoalState, saveGoalState } from "./state.js";
+import {
+	confirmGoalReplacement,
+	reviewGoalProposal,
+	saveReviewedGoalAndOfferStart,
+	type GoalStartAPI,
+	type GoalWorkflowContext,
+} from "./commands.js";
+import { loadGoalState, saveGoalState, validateObjective } from "./state.js";
 import { renderGoalStatus } from "./ui.js";
 
+import type { GoalDraftProposal } from "./goal-prep.js";
 import type { GoalProgress, GoalSourceDoc, GoalState } from "./types.js";
 
 export const getGoalParams = Type.Object({}, { additionalProperties: false });
@@ -24,6 +32,29 @@ export const createGoalParams = Type.Object(
 				description: "Optional acceptance criteria explicitly provided by the user/system.",
 			}),
 		),
+	},
+	{ additionalProperties: false },
+);
+export const proposeGoalDraftParams = Type.Object(
+	{
+		objective: Type.String({ description: "The concise objective for the proposed /goal draft." }),
+		description: Type.Optional(
+			Type.String({ description: "Optional short context summary for the user review surface." }),
+		),
+		acceptanceCriteria: Type.Array(Type.String(), {
+			description: "Concrete, editable completion checks directly implied by the user's request.",
+			minItems: 1,
+		}),
+		sourcePaths: Type.Optional(
+			Type.Array(Type.String(), {
+				description: "Optional source paths explicitly associated with this goal draft.",
+			}),
+		),
+		startImmediately: Type.Optional(
+			Type.Boolean({ description: "True when the draft should offer Start as the intended action." }),
+		),
+		draftId: Type.Optional(Type.String({ description: "Optional model-generated draft correlation id." })),
+		commandId: Type.Optional(Type.String({ description: "Optional /goal drafting command correlation id." })),
 	},
 	{ additionalProperties: false },
 );
@@ -56,10 +87,11 @@ export const proposeGoalDraftPromptGuidelines = [
 ] as const;
 
 export type CreateGoalToolInput = Static<typeof createGoalParams>;
+export type ProposeGoalDraftToolInput = Static<typeof proposeGoalDraftParams>;
 export type CompleteGoalToolInput = Static<typeof completeGoalParams>;
 export type UpdateGoalProgressToolInput = Static<typeof updateGoalProgressParams>;
 
-interface GoalToolContext {
+interface GoalToolContext extends Partial<GoalWorkflowContext> {
 	sessionManager: { getBranch(): Array<{ type: string; customType?: string; data?: unknown }> };
 }
 
@@ -67,6 +99,7 @@ type GoalToolResult = {
 	content: Array<{ type: "text"; text: string }>;
 	details: Record<string, unknown> | undefined;
 	isError?: boolean;
+	terminate?: boolean;
 };
 
 export function registerGoalTools(pi: ExtensionAPI): void {
@@ -102,6 +135,25 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 			return executeCreateGoal(params as CreateGoalToolInput, ctx as GoalToolContext, pi);
 		},
 		renderCall: (args) => new Text(formatGoalToolCall("create_goal", args.objective), 0, 0),
+		renderResult: (result) => new Text(formatGoalToolResult(result as GoalToolResult), 0, 0),
+	});
+
+	pi.registerTool({
+		name: "propose_goal_draft",
+		label: "Propose Goal Draft",
+		description:
+			"Open a structured /goal draft for user review. Saves only after the user chooses Start in the review UI.",
+		promptSnippet: proposeGoalDraftPromptSnippet,
+		promptGuidelines: [...proposeGoalDraftPromptGuidelines],
+		parameters: proposeGoalDraftParams,
+		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+			return executeProposeGoalDraft(
+				params as ProposeGoalDraftToolInput,
+				ctx as GoalToolContext,
+				pi,
+			);
+		},
+		renderCall: (args) => new Text(formatGoalToolCall("propose_goal_draft", args.objective), 0, 0),
 		renderResult: (result) => new Text(formatGoalToolResult(result as GoalToolResult), 0, 0),
 	});
 
@@ -191,6 +243,76 @@ export function executeCreateGoal(
 	};
 }
 
+export async function executeProposeGoalDraft(
+	params: ProposeGoalDraftToolInput,
+	ctx: GoalToolContext,
+	pi: Pick<ExtensionAPI, "appendEntry"> & Partial<GoalStartAPI>,
+): Promise<GoalToolResult> {
+	const normalized = normalizeGoalDraftParams(params);
+	if (!normalized.ok) return errorResult(normalized.message, normalized.code, undefined, true);
+
+	if (!ctx.hasUI || !ctx.ui?.select || !ctx.ui.editor) {
+		return {
+			content: [
+				{
+					type: "text",
+					text: "Goal draft requires interactive review before saving. No goal was saved.",
+				},
+			],
+			details: { status: "cancelled", reason: "review_ui_unavailable", goal: null },
+			terminate: true,
+		};
+	}
+
+	const current = loadGoalState(ctx);
+	const action = await confirmGoalReplacement(ctx as GoalWorkflowContext, current, false, normalized.proposal.objective);
+	if (!action) {
+		return {
+			content: [{ type: "text", text: "Goal draft cancelled. No goal was saved." }],
+			details: { status: "cancelled", reason: "replacement_not_confirmed", goal: current },
+			terminate: true,
+		};
+	}
+
+	const review = await reviewGoalProposal(ctx as GoalWorkflowContext, normalized.proposal);
+	if (!review) {
+		return {
+			content: [{ type: "text", text: "Goal draft cancelled. No goal was saved." }],
+			details: { status: "cancelled", reason: "user_cancelled", goal: current },
+			terminate: true,
+		};
+	}
+
+	const reviewed = normalizeReviewedProposal(review.proposal);
+	if (!reviewed.ok) return errorResult(reviewed.message, reviewed.code, current, true);
+
+	const next = await saveReviewedGoalAndOfferStart(pi as ExtensionAPI & Partial<GoalStartAPI>, ctx as GoalWorkflowContext, {
+		current,
+		proposal: reviewed.proposal,
+		action,
+		start: true,
+		sourceDocs: sourceDocsFromPaths(normalized.sourcePaths),
+		successMessage: action === "replace" ? "Goal draft accepted and replaced." : "Goal draft accepted and saved.",
+		staleMessage: "Goal changed before saving. Re-run /goal draft for the current goal.",
+	});
+	if (!next) {
+		return errorResult("Goal changed before saving. No goal was saved.", "stale_goal", current, true);
+	}
+
+	return {
+		content: [{ type: "text", text: `Saved goal draft and queued Start: ${next.objective}` }],
+		details: {
+			status: "saved",
+			action,
+			started: true,
+			goal: next,
+			draftId: normalized.draftId,
+			commandId: normalized.commandId,
+		},
+		terminate: true,
+	};
+}
+
 export function executeCompleteGoal(
 	params: CompleteGoalToolInput,
 	ctx: GoalToolContext,
@@ -266,8 +388,60 @@ export function formatGoalToolResult(result: GoalToolResult): string {
 	return result.isError ? `Error: ${text}` : text;
 }
 
-function errorResult(message: string, code: string, goal?: GoalState): GoalToolResult {
-	return { content: [{ type: "text", text: message }], details: { error: code, goal }, isError: true };
+function errorResult(message: string, code: string, goal?: GoalState, terminate = false): GoalToolResult {
+	return { content: [{ type: "text", text: message }], details: { error: code, goal }, isError: true, terminate };
+}
+
+function normalizeGoalDraftParams(
+	params: ProposeGoalDraftToolInput,
+):
+	| { ok: true; proposal: GoalDraftProposal; sourcePaths?: string[]; draftId?: string; commandId?: string }
+	| { ok: false; code: string; message: string } {
+	const objective = safeValidateObjective(params.objective);
+	if (!objective) return { ok: false, code: "invalid_objective", message: "Goal draft objective is required." };
+	const acceptanceCriteria = normalizeStringList(params.acceptanceCriteria);
+	if (acceptanceCriteria.length === 0) {
+		return {
+			ok: false,
+			code: "invalid_acceptance_criteria",
+			message: "Goal draft must include at least one non-empty acceptance criterion.",
+		};
+	}
+	return {
+		ok: true,
+		proposal: { objective, acceptanceCriteria },
+		sourcePaths: normalizeStringList(params.sourcePaths),
+		draftId: params.draftId?.trim() || undefined,
+		commandId: params.commandId?.trim() || undefined,
+	};
+}
+
+function normalizeReviewedProposal(
+	proposal: GoalDraftProposal,
+): { ok: true; proposal: GoalDraftProposal } | { ok: false; code: string; message: string } {
+	const objective = safeValidateObjective(proposal.objective);
+	if (!objective) return { ok: false, code: "invalid_objective", message: "Edited goal objective is required." };
+	const acceptanceCriteria = normalizeStringList(proposal.acceptanceCriteria);
+	if (acceptanceCriteria.length === 0) {
+		return {
+			ok: false,
+			code: "invalid_acceptance_criteria",
+			message: "Edited goal draft must include at least one acceptance criterion.",
+		};
+	}
+	return { ok: true, proposal: { objective, acceptanceCriteria } };
+}
+
+function normalizeStringList(values?: string[]): string[] {
+	return [...new Set((values ?? []).map((item) => item.trim()).filter((item) => item.length > 0))];
+}
+
+function safeValidateObjective(value: string): string | null {
+	try {
+		return validateObjective(value);
+	} catch {
+		return null;
+	}
 }
 
 function sourceDocsFromPaths(paths?: string[]): GoalSourceDoc[] {

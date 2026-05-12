@@ -5,10 +5,12 @@ import {
 	executeCompleteGoal,
 	executeCreateGoal,
 	executeGetGoal,
+	executeProposeGoalDraft,
 	executeUpdateGoalProgress,
 	formatGoalToolCall,
 	formatGoalToolResult,
 	getGoalParams,
+	proposeGoalDraftParams,
 	proposeGoalDraftPromptGuidelines,
 	proposeGoalDraftPromptSnippet,
 	registerGoalTools,
@@ -36,8 +38,16 @@ function createHarness() {
 			branch.push({ type: "custom", customType, data }),
 		),
 	} as unknown as ExtensionAPI;
-	const ctx = { sessionManager: { getBranch: vi.fn(() => branch) } };
-	return { branch, tools, pi, ctx };
+	const ui = {
+		notify: vi.fn(),
+		confirm: vi.fn(async () => true),
+		select: vi.fn(async () => "Start"),
+		editor: vi.fn(),
+		setStatus: vi.fn(),
+		setWidget: vi.fn(),
+	};
+	const ctx = { hasUI: true, sessionManager: { getBranch: vi.fn(() => branch) }, ui };
+	return { branch, tools, pi, ctx, ui };
 }
 
 function latestGoalEntry(branch: Array<{ data?: unknown }>): GoalStateEntry {

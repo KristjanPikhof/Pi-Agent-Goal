@@ -12,7 +12,7 @@ import {
 	renderGoalSummary,
 } from "./ui.js";
 
-import type { GoalState, GoalStateEvent } from "./types.js";
+import type { GoalSourceDoc, GoalState, GoalStateEvent } from "./types.js";
 
 export type GoalCommandKind =
 	| "show"
@@ -67,6 +67,7 @@ export interface SaveReviewedGoalOptions {
 	proposal: GoalDraftProposal;
 	action: "create" | "replace";
 	start: boolean;
+	sourceDocs?: GoalSourceDoc[];
 	successMessage?: string;
 	staleMessage?: string;
 }
@@ -375,6 +376,7 @@ export async function saveReviewedGoalAndOfferStart(
 			action,
 			goalId: crypto.randomUUID(),
 			objective: validateObjective(options.proposal.objective),
+			sourceDocs: options.sourceDocs,
 			acceptanceCriteria: options.proposal.acceptanceCriteria,
 			now: Date.now(),
 			owner: "user",
