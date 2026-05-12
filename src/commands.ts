@@ -300,7 +300,7 @@ async function createOrReplaceGoal(
 	}
 
 	const latest = loadGoalState(ctx);
-	if (current?.goalId !== latest?.goalId) {
+	if (current?.goalId !== latest?.goalId && !parsed.replace) {
 		ctx.ui.notify("Goal changed before saving. Re-run /goal with your objective.", "error");
 		return;
 	}
