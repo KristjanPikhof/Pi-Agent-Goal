@@ -2,7 +2,7 @@ import type { GoalState } from "./types.js";
 
 export const GOAL_USAGE = [
 	"Usage:",
-	"  /goal <objective>          Start a long-running goal; plain text is AI-prepared and editable before start",
+	"  /goal <objective>          Start a long-running goal; interactive UI can edit before start",
 	"  /goal status               Show expanded goal status",
 	"  /goal import <path> [--yes] Import a PRD/docs file or folder",
 	"  /goal edit                 Edit the objective (interactive UI only)",
@@ -10,7 +10,7 @@ export const GOAL_USAGE = [
 	"  /goal clear [--yes]        Clear the current goal",
 	"  /goal complete [--yes]     Mark the current goal complete",
 	"",
-	"Interactive mode: review or edit the prepared objective and acceptance criteria before starting.",
+	"Interactive mode: review, edit, or cancel the criteria-free draft before starting."
 	"Non-interactive mode: use --yes for destructive/import confirmations and --replace to replace goals.",
 ].join("\n");
 

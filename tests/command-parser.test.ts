@@ -127,46 +127,16 @@ describe("/goal command lifecycle", () => {
 		});
 	});
 
-	it("prepares plain goals with generated objective and acceptance criteria before starting", async () => {
-		const generateGoalProposal = vi.fn<GoalProposalGenerator>(async () => ({
-			objective: "Ship the interactive feature",
-			acceptanceCriteria: ["Feature is implemented", "Tests cover the flow"],
-		}));
-		const { pi, ctx, branch } = createHarness({ confirm: true, generateGoalProposal });
-
-		await handleGoalCommand(pi, "ship interactive feature --start", ctx);
-
-		expect(generateGoalProposal).toHaveBeenCalledWith(
-			expect.stringContaining("Preserve the original meaning exactly"),
-			{ objective: "ship interactive feature" },
-		);
-		expect(generateGoalProposal.mock.calls[0]?.[0]).toContain("do not add scope");
-		expect(ctx.ui.confirm).toHaveBeenCalledWith(
-			"Use generated goal proposal?",
-			expect.stringContaining("Tests cover the flow"),
-		);
-		expect(latestGoalEntry(branch).state).toMatchObject({
-			objective: "Ship the interactive feature",
-			acceptanceCriteria: ["Feature is implemented", "Tests cover the flow"],
-		});
-		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
-		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("Tests cover the flow"), {
-			deliverAs: "followUp",
-		});
-	});
-
-	it("falls back to original objective with a clear warning when proposal generation fails", async () => {
-		const generateGoalProposal = vi.fn<GoalProposalGenerator>(async () => {
-			throw new Error("model unavailable");
-		});
-		const { pi, ctx, branch } = createHarness({ hasUI: false, generateGoalProposal });
+	it("uses a real-Pi supported criteria-free draft when no proposal API exists", async () => {
+		const { pi, ctx, branch } = createHarness({ hasUI: false });
 
 		await handleGoalCommand(pi, "ship fallback --start", ctx);
 
 		expect(ctx.ui.notify).toHaveBeenCalledWith(
-			expect.stringContaining("Could not generate acceptance criteria"),
+			expect.stringContaining("No acceptance criteria were provided"),
 			"warning",
 		);
+		expect(ctx.ui.notify).toHaveBeenCalledWith(expect.stringContaining("Objective: ship fallback"), "info");
 		expect(latestGoalEntry(branch).state).toMatchObject({
 			objective: "ship fallback",
 			acceptanceCriteria: [],
@@ -174,47 +144,7 @@ describe("/goal command lifecycle", () => {
 		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
 	});
 
-	it("shows generated proposals in non-interactive mode before explicit start", async () => {
-		const generateGoalProposal = vi.fn<GoalProposalGenerator>(async () =>
-			JSON.stringify({
-				objective: "Ship non-interactive proposal",
-				acceptanceCriteria: ["Proposal is visible before start"],
-			}),
-		);
-		const { pi, ctx, branch } = createHarness({ hasUI: false, generateGoalProposal });
-
-		await handleGoalCommand(pi, "ship non-interactive proposal --start", ctx);
-
-		expect(ctx.ui.notify).toHaveBeenCalledWith(
-			expect.stringContaining("Proposal is visible before start"),
-			"info",
-		);
-		expect(latestGoalEntry(branch).state?.acceptanceCriteria).toEqual(["Proposal is visible before start"]);
-		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
-	});
-
-	it("shows accepted generated proposals before explicit interactive start", async () => {
-		const generateGoalProposal = vi.fn<GoalProposalGenerator>(async () => ({
-			objective: "Ship accepted proposal",
-			acceptanceCriteria: ["Accepted proposal is shown before start"],
-		}));
-		const { pi, ctx } = createHarness({ confirm: true, generateGoalProposal });
-
-		await handleGoalCommand(pi, "ship accepted proposal --yes --start", ctx);
-
-		expect(ctx.ui.confirm).not.toHaveBeenCalledWith("Use generated goal proposal?", expect.any(String));
-		expect(ctx.ui.notify).toHaveBeenCalledWith(
-			expect.stringContaining("Accepted proposal is shown before start"),
-			"info",
-		);
-		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
-	});
-
-	it("reviews generated proposals with Start/Edit/Cancel select flow and starts edited criteria", async () => {
-		const generateGoalProposal = vi.fn<GoalProposalGenerator>(async () => ({
-			objective: "Initial generated proposal",
-			acceptanceCriteria: ["Initial criterion"],
-		}));
+	it("reviews criteria-free drafts with Start/Edit/Cancel select flow and starts edited criteria", async () => {
 		const editedDraft = `# Objective
 Edited generated proposal
 
@@ -224,7 +154,6 @@ Edited generated proposal
 		const { pi, ctx, branch } = createHarness({
 			select: ["Edit", "Start"],
 			editor: editedDraft,
-			generateGoalProposal,
 		});
 
 		await handleGoalCommand(pi, "ship edited proposal", ctx);
@@ -232,7 +161,7 @@ Edited generated proposal
 		expect(ctx.ui.select).toHaveBeenCalledWith("Review generated goal proposal", ["Start", "Edit", "Cancel"]);
 		expect(ctx.ui.editor).toHaveBeenCalledWith(
 			"Edit goal proposal",
-			expect.stringContaining("Initial generated proposal"),
+			expect.stringContaining("ship edited proposal"),
 		);
 		expect(latestGoalEntry(branch).state).toMatchObject({
 			objective: "Edited generated proposal",
@@ -243,6 +172,44 @@ Edited generated proposal
 			expect.stringContaining("Start prompt uses edited criteria"),
 			{ deliverAs: "followUp" },
 		);
+	});
+
+	it("notifies on invalid modal edit content and returns to proposal review", async () => {
+		const validDraft = `# Objective
+Recovered proposal
+
+# Acceptance criteria
+- Valid after retry`;
+		const { pi, ctx, branch } = createHarness({
+			select: ["Edit", "Edit", "Start"],
+			editor: ["# Acceptance criteria\n- missing objective", validDraft],
+		});
+
+		await handleGoalCommand(pi, "ship retry proposal", ctx);
+
+		expect(ctx.ui.notify).toHaveBeenCalledWith(expect.stringContaining("Objective section"), "error");
+		expect(ctx.ui.select).toHaveBeenCalledTimes(3);
+		expect(latestGoalEntry(branch).state).toMatchObject({
+			objective: "Recovered proposal",
+			acceptanceCriteria: ["Valid after retry"],
+		});
+	});
+
+	it("falls back when hasUI is true but select is unavailable", async () => {
+		const generateGoalProposal = vi.fn<GoalProposalGenerator>(async () => ({
+			objective: "Ignored non-public generator",
+			acceptanceCriteria: ["Ignored criteria"],
+		}));
+		const { pi, ctx, branch } = createHarness({ confirm: false, generateGoalProposal });
+
+		await handleGoalCommand(pi, "ship no select shape", ctx);
+
+		expect(generateGoalProposal).not.toHaveBeenCalled();
+		expect(latestGoalEntry(branch).state).toMatchObject({
+			objective: "ship no select shape",
+			acceptanceCriteria: [],
+		});
+		expect(ctx.ui.confirm).toHaveBeenCalledWith("Start working on this goal now?", "ship no select shape");
 	});
 
 	it("cancels generated proposal review without saving or starting", async () => {
