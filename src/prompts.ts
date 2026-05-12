@@ -21,7 +21,7 @@ export function renderGoalAgentDraftingPrompt(
 		"Draft requirements:",
 		"- Preserve the user's meaning and boundaries exactly; do not add unrelated scope, remove requested scope, or reinterpret intent.",
 		"- Write a concise objective that keeps the same deliverable and constraints.",
-		"- Include a concise description only when it helps explain context, boundaries, or rationale from the user request.",
+		"- Include description only as a short non-persisted note when it helps explain context, boundaries, or rationale from the user request.",
 		"- Create editable acceptanceCriteria that are concrete checks directly implied by the user's request.",
 		"- Acceptance criteria must be useful for completion review; avoid vague criteria and do not leave the draft criteria-free.",
 		"- If details are ambiguous, keep the ambiguity visible in the objective or criteria instead of inventing implementation scope.",
@@ -42,8 +42,8 @@ export function renderGoalAgentDraftingPrompt(
 		...(options.currentGoal ? formatAcceptanceCriteriaXmlList(options.currentGoal.acceptanceCriteria) : []),
 		options.currentGoal ? "</current_goal>" : undefined,
 		options.start
-			? "Command context: user requested start after review; pass start: true."
-			: "Command context: user did not request immediate start; pass start: false or omit it.",
+			? "Command context: user requested start after review; pass startImmediately: true."
+			: "Command context: user did not request immediate start; pass startImmediately: false or omit it.",
 		"",
 		"User request:",
 		"<goal_request>",
