@@ -1,38 +1,40 @@
-# Pi `/goal` extension implementation docs
+# Pi `/goal` extension docs
 
-This folder captures the implementation plan for a Pi extension that brings Codex-style `/goal` behavior to Pi.
+The `/goal` extension is implemented as a Pi extension in `src/index.ts`. These docs describe the shipped behavior, acceptance status, and remaining rollout checks.
 
 Read in this order:
 
-1. [`implementation.md`](implementation.md), architecture, state model, commands, tools, compaction, continuation, UI, and phases.
-2. [`acceptance-criteria.md`](acceptance-criteria.md), test matrix and done criteria.
+1. [`../README.md`](../README.md), install, loading, command reference, model tools, autonomy opt-in, and troubleshooting.
+2. [`implementation.md`](implementation.md), implementation details for state, commands, import, tools, context, compaction, continuation, UI, and Codex parity gaps.
+3. [`acceptance-criteria.md`](acceptance-criteria.md), acceptance checklist with automated and manual verification status.
 
-## TL;DR
+## What shipped
 
-Implement `/goal` as a Pi extension with canonical state stored in Pi custom session entries. The extension should inject short hidden goal context before relevant turns, preserve a compact goal summary during compaction, expose model tools for goal read/create/complete, and continue active goals safely only when Pi is idle.
+- Branch-aware canonical goal state in Pi custom entries named `goal-state`.
+- `/goal` command lifecycle: create, replace with confirmation, status, edit, pause, resume, complete, clear, and import.
+- Markdown/text PRD and docs-folder import with workspace path validation, generated/vendor ignores, binary and size checks, and compact source briefs.
+- Model tools: `get_goal`, `create_goal`, `complete_goal`, and `update_goal_progress` with narrow permissions.
+- Hidden active-goal context injection plus stale context filtering.
+- `session_before_compact` goal summary/details preservation.
+- Footer status, active-goal widget, actionable command errors, and concise tool renderers.
+- Opt-in safe idle continuation behind `--goal-continuation`.
+- Unit and integration-style tests covering reducer, command, import, tools, prompts, compaction hooks, continuation guards, UI, branch-shaped reconstruction, stale `goalId` behavior, and session lifecycle harness flows.
 
-The Codex implementation uses a SQLite `thread_goals` table and app-server events. Pi should not copy that persistence model. Pi already has branch-aware session entries, custom messages, commands, tools, and compaction hooks. Use those primitives instead.
+## Rollout smoke commands
 
-## Primary source references
+Run from the repository root:
 
-### Codex source paths
+```bash
+npm run typecheck
+npm run lint
+npm run format
+npm test
+pi --no-session --no-extensions -e ./src/index.ts -p /goal
+pi --no-session --no-extensions -e ./src/index.ts --goal-continuation -p /goal
+```
 
-- `/Users/kristjan.pikhof/Desktop/Development/codex/codex-rs/tui/src/slash_command.rs`
-- `/Users/kristjan.pikhof/Desktop/Development/codex/codex-rs/tui/src/chatwidget/slash_dispatch.rs`
-- `/Users/kristjan.pikhof/Desktop/Development/codex/codex-rs/tui/src/app/thread_goal_actions.rs`
-- `/Users/kristjan.pikhof/Desktop/Development/codex/codex-rs/app-server/src/request_processors/thread_goal_processor.rs`
-- `/Users/kristjan.pikhof/Desktop/Development/codex/codex-rs/core/src/goals.rs`
-- `/Users/kristjan.pikhof/Desktop/Development/codex/codex-rs/core/src/tools/handlers/goal_spec.rs`
-- `/Users/kristjan.pikhof/Desktop/Development/codex/codex-rs/state/src/runtime/goals.rs`
-- `/Users/kristjan.pikhof/Desktop/Development/codex/codex-rs/state/migrations/0029_thread_goals.sql`
-- `/Users/kristjan.pikhof/Desktop/Development/codex/codex-rs/core/src/compact.rs`
-- `/Users/kristjan.pikhof/Desktop/Development/codex/codex-rs/core/src/session/turn.rs`
+For live TUI lifecycle verification, use the manual checklist in [`acceptance-criteria.md`](acceptance-criteria.md#manual-session-lifecycle-smoke-checklist). Those checks cover interactive UI and session manager behavior that is not practical to fully automate in the current test harness.
 
-### Pi documentation and examples
+## Future work
 
-- `/Users/kristjan.pikhof/.nvm/versions/node/v24.12.0/lib/node_modules/@earendil-works/pi-coding-agent/docs/extensions.md`
-- `/Users/kristjan.pikhof/.nvm/versions/node/v24.12.0/lib/node_modules/@earendil-works/pi-coding-agent/docs/session-format.md`
-- `/Users/kristjan.pikhof/.nvm/versions/node/v24.12.0/lib/node_modules/@earendil-works/pi-coding-agent/docs/compaction.md`
-- `/Users/kristjan.pikhof/.nvm/versions/node/v24.12.0/lib/node_modules/@earendil-works/pi-coding-agent/docs/tui.md`
-- `/Users/kristjan.pikhof/.nvm/versions/node/v24.12.0/lib/node_modules/@earendil-works/pi-coding-agent/examples/extensions/todo.ts`
-- `/Users/kristjan.pikhof/.nvm/versions/node/v24.12.0/lib/node_modules/@earendil-works/pi-coding-agent/examples/extensions/plan-mode/index.ts`
+The implementation intentionally does not include Codex app-server RPC compatibility, Codex SQLite persistence, exact token/time accounting, or Codex's exact goal menu UI. Those are future work only if Pi needs strict Codex compatibility rather than Pi-native behavior.

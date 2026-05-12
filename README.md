@@ -1,25 +1,20 @@
 # Pi Goal Extension
 
-Scaffold for a TypeScript Pi extension that will add Codex-style `/goal` behavior to Pi.
+Pi Goal adds Codex-style `/goal` support to Pi as a local TypeScript extension. It lets a user set a long-running objective, import goal context from docs, preserve state through branch-aware session history and compaction, expose narrow model tools, and optionally continue work when Pi is idle.
 
-This first foundation step intentionally only provides a loadable `/goal` placeholder. The planned product behavior, state model, commands, model tools, compaction handling, and continuation safeguards are documented in [`docs/implementation.md`](docs/implementation.md) and tracked against [`docs/acceptance-criteria.md`](docs/acceptance-criteria.md).
+## Install and load locally
 
-## Local development
+From this repository:
 
 ```bash
 npm install
-npm run typecheck
-npm run lint
-npm run format
-npm test
+pi --no-extensions -e ./src/index.ts
 ```
 
-## Loading in Pi
-
-For quick local testing from this repository:
+For a quick non-interactive load check:
 
 ```bash
-pi -e ./src/index.ts
+pi --no-session --no-extensions -e ./src/index.ts -p /goal
 ```
 
 For project-local auto-discovery, copy or symlink this repository into a Pi project extension location such as:
@@ -28,7 +23,7 @@ For project-local auto-discovery, copy or symlink this repository into a Pi proj
 .pi/extensions/pi-goal/
 ```
 
-The package also declares Pi extension metadata:
+The package declares Pi extension metadata:
 
 ```json
 {
@@ -38,17 +33,79 @@ The package also declares Pi extension metadata:
 }
 ```
 
-## Current placeholder behavior
+## Commands
 
-- `/goal` registers successfully when the extension loads.
-- Running `/goal` shows an informational placeholder message.
-- No goal state, model tools, hidden context, compaction behavior, or continuation behavior is implemented yet.
+| Command | Behavior |
+| --- | --- |
+| `/goal` | Show usage when no goal exists, otherwise show the current goal summary. |
+| `/goal <objective>` | Create an active goal. If a goal already exists, interactive Pi asks for confirmation. In non-interactive mode, use `--replace`. |
+| `/goal status` | Show objective, status, criteria, constraints, source docs, progress, blockers, and next commands. |
+| `/goal import <path> [--yes]` | Import a markdown/text PRD file or docs folder. Stores source paths plus compact briefs. Use `--yes` in non-interactive mode after reviewing the source. |
+| `/goal edit` | Edit the objective through the interactive UI editor. Non-interactive mode should use `/goal <objective> --replace`. |
+| `/goal pause` | Pause the goal, which stops hidden active-goal context and continuation. |
+| `/goal resume` | Resume a paused or complete goal as active. |
+| `/goal complete [--yes]` | Mark the goal complete. Use `--yes` when there is no interactive confirmation UI. |
+| `/goal clear [--yes]` | Clear the current goal and hide goal UI. Use `--yes` when there is no interactive confirmation UI. |
 
-## Planned implementation phases
+## Model tools
 
-1. Core state reducer and `/goal` command lifecycle.
-2. Model tools and hidden goal context.
-3. PRD/docs import flow.
-4. Compaction and branch hardening.
-5. Runtime continuation guardrails.
-6. Tests and UI polish.
+The extension registers these tools for model use:
+
+- `get_goal`, reads current goal state and source paths.
+- `create_goal`, creates a goal only when `explicit_request` is true and no goal already exists.
+- `complete_goal`, marks the active goal complete with optional evidence.
+- `update_goal_progress`, updates progress only. It cannot change objective, source docs, or acceptance criteria.
+
+## State, compaction, and autonomy
+
+Canonical state is stored as Pi custom session entries with custom type `goal-state`. The active state is reconstructed from `ctx.sessionManager.getBranch()`, so forks, `/tree`, reload, and resume follow the selected branch instead of a global latest value.
+
+Active goals inject a short hidden `goal-context` message before agent turns. Compaction uses `session_before_compact` to preserve the active goal objective, criteria, source doc briefs, and progress in the compaction summary details. Full imported docs are not repeatedly pasted into model context.
+
+Automatic continuation is opt-in. Start Pi with:
+
+```bash
+pi --no-extensions -e ./src/index.ts --goal-continuation
+```
+
+Optional cap:
+
+```bash
+pi --no-extensions -e ./src/index.ts --goal-continuation --goal-continuation-max-turns 3
+```
+
+Continuation only queues when the goal is active, Pi is idle, and no pending user messages exist. It rechecks the goal ID before starting and stops on no progress, completion, pause, clear, replacement, user interrupt, duplicate queue, or max-turn cap.
+
+## Known gaps versus Codex
+
+- No Codex SQLite `thread_goals` table or app-server RPC compatibility. Pi uses session custom entries instead.
+- No exact Codex token budget or wall-clock accounting. Pi uses an opt-in max-turn cap and progress checks.
+- No exact Codex goal menu or bottom-pane UI. Pi uses footer status, widgets, command output, and tool renderers.
+- No general model `update_goal` tool. This is intentional, to prevent silent objective or scope rewrites.
+- Live TUI lifecycle checks for `/compact`, `/reload`, `/resume`, `/tree`, and `/fork` are documented as manual smoke coverage, with integration-style automated tests for the underlying hooks and reconstruction behavior.
+
+## Troubleshooting
+
+| Symptom | What to do |
+| --- | --- |
+| `/goal import` says the path is outside the workspace | Run the command from the workspace root or move/copy the source file inside it. |
+| `/goal import` requires `--yes` | Non-interactive mode cannot show confirmation. Review the source docs, then rerun with `--yes`. |
+| Replacing a goal fails in non-interactive mode | Rerun `/goal <objective> --replace`. |
+| `/goal edit` fails | The editor is interactive-only. Use `/goal <objective> --replace` instead. |
+| Hidden context or UI looks stale after branch navigation | Run `/goal status`; state is reconstructed from the selected branch. If it is wrong, inspect recent `goal-state` custom entries in the session. |
+| Continuation does not start | Confirm Pi was launched with `--goal-continuation`, the goal is active, Pi is idle, and there are no pending user messages. |
+
+## Local development
+
+```bash
+npm run typecheck
+npm run lint
+npm run format
+npm test
+```
+
+Related docs:
+
+- [`docs/README.md`](docs/README.md), rollout notes and doc map.
+- [`docs/implementation.md`](docs/implementation.md), implemented architecture and behavior.
+- [`docs/acceptance-criteria.md`](docs/acceptance-criteria.md), acceptance status, test matrix, and smoke checklist.
