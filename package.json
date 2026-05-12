@@ -1,6 +1,6 @@
 {
 	"name": "pi-goal",
-	"version": "0.1.5",
+	"version": "2026.5.12",
 	"description": "Pi extension for branch-aware long-running /goal workflows.",
 	"type": "module",
 	"scripts": {
