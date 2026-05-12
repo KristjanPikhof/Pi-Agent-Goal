@@ -11,13 +11,18 @@ export const createGoalParams = Type.Object(
 	{
 		objective: Type.String({ description: "The concrete user-approved objective to start pursuing." }),
 		explicit_request: Type.Boolean({
-			description: "Must be true only when the user or system/developer instructions explicitly requested a goal.",
+			description:
+				"Must be true only when the user or system/developer instructions explicitly requested a goal.",
 		}),
 		source_paths: Type.Optional(
-			Type.Array(Type.String(), { description: "Optional source paths the user explicitly associated with this goal." }),
+			Type.Array(Type.String(), {
+				description: "Optional source paths the user explicitly associated with this goal.",
+			}),
 		),
 		acceptance_criteria: Type.Optional(
-			Type.Array(Type.String(), { description: "Optional acceptance criteria explicitly provided by the user/system." }),
+			Type.Array(Type.String(), {
+				description: "Optional acceptance criteria explicitly provided by the user/system.",
+			}),
 		),
 	},
 	{ additionalProperties: false },
@@ -90,7 +95,8 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 	pi.registerTool({
 		name: "complete_goal",
 		label: "Complete Goal",
-		description: "Mark the active goal complete only when the objective is achieved and no required work remains.",
+		description:
+			"Mark the active goal complete only when the objective is achieved and no required work remains.",
 		promptSnippet: "Mark the current /goal complete with evidence.",
 		promptGuidelines: [
 			"Use complete_goal only when the active goal is achieved and no required work remains; include evidence when possible.",
@@ -107,7 +113,8 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 	pi.registerTool({
 		name: "update_goal_progress",
 		label: "Update Goal Progress",
-		description: "Update execution progress for the active goal without changing objective, source docs, or criteria.",
+		description:
+			"Update execution progress for the active goal without changing objective, source docs, or criteria.",
 		promptSnippet: "Update /goal progress fields only.",
 		promptGuidelines: [
 			"Use update_goal_progress only for implementation progress; it cannot rewrite objective, source docs, or acceptance criteria.",
@@ -138,11 +145,18 @@ export function executeCreateGoal(
 	pi: Pick<ExtensionAPI, "appendEntry">,
 ): GoalToolResult {
 	if (!params.explicit_request) {
-		return errorResult("create_goal requires explicit user or system/developer authorization.", "permission_denied");
+		return errorResult(
+			"create_goal requires explicit user or system/developer authorization.",
+			"permission_denied",
+		);
 	}
 	const current = loadGoalState(ctx);
 	if (current) {
-		return errorResult("A goal already exists. Use user-owned /goal replacement flow instead.", "goal_exists", current);
+		return errorResult(
+			"A goal already exists. Use user-owned /goal replacement flow instead.",
+			"goal_exists",
+			current,
+		);
 	}
 	const next = saveGoalState(
 		pi,
@@ -171,7 +185,8 @@ export function executeCompleteGoal(
 ): GoalToolResult {
 	const current = loadGoalState(ctx);
 	if (!current) return errorResult("No active goal exists to complete.", "no_goal");
-	if (current.status === "complete") return errorResult("The current goal is already complete.", "already_complete", current);
+	if (current.status === "complete")
+		return errorResult("The current goal is already complete.", "already_complete", current);
 
 	const evidence = params.evidence?.trim();
 	const next = saveGoalState(
@@ -197,7 +212,8 @@ export function executeUpdateGoalProgress(
 ): GoalToolResult {
 	const current = loadGoalState(ctx);
 	if (!current) return errorResult("No active goal exists to update.", "no_goal");
-	if (current.status === "complete") return errorResult("Cannot update progress for a complete goal.", "already_complete", current);
+	if (current.status === "complete")
+		return errorResult("Cannot update progress for a complete goal.", "already_complete", current);
 
 	const progress: Partial<GoalProgress> = {
 		done: params.done,
@@ -207,11 +223,19 @@ export function executeUpdateGoalProgress(
 	};
 	const next = saveGoalState(
 		pi,
-		{ action: "progress", goalId: current.goalId, now: Date.now(), progress, reason: "Updated by update_goal_progress." },
+		{
+			action: "progress",
+			goalId: current.goalId,
+			now: Date.now(),
+			progress,
+			reason: "Updated by update_goal_progress.",
+		},
 		current,
 	);
 	return {
-		content: [{ type: "text", text: `Updated goal progress: ${next?.progress.lastSummary || "progress recorded"}` }],
+		content: [
+			{ type: "text", text: `Updated goal progress: ${next?.progress.lastSummary || "progress recorded"}` },
+		],
 		details: { goal: next, progress: next?.progress },
 	};
 }

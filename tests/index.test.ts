@@ -15,6 +15,7 @@ function createPiStub() {
 		registerCommand: vi.fn((name, options) => {
 			commands.set(name, options);
 		}),
+		registerTool: vi.fn(),
 	} as unknown as ExtensionAPI;
 
 	return { pi, commands };

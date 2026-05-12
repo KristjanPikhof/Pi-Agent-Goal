@@ -17,10 +17,15 @@ import type { GoalStateEntry } from "../src/types.js";
 
 function createHarness() {
 	const branch: Array<{ type: string; customType?: string; data?: unknown }> = [];
-	const tools = new Map<string, { name: string; parameters: unknown; execute: (...args: never[]) => Promise<unknown> }>();
+	const tools = new Map<
+		string,
+		{ name: string; parameters: unknown; execute: (...args: never[]) => Promise<unknown> }
+	>();
 	const pi = {
 		registerTool: vi.fn((tool) => tools.set(tool.name, tool)),
-		appendEntry: vi.fn((customType: string, data: unknown) => branch.push({ type: "custom", customType, data })),
+		appendEntry: vi.fn((customType: string, data: unknown) =>
+			branch.push({ type: "custom", customType, data }),
+		),
 	} as unknown as ExtensionAPI;
 	const ctx = { sessionManager: { getBranch: vi.fn(() => branch) } };
 	return { branch, tools, pi, ctx };
@@ -40,7 +45,12 @@ describe("goal tool schemas and registration", () => {
 			"acceptance_criteria",
 		]);
 		expect(Object.keys(completeGoalParams.properties)).toEqual(["evidence"]);
-		expect(Object.keys(updateGoalProgressParams.properties)).toEqual(["done", "current", "blocked", "summary"]);
+		expect(Object.keys(updateGoalProgressParams.properties)).toEqual([
+			"done",
+			"current",
+			"blocked",
+			"summary",
+		]);
 
 		const { pi, tools } = createHarness();
 		registerGoalTools(pi);
@@ -113,7 +123,12 @@ describe("goal tool execution", () => {
 	it("update_goal_progress only mutates progress fields", () => {
 		const { pi, ctx, branch } = createHarness();
 		executeCreateGoal(
-			{ objective: "Track me", explicit_request: true, source_paths: ["docs/a.md"], acceptance_criteria: ["a"] },
+			{
+				objective: "Track me",
+				explicit_request: true,
+				source_paths: ["docs/a.md"],
+				acceptance_criteria: ["a"],
+			},
 			ctx,
 			pi,
 		);
@@ -154,11 +169,15 @@ describe("goal tool renderers", () => {
 	it("formats tool calls and results concisely", () => {
 		expect(formatGoalToolCall("create_goal", "Ship it")).toBe("create_goal: Ship it");
 		expect(formatGoalToolCall("get_goal")).toBe("get_goal");
-		expect(formatGoalToolResult({ content: [{ type: "text", text: "Goal complete." }], details: undefined })).toBe(
-			"Goal complete.",
-		);
-		expect(formatGoalToolResult({ content: [{ type: "text", text: "Denied" }], details: undefined, isError: true })).toBe(
-			"Error: Denied",
-		);
+		expect(
+			formatGoalToolResult({ content: [{ type: "text", text: "Goal complete." }], details: undefined }),
+		).toBe("Goal complete.");
+		expect(
+			formatGoalToolResult({
+				content: [{ type: "text", text: "Denied" }],
+				details: undefined,
+				isError: true,
+			}),
+		).toBe("Error: Denied");
 	});
 });
