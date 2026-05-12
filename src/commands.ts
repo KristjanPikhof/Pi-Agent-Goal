@@ -1,0 +1,250 @@
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { loadGoalState, saveGoalState, validateObjective } from "./state.js";
+import { formatGoalStatusLabel, GOAL_USAGE, renderGoalStatus, renderGoalSummary, renderGoalWidget } from "./ui.js";
+
+import type { GoalState, GoalStateEvent } from "./types.js";
+
+export type GoalCommandKind =
+	| "show"
+	| "status"
+	| "create"
+	| "edit"
+	| "pause"
+	| "resume"
+	| "clear"
+	| "complete"
+	| "import";
+
+export interface ParsedGoalCommand {
+	kind: GoalCommandKind;
+	objective?: string;
+	path?: string;
+	confirmed: boolean;
+	replace: boolean;
+}
+
+interface GoalCommandContext {
+	hasUI: boolean;
+	sessionManager: { getBranch(): Array<{ type: string; customType?: string; data?: unknown }> };
+	waitForIdle(): Promise<void>;
+	ui: {
+		notify(message: string, level?: "info" | "success" | "warning" | "error"): void;
+		confirm(title: string, message: string): Promise<boolean>;
+		editor(title: string, initialValue: string): Promise<string | undefined>;
+		setStatus(key: string, value: string | undefined): void;
+		setWidget(key: string, value: string[] | undefined): void;
+	};
+}
+
+const CONTROL_COMMANDS = new Set(["status", "edit", "pause", "resume", "clear", "complete", "import"]);
+
+export function registerGoalCommand(pi: ExtensionAPI): void {
+	pi.registerCommand("goal", {
+		description: "Set or view the goal for a long-running task",
+		getArgumentCompletions: (prefix) => {
+			const items = [...CONTROL_COMMANDS].filter((command) => command.startsWith(prefix));
+			return items.length > 0 ? items.map((value) => ({ value, label: value })) : null;
+		},
+		handler: async (args, ctx) => handleGoalCommand(pi, args, ctx as GoalCommandContext),
+	});
+}
+
+export async function handleGoalCommand(pi: ExtensionAPI, args: string, ctx: GoalCommandContext): Promise<void> {
+	const parsed = parseGoalCommand(args);
+
+	if (parsed.kind === "show" || parsed.kind === "status") {
+		const current = loadGoalState(ctx);
+		if (!current) {
+			ctx.ui.notify(GOAL_USAGE, "info");
+			updateGoalUi(ctx, null);
+			return;
+		}
+		ctx.ui.notify(parsed.kind === "status" ? renderGoalStatus(current) : renderGoalSummary(current), "info");
+		updateGoalUi(ctx, current);
+		return;
+	}
+
+	if (parsed.kind === "import") {
+		ctx.ui.notify("/goal import is planned but not implemented in this command lifecycle step.", "warning");
+		return;
+	}
+
+	await ctx.waitForIdle();
+	const current = loadGoalState(ctx);
+
+	try {
+		switch (parsed.kind) {
+			case "create":
+				await createOrReplaceGoal(pi, ctx, parsed, current);
+				return;
+			case "edit":
+				await editGoal(pi, ctx, current);
+				return;
+			case "pause":
+				mutateExistingGoal(pi, ctx, current, "pause", "Goal paused.");
+				return;
+			case "resume":
+				mutateExistingGoal(pi, ctx, current, "resume", "Goal resumed.");
+				return;
+			case "clear":
+				await confirmThenMutate(pi, ctx, current, "clear", parsed.confirmed, "Clear goal?", "Goal cleared.");
+				return;
+			case "complete":
+				await confirmThenMutate(
+					pi,
+					ctx,
+					current,
+					"complete",
+					parsed.confirmed,
+					"Mark goal complete?",
+					"Goal marked complete.",
+				);
+				return;
+		}
+	} catch (error) {
+		ctx.ui.notify(error instanceof Error ? error.message : String(error), "error");
+	}
+}
+
+export function parseGoalCommand(args: string): ParsedGoalCommand {
+	const trimmed = args.trim();
+	if (!trimmed) return { kind: "show", confirmed: false, replace: false };
+
+	const tokens = trimmed.split(/\s+/);
+	const [first = ""] = tokens;
+	const flags = new Set(tokens.filter((token) => token.startsWith("-")));
+	const confirmed = flags.has("--yes") || flags.has("-y");
+	const replace = flags.has("--replace");
+
+	if (first === "status") return { kind: "status", confirmed, replace };
+	if (first === "edit") return { kind: "edit", confirmed, replace };
+	if (first === "pause") return { kind: "pause", confirmed, replace };
+	if (first === "resume") return { kind: "resume", confirmed, replace };
+	if (first === "clear") return { kind: "clear", confirmed, replace };
+	if (first === "complete") return { kind: "complete", confirmed, replace };
+	if (first === "import") return { kind: "import", path: tokens.slice(1).join(" ").trim(), confirmed, replace };
+
+	return { kind: "create", objective: trimmed, confirmed, replace };
+}
+
+async function createOrReplaceGoal(
+	pi: ExtensionAPI,
+	ctx: GoalCommandContext,
+	parsed: ParsedGoalCommand,
+	current: GoalState | null,
+): Promise<void> {
+	const objective = validateObjective(parsed.objective ?? "");
+	let action: "create" | "replace" = "create";
+
+	if (current) {
+		if (!parsed.replace) {
+			if (!ctx.hasUI) {
+				ctx.ui.notify("A goal already exists. Re-run with --replace to replace it in non-interactive mode.", "error");
+				return;
+			}
+			const ok = await ctx.ui.confirm("Replace current goal?", `Current: ${current.objective}\n\nNew: ${objective}`);
+			if (!ok) {
+				ctx.ui.notify("Goal replacement cancelled.", "info");
+				return;
+			}
+		}
+		action = "replace";
+	}
+
+	const latest = loadGoalState(ctx);
+	if (current?.goalId !== latest?.goalId && !parsed.replace) {
+		ctx.ui.notify("Goal changed before saving. Re-run /goal with your objective.", "error");
+		return;
+	}
+	const next = saveGoalState(
+		pi,
+		{ action: latest ? "replace" : action, goalId: crypto.randomUUID(), objective, now: Date.now(), owner: "user" },
+		latest,
+	);
+	updateGoalUi(ctx, next);
+	ctx.ui.notify(action === "replace" ? "Goal replaced." : "Goal created.", "success");
+}
+
+async function editGoal(pi: ExtensionAPI, ctx: GoalCommandContext, current: GoalState | null): Promise<void> {
+	if (!current) {
+		ctx.ui.notify("No goal exists. Start one with /goal <objective>.", "error");
+		return;
+	}
+	if (!ctx.hasUI) {
+		ctx.ui.notify("/goal edit requires interactive UI. Use /goal <objective> --replace instead.", "error");
+		return;
+	}
+
+	const edited = await ctx.ui.editor("Edit goal objective", current.objective);
+	if (edited === undefined) {
+		ctx.ui.notify("Goal edit cancelled.", "info");
+		return;
+	}
+
+	const latest = loadGoalState(ctx);
+	if (!latest || latest.goalId !== current.goalId) {
+		ctx.ui.notify("Goal changed while editing. Re-run /goal edit.", "error");
+		return;
+	}
+
+	const next = saveGoalState(pi, { action: "edit", goalId: latest.goalId, objective: edited, now: Date.now() }, latest);
+	updateGoalUi(ctx, next);
+	ctx.ui.notify("Goal updated.", "success");
+}
+
+function mutateExistingGoal(
+	pi: ExtensionAPI,
+	ctx: GoalCommandContext,
+	current: GoalState | null,
+	action: "pause" | "resume",
+	message: string,
+): void {
+	if (!current) {
+		ctx.ui.notify("No goal exists. Start one with /goal <objective>.", "error");
+		return;
+	}
+	const next = saveGoalState(pi, { action, goalId: current.goalId, now: Date.now() }, current);
+	updateGoalUi(ctx, next);
+	ctx.ui.notify(message, "success");
+}
+
+async function confirmThenMutate(
+	pi: ExtensionAPI,
+	ctx: GoalCommandContext,
+	current: GoalState | null,
+	action: "clear" | "complete",
+	confirmed: boolean,
+	confirmTitle: string,
+	message: string,
+): Promise<void> {
+	if (!current) {
+		ctx.ui.notify("No goal exists. Start one with /goal <objective>.", "error");
+		return;
+	}
+
+	if (!confirmed) {
+		if (!ctx.hasUI) {
+			ctx.ui.notify(`/${action === "clear" ? "goal clear" : "goal complete"} requires --yes in non-interactive mode.`, "error");
+			return;
+		}
+		const ok = await ctx.ui.confirm(confirmTitle, current.objective);
+		if (!ok) {
+			ctx.ui.notify("Goal mutation cancelled.", "info");
+			return;
+		}
+	}
+
+	const latest = loadGoalState(ctx);
+	if (!latest || latest.goalId !== current.goalId) {
+		ctx.ui.notify("Goal changed before saving. Re-run the command.", "error");
+		return;
+	}
+	const next = saveGoalState(pi, { action, goalId: latest.goalId, now: Date.now() } as GoalStateEvent, latest);
+	updateGoalUi(ctx, next);
+	ctx.ui.notify(message, "success");
+}
+
+function updateGoalUi(ctx: GoalCommandContext, goal: GoalState | null): void {
+	ctx.ui.setStatus("goal", formatGoalStatusLabel(goal));
+	ctx.ui.setWidget("goal", goal ? renderGoalWidget(goal) : undefined);
+}
