@@ -209,7 +209,10 @@ describe("/goal import command", () => {
 
 		await handleGoalCommand(pi, "import prd.md", ctx);
 
-		expect(ctx.ui.confirm).toHaveBeenCalledWith("Start working on this goal now?", "Ship goal import from docs.");
+		expect(ctx.ui.confirm).toHaveBeenCalledWith(
+			"Start working on this goal now?",
+			"Ship goal import from docs.",
+		);
 		expect(pi.sendUserMessage).not.toHaveBeenCalled();
 	});
 
