@@ -81,10 +81,12 @@ describe("goal state reducer", () => {
 			goalId: "goal-1",
 			now: baseTime + 5,
 			sourceDocs: [sourceDoc],
-			acceptanceCriteria: ["criteria from docs"],
+			constraints: ["stay scoped", "imported constraint"],
+			acceptanceCriteria: ["tests pass", "criteria from docs"],
 		});
 		expect(state?.sourceDocs).toEqual([sourceDoc]);
-		expect(state?.acceptanceCriteria).toEqual(["criteria from docs"]);
+		expect(state?.constraints).toEqual(["stay scoped", "imported constraint"]);
+		expect(state?.acceptanceCriteria).toEqual(["tests pass", "criteria from docs"]);
 
 		state = reduceGoalState(state, { action: "complete", goalId: "goal-1", now: baseTime + 6 });
 		expect(state).toMatchObject({ status: "complete", completedAt: baseTime + 6 });

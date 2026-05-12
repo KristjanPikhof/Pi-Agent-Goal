@@ -106,9 +106,14 @@ export function reduceGoalState(current: GoalState | null, event: GoalStateEvent
 			return {
 				...current,
 				sourceDocs: mergeSourceDocs(current.sourceDocs, event.sourceDocs),
-				constraints: event.constraints === undefined ? current.constraints : [...event.constraints],
+				constraints:
+					event.constraints === undefined
+						? current.constraints
+						: mergeStringLists(current.constraints, event.constraints),
 				acceptanceCriteria:
-					event.acceptanceCriteria === undefined ? current.acceptanceCriteria : [...event.acceptanceCriteria],
+					event.acceptanceCriteria === undefined
+						? current.acceptanceCriteria
+						: mergeStringLists(current.acceptanceCriteria, event.acceptanceCriteria),
 				updatedAt: event.now,
 			};
 		}
@@ -183,6 +188,10 @@ function mergeSourceDocs(existing: GoalSourceDoc[], incoming: GoalSourceDoc[]): 
 		byPath.set(doc.path, doc);
 	}
 	return [...byPath.values()];
+}
+
+function mergeStringLists(existing: string[], incoming: string[]): string[] {
+	return [...new Set([...existing, ...incoming].map((value) => value.trim()).filter(Boolean))];
 }
 
 function parseGoalStateEntry(data: unknown): GoalStateEntry | null {
