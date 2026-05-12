@@ -51,7 +51,7 @@ npm install
 pi --no-extensions -e ./extensions/index.ts
 ```
 
-The package uses the same source-extension shape as `pi-agents-team`: the root extension shim loads `extensions/pi-goal/index.ts`, and the package manifest points Pi at `./extensions/index.ts`:
+The root extension shim loads `extensions/pi-goal/index.ts`, and the package manifest points Pi at `./extensions/index.ts`:
 
 ```json
 {
