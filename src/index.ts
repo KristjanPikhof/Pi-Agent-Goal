@@ -1,7 +1,21 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { registerGoalCommand } from "./commands.js";
+import { registerGoalTools } from "./tools.js";
 
 export { handleGoalCommand, parseGoalCommand, registerGoalCommand } from "./commands.js";
+export {
+	completeGoalParams,
+	createGoalParams,
+	executeCompleteGoal,
+	executeCreateGoal,
+	executeGetGoal,
+	executeUpdateGoalProgress,
+	formatGoalToolCall,
+	formatGoalToolResult,
+	getGoalParams,
+	registerGoalTools,
+	updateGoalProgressParams,
+} from "./tools.js";
 export {
 	createGoalState,
 	createGoalStateSnapshot,
@@ -29,4 +43,5 @@ export type {
 
 export default function goalExtension(pi: ExtensionAPI): void {
 	registerGoalCommand(pi);
+	registerGoalTools(pi);
 }
