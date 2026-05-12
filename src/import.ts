@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readdir, readFile, stat } from "node:fs/promises";
+import { readdir, readFile, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 
 import type { GoalSourceDoc } from "./types.js";
@@ -58,20 +58,24 @@ export async function importGoalSources(
 	options: GoalImportOptions,
 ): Promise<GoalImportResult> {
 	const resolved = resolveImportPath(inputPath, options.cwd);
-	const entryStat = await statImportPath(resolved);
+	const realWorkspace = await realWorkspacePath(options.cwd);
+	const realResolved = await realImportPath(resolved, realWorkspace);
+	const entryStat = await statImportPath(realResolved);
 	const maxFileBytes = options.maxFileBytes ?? DEFAULT_IMPORT_MAX_FILE_BYTES;
 	const maxFiles = options.maxFiles ?? DEFAULT_IMPORT_MAX_FILES;
 
 	if (entryStat.isDirectory()) {
-		const files = await collectDocsFiles(resolved, { cwd: options.cwd, maxFiles });
+		const files = await collectDocsFiles(realResolved, { cwd: options.cwd, maxFiles, realWorkspace });
 		if (files.length === 0) throw new GoalImportError(`No supported docs files found in: ${inputPath}`);
-		const results = await Promise.all(files.map((file) => importOneFile(file, options.cwd, maxFileBytes)));
+		const results = await Promise.all(
+			files.map((file) => importOneFile(file, options.cwd, maxFileBytes, realWorkspace)),
+		);
 		return combineImports(results, `Imported docs from ${path.relative(options.cwd, resolved) || "."}`);
 	}
 
 	if (!entryStat.isFile()) throw new GoalImportError(`Import path is not a file or directory: ${inputPath}`);
 	return combineImports(
-		[await importOneFile(resolved, options.cwd, maxFileBytes)],
+		[await importOneFile(realResolved, options.cwd, maxFileBytes, realWorkspace)],
 		"Imported goal source document",
 	);
 }
@@ -124,7 +128,39 @@ async function statImportPath(resolved: string) {
 	}
 }
 
-async function importOneFile(resolved: string, cwd: string, maxFileBytes: number): Promise<GoalImportResult> {
+async function realWorkspacePath(cwd: string): Promise<string> {
+	try {
+		return await realpath(cwd);
+	} catch {
+		throw new GoalImportError(`Workspace path is missing or unreadable: ${cwd}`);
+	}
+}
+
+async function realImportPath(resolved: string, realWorkspace: string): Promise<string> {
+	let realResolved: string;
+	try {
+		realResolved = await realpath(resolved);
+	} catch {
+		throw new GoalImportError(`Import path is missing or unreadable: ${resolved}`);
+	}
+	if (!isInsideWorkspace(realResolved, realWorkspace)) {
+		throw new GoalImportError("Import path must stay inside the current workspace.");
+	}
+	return realResolved;
+}
+
+function isInsideWorkspace(candidate: string, realWorkspace: string): boolean {
+	const relative = path.relative(realWorkspace, candidate);
+	return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+}
+
+async function importOneFile(
+	resolved: string,
+	cwd: string,
+	maxFileBytes: number,
+	realWorkspace: string,
+): Promise<GoalImportResult> {
+	resolved = await realImportPath(resolved, realWorkspace);
 	if (!isSupportedTextPath(resolved))
 		throw new GoalImportError(`Unsupported file type: ${path.relative(cwd, resolved)}`);
 	const fileStat = await statImportPath(resolved);
@@ -145,7 +181,7 @@ async function importOneFile(resolved: string, cwd: string, maxFileBytes: number
 	if (isBinary(buffer))
 		throw new GoalImportError(`Import file appears to be binary: ${path.relative(cwd, resolved)}`);
 
-	const relativePath = path.relative(cwd, resolved).replace(/\\/g, "/");
+	const relativePath = path.relative(realWorkspace, resolved).replace(/\\/g, "/");
 	const content = buffer.toString("utf8");
 	const extracted = extractGoalBrief(content, relativePath);
 	const sourceDoc: GoalSourceDoc = {
@@ -167,20 +203,33 @@ async function importOneFile(resolved: string, cwd: string, maxFileBytes: number
 	};
 }
 
-async function collectDocsFiles(dir: string, options: { cwd: string; maxFiles: number }): Promise<string[]> {
+async function collectDocsFiles(
+	dir: string,
+	options: { cwd: string; maxFiles: number; realWorkspace: string },
+): Promise<string[]> {
 	const found: string[] = [];
 
+	async function addSupportedFile(fullPath: string): Promise<void> {
+		const realFile = await realImportPath(fullPath, options.realWorkspace);
+		if (found.length >= options.maxFiles) {
+			throw new GoalImportError(
+				`Directory import found more than ${options.maxFiles} supported docs files. Narrow the path or increase maxFiles.`,
+			);
+		}
+		found.push(realFile);
+	}
+
 	async function visit(current: string): Promise<void> {
-		if (found.length >= options.maxFiles) return;
-		const entries = await readdir(current, { withFileTypes: true });
+		const entries = (await readdir(current, { withFileTypes: true })).sort((a, b) =>
+			a.name.localeCompare(b.name),
+		);
 		for (const entry of entries) {
-			if (found.length >= options.maxFiles) return;
 			const fullPath = path.join(current, entry.name);
 			if (entry.isDirectory()) {
 				if (IGNORED_DIR_NAMES.has(entry.name)) continue;
 				await visit(fullPath);
 			} else if (entry.isFile() && isSupportedTextPath(fullPath)) {
-				found.push(fullPath);
+				await addSupportedFile(fullPath);
 			}
 		}
 	}

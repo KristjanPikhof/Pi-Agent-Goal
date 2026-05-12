@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -105,17 +105,26 @@ describe("goal import extraction", () => {
 		expect(result.sourceDocs.map((doc) => doc.path).sort()).toEqual(["docs/guides/notes.txt", "docs/prd.md"]);
 		expect(result.acceptanceCriteria).toContain("Folder note imported.");
 
-		const limited = await importGoalSources("docs", { cwd, maxFiles: 1 });
-		expect(limited.sourceDocs).toHaveLength(1);
+		await expect(importGoalSources("docs", { cwd, maxFiles: 1 })).rejects.toThrow(
+			"more than 1 supported docs files",
+		);
 	});
 
-	it("rejects missing, unsafe, oversized, and binary inputs", async () => {
+	it("rejects missing, unsafe, oversized, binary, and symlink escape inputs", async () => {
 		const cwd = await makeWorkspace();
+		const outside = await makeWorkspace();
+		await mkdir(path.join(outside, "docs"));
 		await writeFile(path.join(cwd, "big.md"), "x".repeat(20));
 		await writeFile(path.join(cwd, "binary.md"), Buffer.from([0, 1, 2, 3]));
+		await writeFile(path.join(outside, "outside.md"), prd);
+		await writeFile(path.join(outside, "docs/outside.md"), prd);
+		await symlink(path.join(outside, "outside.md"), path.join(cwd, "file-link.md"));
+		await symlink(path.join(outside, "docs"), path.join(cwd, "dir-link"));
 
 		await expect(importGoalSources("missing.md", { cwd })).rejects.toThrow("missing or unreadable");
 		await expect(importGoalSources("../outside.md", { cwd })).rejects.toThrow("inside the current workspace");
+		await expect(importGoalSources("file-link.md", { cwd })).rejects.toThrow("inside the current workspace");
+		await expect(importGoalSources("dir-link", { cwd })).rejects.toThrow("inside the current workspace");
 		await expect(importGoalSources("big.md", { cwd, maxFileBytes: 5 })).rejects.toThrow("too large");
 		await expect(importGoalSources("binary.md", { cwd })).rejects.toThrow("binary");
 	});
