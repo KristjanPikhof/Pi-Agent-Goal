@@ -1,5 +1,5 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { preparePlainGoalDraft, type GoalProposalGenerator } from "./goal-prep.js";
+import { preparePlainGoalDraft, type GoalDraftProposal, type GoalProposalGenerator } from "./goal-prep.js";
 import { importGoalSources, parseEditableGoalDraft, renderEditableGoalDraft } from "./import.js";
 import { renderGoalStartPrompt } from "./prompts.js";
 import { loadGoalState, saveGoalState, validateObjective } from "./state.js";
@@ -43,6 +43,7 @@ interface GoalCommandContext {
 	ui: {
 		notify(message: string, level?: "info" | "success" | "warning" | "error"): void;
 		confirm(title: string, message: string): Promise<boolean>;
+		select?(title: string, options: string[]): Promise<string | undefined>;
 		editor(title: string, initialValue: string): Promise<string | undefined>;
 		setStatus(key: string, value: string | undefined): void;
 		setWidget(key: string, value: string[] | undefined): void;
@@ -279,7 +280,9 @@ async function createOrReplaceGoal(
 ): Promise<void> {
 	const objective = validateObjective(parsed.objective ?? "");
 	const prepared = await preparePlainGoalDraft(objective, ctx.generateGoalProposal);
-	const proposedObjective = validateObjective(prepared.proposal.objective);
+	let proposal = prepared.proposal;
+	let proposedObjective = validateObjective(proposal.objective);
+	let startAfterSave = parsed.start;
 	let action: "create" | "replace" = "create";
 
 	if (current) {
@@ -305,17 +308,20 @@ async function createOrReplaceGoal(
 
 	if (prepared.warning) {
 		ctx.ui.notify(prepared.warning, "warning");
+	} else if (ctx.hasUI && ctx.ui.select) {
+		const review = await reviewGeneratedGoalProposal(ctx, proposal);
+		if (!review) return;
+		proposal = review.proposal;
+		proposedObjective = validateObjective(proposal.objective);
+		startAfterSave = review.start;
 	} else if (ctx.hasUI && !parsed.confirmed) {
-		const ok = await ctx.ui.confirm(
-			"Use generated goal proposal?",
-			renderGoalProposalReview(prepared.proposal),
-		);
+		const ok = await ctx.ui.confirm("Use generated goal proposal?", renderGoalProposalReview(proposal));
 		if (!ok) {
 			ctx.ui.notify("Goal proposal cancelled.", "info");
 			return;
 		}
 	} else {
-		ctx.ui.notify(renderGoalProposalReview(prepared.proposal), "info");
+		ctx.ui.notify(renderGoalProposalReview(proposal), "info");
 	}
 
 	const latest = loadGoalState(ctx);
@@ -329,7 +335,7 @@ async function createOrReplaceGoal(
 			action: latest ? "replace" : action,
 			goalId: crypto.randomUUID(),
 			objective: proposedObjective,
-			acceptanceCriteria: prepared.proposal.acceptanceCriteria,
+			acceptanceCriteria: proposal.acceptanceCriteria,
 			now: Date.now(),
 			owner: "user",
 		},
@@ -337,7 +343,7 @@ async function createOrReplaceGoal(
 	);
 	updateGoalUi(ctx, next);
 	ctx.ui.notify(action === "replace" ? "Goal replaced." : "Goal created.", "success");
-	if (next) await offerGoalStartHandoff(pi, ctx, next.goalId, parsed.start);
+	if (next) await offerGoalStartHandoff(pi, ctx, next.goalId, startAfterSave);
 }
 
 async function offerGoalStartHandoff(
@@ -516,6 +522,28 @@ async function confirmThenMutate(
 
 function updateGoalUi(ctx: GoalCommandContext, goal: GoalState | null): void {
 	applyGoalUi(ctx, goal);
+}
+
+async function reviewGeneratedGoalProposal(
+	ctx: GoalCommandContext,
+	initialProposal: GoalDraftProposal,
+): Promise<{ proposal: GoalDraftProposal; start: boolean } | null> {
+	let proposal = initialProposal;
+
+	while (true) {
+		const choice = await ctx.ui.select?.("Review generated goal proposal", ["Start", "Edit", "Cancel"]);
+		if (choice === "Start") return { proposal, start: true };
+		if (choice === "Cancel" || choice === undefined) {
+			// Product decision for this lane: cancelling review does not persist the unsaved generated proposal.
+			ctx.ui.notify("Goal proposal cancelled; no goal was saved.", "info");
+			return null;
+		}
+		if (choice !== "Edit") continue;
+
+		const edited = await ctx.ui.editor("Edit goal proposal", renderEditableGoalDraft(proposal));
+		if (edited === undefined) continue;
+		proposal = parseEditableGoalDraft(edited);
+	}
 }
 
 function renderGoalProposalReview(proposal: { objective: string; acceptanceCriteria: string[] }): string {

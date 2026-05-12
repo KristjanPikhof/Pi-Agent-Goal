@@ -11,7 +11,8 @@ function createHarness(
 	options: {
 		hasUI?: boolean;
 		confirm?: boolean;
-		editor?: string;
+		select?: Array<string | undefined>;
+		editor?: string | string[];
 		generateGoalProposal?: GoalProposalGenerator;
 	} = {},
 ) {
@@ -20,6 +21,8 @@ function createHarness(
 		string,
 		{ handler: (args: string, ctx: unknown) => Promise<void>; description?: string }
 	>();
+	const selectResults = [...(options.select ?? [])];
+	const editorResults = Array.isArray(options.editor) ? [...options.editor] : undefined;
 	const pi = {
 		registerCommand: vi.fn((name: string, command) => commands.set(name, command)),
 		appendEntry: vi.fn((customType: string, data: unknown) => {
@@ -35,7 +38,8 @@ function createHarness(
 		ui: {
 			notify: vi.fn(),
 			confirm: vi.fn(async () => options.confirm ?? true),
-			editor: vi.fn(async () => options.editor),
+			select: options.select === undefined ? undefined : vi.fn(async () => selectResults.shift()),
+			editor: vi.fn(async () => editorResults?.shift() ?? (options.editor as string | undefined)),
 			setStatus: vi.fn(),
 			setWidget: vi.fn(),
 		},
