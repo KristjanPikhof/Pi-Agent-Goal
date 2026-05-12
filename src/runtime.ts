@@ -364,6 +364,10 @@ function recordGoalContinuation(api: ContinuationAPI, record: GoalContinuationRe
 	api.appendEntry(GOAL_CONTINUATION_CUSTOM_TYPE, record);
 }
 
+function refreshGoalUi(ctx: ContinuationContext): void {
+	applyGoalUi(ctx, loadGoalState(ctx));
+}
+
 function updateContinuationStatus(ctx: ContinuationContext, state: GoalContinuationState): void {
 	if (state.queuedGoalId) {
 		ctx.ui?.setStatus?.("goal-continuation", "goal: continuation queued");

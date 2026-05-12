@@ -90,7 +90,7 @@ export function noGoalMessage(action: string): string {
 }
 
 export function nonInteractiveConfirmationMessage(command: string): string {
-	return `${command} requires confirmation. Re-run with --yes in non-interactive mode.`;
+	return `${command} requires --yes in non-interactive mode. Re-run with --yes after reviewing the action.`;
 }
 
 function nextActionsForStatus(goal: GoalState): string {
