@@ -186,6 +186,25 @@ describe("/goal import command", () => {
 		expect(pi.sendUserMessage).not.toHaveBeenCalled();
 	});
 
+	it("queues imported goal start after explicit interactive confirmation", async () => {
+		const cwd = await makeWorkspace();
+		await writeFile(path.join(cwd, "prd.md"), prd);
+		const { pi, ctx, branch } = createHarness(cwd, { confirm: false });
+		ctx.ui.confirm.mockResolvedValueOnce(true).mockResolvedValueOnce(true);
+
+		await handleGoalCommand(pi, "import prd.md", ctx);
+
+		expect(latestGoalEntry(branch).action).toBe("create");
+		expect(ctx.ui.confirm).toHaveBeenCalledWith(
+			"Start working on this goal now?",
+			"Ship goal import from docs.",
+		);
+		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("Ship goal import from docs."), {
+			deliverAs: "followUp",
+		});
+	});
+
 	it("starts imported goals immediately with --start in no-UI mode", async () => {
 		const cwd = await makeWorkspace();
 		await writeFile(path.join(cwd, "prd.md"), prd);
@@ -199,6 +218,18 @@ describe("/goal import command", () => {
 		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("Ship goal import from docs."), {
 			deliverAs: "followUp",
 		});
+	});
+
+	it("does not start imported goals in no-UI mode without --start", async () => {
+		const cwd = await makeWorkspace();
+		await writeFile(path.join(cwd, "prd.md"), prd);
+		const { pi, ctx, branch } = createHarness(cwd, { hasUI: false });
+
+		await handleGoalCommand(pi, "import prd.md --yes", ctx);
+
+		expect(latestGoalEntry(branch).action).toBe("create");
+		expect(ctx.ui.confirm).not.toHaveBeenCalled();
+		expect(pi.sendUserMessage).not.toHaveBeenCalled();
 	});
 
 	it("does not start when the import start handoff is denied", async () => {

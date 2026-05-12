@@ -113,6 +113,44 @@ describe("/goal command lifecycle", () => {
 		});
 	});
 
+	it("does not queue duplicate start follow-ups after denied handoff or command errors", async () => {
+		const { pi, ctx } = createHarness({ confirm: false });
+
+		await handleGoalCommand(pi, "ship later", ctx);
+		expect(ctx.ui.confirm).toHaveBeenCalledWith("Start working on this goal now?", "ship later");
+		expect(pi.sendUserMessage).not.toHaveBeenCalled();
+
+		await handleGoalCommand(pi, "--replace", ctx);
+
+		expect(pi.sendUserMessage).not.toHaveBeenCalled();
+		expect(ctx.ui.notify).toHaveBeenLastCalledWith(
+			expect.stringContaining("Goal objective must be non-empty"),
+			"error",
+		);
+	});
+
+	it("does not start when the goal changes while create start confirmation is pending", async () => {
+		const { pi, ctx, branch } = createHarness({ confirm: false });
+		await handleGoalCommand(pi, "original", ctx);
+		ctx.ui.confirm.mockClear();
+		ctx.ui.confirm.mockResolvedValueOnce(true).mockImplementationOnce(async () => {
+			ctx.hasUI = false;
+			await handleGoalCommand(pi, "replacement --replace --yes", ctx);
+			ctx.hasUI = true;
+			return true;
+		});
+
+		await handleGoalCommand(pi, "next", ctx);
+
+		expect(branch).toHaveLength(3);
+		expect(latestGoalEntry(branch).state?.objective).toBe("replacement");
+		expect(pi.sendUserMessage).not.toHaveBeenCalled();
+		expect(ctx.ui.notify).toHaveBeenLastCalledWith(
+			expect.stringContaining("Goal changed before starting"),
+			"error",
+		);
+	});
+
 	it("starts active goals with a one-shot follow-up prompt", async () => {
 		const { pi, ctx } = createHarness();
 		await handleGoalCommand(pi, "ship --start", ctx);
@@ -190,6 +228,23 @@ describe("/goal command lifecycle", () => {
 		expect(latestGoalEntry(branch).action).toBe("replace");
 		expect(latestGoalEntry(branch).state?.objective).toBe("second");
 		expect(pi.sendUserMessage).not.toHaveBeenCalled();
+	});
+
+	it("does not prompt or start non-interactive creates unless --start is explicit", async () => {
+		const { pi, ctx, branch } = createHarness({ hasUI: false });
+		await handleGoalCommand(pi, "first", ctx);
+
+		expect(latestGoalEntry(branch).state?.objective).toBe("first");
+		expect(ctx.ui.confirm).not.toHaveBeenCalled();
+		expect(pi.sendUserMessage).not.toHaveBeenCalled();
+
+		await handleGoalCommand(pi, "second --replace --start", ctx);
+		expect(latestGoalEntry(branch).state?.objective).toBe("second");
+		expect(ctx.ui.confirm).not.toHaveBeenCalled();
+		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("second"), {
+			deliverAs: "followUp",
+		});
 	});
 
 	it("requires --replace for non-interactive replacement and only starts with --start", async () => {
