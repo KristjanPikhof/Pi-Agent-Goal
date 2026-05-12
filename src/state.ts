@@ -117,6 +117,8 @@ export function reduceGoalState(current: GoalState | null, event: GoalStateEvent
 				updatedAt: event.now,
 			};
 		}
+		default:
+			return current;
 	}
 }
 
@@ -195,14 +197,143 @@ function mergeStringLists(existing: string[], incoming: string[]): string[] {
 }
 
 function parseGoalStateEntry(data: unknown): GoalStateEntry | null {
-	if (!isRecord(data) || typeof data.action !== "string" || !("state" in data)) return null;
-	const event = isRecord(data.event) ? (data.event as unknown as GoalStateEvent) : undefined;
+	if (!isRecord(data) || !isGoalStateAction(data.action) || !("state" in data)) return null;
 	return {
-		action: data.action as GoalStateEntry["action"],
+		action: data.action,
 		state: isGoalState(data.state) ? cloneGoalState(data.state) : null,
-		event,
+		event: parseGoalStateEvent(data.event),
 		reason: typeof data.reason === "string" ? data.reason : undefined,
 	};
+}
+
+function parseGoalStateEvent(data: unknown): GoalStateEvent | undefined {
+	if (!isRecord(data) || !isGoalStateAction(data.action) || data.action === "set") return undefined;
+	if (typeof data.goalId !== "string" || typeof data.now !== "number") return undefined;
+	const reason = typeof data.reason === "string" ? data.reason : undefined;
+
+	if (data.action === "create" || data.action === "replace") {
+		if (typeof data.objective !== "string") return undefined;
+		const sourceDocs = readOptionalSourceDocs(data, "sourceDocs");
+		const constraints = readOptionalStringArray(data, "constraints");
+		const acceptanceCriteria = readOptionalStringArray(data, "acceptanceCriteria");
+		const progress = readOptionalProgress(data, "progress");
+		if (sourceDocs === null || constraints === null || acceptanceCriteria === null || progress === null)
+			return undefined;
+		const owner = data.owner === "model" || data.owner === "user" ? data.owner : undefined;
+		const base = {
+			goalId: data.goalId,
+			objective: data.objective,
+			now: data.now,
+			...(owner ? { owner } : {}),
+			...(sourceDocs ? { sourceDocs } : {}),
+			...(constraints ? { constraints } : {}),
+			...(acceptanceCriteria ? { acceptanceCriteria } : {}),
+			...(progress ? { progress } : {}),
+			...(reason ? { reason } : {}),
+		};
+		return data.action === "create" ? { action: "create", ...base } : { action: "replace", ...base };
+	}
+
+	if (["pause", "resume", "clear", "complete"].includes(data.action)) {
+		return { action: data.action, goalId: data.goalId, now: data.now, ...(reason ? { reason } : {}) };
+	}
+
+	if (data.action === "edit") {
+		const sourceDocs = readOptionalSourceDocs(data, "sourceDocs");
+		const constraints = readOptionalStringArray(data, "constraints");
+		const acceptanceCriteria = readOptionalStringArray(data, "acceptanceCriteria");
+		if (sourceDocs === null || constraints === null || acceptanceCriteria === null) return undefined;
+		return {
+			action: "edit",
+			goalId: data.goalId,
+			now: data.now,
+			...(typeof data.objective === "string" ? { objective: data.objective } : {}),
+			...(sourceDocs ? { sourceDocs } : {}),
+			...(constraints ? { constraints } : {}),
+			...(acceptanceCriteria ? { acceptanceCriteria } : {}),
+			...(reason ? { reason } : {}),
+		};
+	}
+
+	if (data.action === "progress") {
+		const progress = readOptionalProgress(data, "progress");
+		if (!progress) return undefined;
+		return { action: "progress", goalId: data.goalId, now: data.now, progress, ...(reason ? { reason } : {}) };
+	}
+
+	if (data.action === "import-docs") {
+		const sourceDocs = readOptionalSourceDocs(data, "sourceDocs");
+		const constraints = readOptionalStringArray(data, "constraints");
+		const acceptanceCriteria = readOptionalStringArray(data, "acceptanceCriteria");
+		if (!sourceDocs || constraints === null || acceptanceCriteria === null) return undefined;
+		return {
+			action: "import-docs",
+			goalId: data.goalId,
+			now: data.now,
+			sourceDocs,
+			...(constraints ? { constraints } : {}),
+			...(acceptanceCriteria ? { acceptanceCriteria } : {}),
+			...(reason ? { reason } : {}),
+		};
+	}
+}
+
+function isGoalStateAction(value: unknown): value is GoalStateEntry["action"] {
+	return (
+		value === "create" ||
+		value === "replace" ||
+		value === "edit" ||
+		value === "pause" ||
+		value === "resume" ||
+		value === "clear" ||
+		value === "complete" ||
+		value === "progress" ||
+		value === "import-docs" ||
+		value === "set"
+	);
+}
+
+function readOptionalStringArray(record: Record<string, unknown>, key: string): string[] | null | undefined {
+	const value = record[key];
+	if (value === undefined) return undefined;
+	return Array.isArray(value) && value.every((item) => typeof item === "string") ? [...value] : null;
+}
+
+function readOptionalSourceDocs(record: Record<string, unknown>, key: string): GoalSourceDoc[] | null | undefined {
+	const value = record[key];
+	if (value === undefined) return undefined;
+	return Array.isArray(value) && value.every(isGoalSourceDoc) ? value.map((doc) => ({ ...doc })) : null;
+}
+
+function readOptionalProgress(record: Record<string, unknown>, key: string): Partial<GoalProgress> | null | undefined {
+	const value = record[key];
+	if (value === undefined) return undefined;
+	if (!isRecord(value)) return null;
+	if (value.done !== undefined && !isStringArray(value.done)) return null;
+	if (value.current !== undefined && typeof value.current !== "string") return null;
+	if (value.blocked !== undefined && !isStringArray(value.blocked)) return null;
+	if (value.lastSummary !== undefined && typeof value.lastSummary !== "string") return null;
+	return {
+		...(value.done ? { done: [...value.done] } : {}),
+		...(typeof value.current === "string" ? { current: value.current } : {}),
+		...(value.blocked ? { blocked: [...value.blocked] } : {}),
+		...(typeof value.lastSummary === "string" ? { lastSummary: value.lastSummary } : {}),
+	};
+}
+
+function isStringArray(value: unknown): value is string[] {
+	return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function isGoalSourceDoc(value: unknown): value is GoalSourceDoc {
+	return (
+		isRecord(value) &&
+		typeof value.path === "string" &&
+		(value.kind === "prd" || value.kind === "doc" || value.kind === "directory" || value.kind === "manual") &&
+		typeof value.brief === "string" &&
+		typeof value.extractedAt === "number" &&
+		(value.hash === undefined || typeof value.hash === "string")
+	);
 }
 
 function reducePersistedState(current: GoalState | null, entry: GoalStateEntry): GoalState | null {
