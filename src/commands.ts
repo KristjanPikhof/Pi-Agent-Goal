@@ -577,4 +577,3 @@ export async function reviewGoalProposal(
 		}
 	}
 }
-
