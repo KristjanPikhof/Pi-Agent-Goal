@@ -289,11 +289,16 @@ describe("goal state persistence helpers", () => {
 			state: null,
 			event: { action: "unknown", goalId: "goal-1", now: baseTime + 2 },
 		} as unknown as GoalStateEntry;
+		const incompleteState = {
+			action: "set",
+			state: { version: 1, goalId: "goal-2" },
+		} as unknown as GoalStateEntry;
 
 		const snapshot = createGoalStateSnapshot([
 			customEntry(create.entry),
 			customEntry(malformedEvent),
 			customEntry(unknownEvent),
+			customEntry(incompleteState),
 		]);
 
 		expect(snapshot.current).toMatchObject({ goalId: "goal-1", objective: "Reloaded goal" });
