@@ -33,6 +33,7 @@ function createHarness() {
 			promptGuidelines?: string[];
 			execute: (...args: never[]) => Promise<unknown>;
 			renderCall?: (args: Record<string, unknown>) => { render(width: number): string[] };
+			renderResult?: (result: Record<string, unknown>) => { render(width: number): string[] };
 		}
 	>();
 	const pi = {
@@ -358,7 +359,8 @@ describe("goal tool execution", () => {
 			pi,
 		);
 
-		expect(result.content[0].text).toContain("progress summary");
+		expect(result.content[0].text).toBe("Goal progress updated");
+		expect(formatGoalToolResult(result)).toBe("Goal progress updated");
 		expect(ui.setStatus).toHaveBeenLastCalledWith("goal", undefined);
 		expect(ui.setWidget).toHaveBeenLastCalledWith(
 			"goal",
@@ -465,6 +467,12 @@ describe("goal tool renderers", () => {
 		expect(
 			formatGoalToolResult({ content: [{ type: "text", text: "Goal complete." }], details: undefined }),
 		).toBe("Goal complete.");
+		expect(
+			formatGoalToolResult({
+				content: [{ type: "text", text: "Goal progress updated" }],
+				details: { progress: { lastSummary: "already shown in the action body" } },
+			}),
+		).toBe("Goal progress updated");
 		expect(
 			formatGoalToolResult({
 				content: [{ type: "text", text: "Denied" }],

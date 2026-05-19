@@ -400,9 +400,7 @@ export function executeUpdateGoalProgress(
 	);
 	applyGoalUi(ctx, next);
 	return {
-		content: [
-			{ type: "text", text: `Updated goal progress: ${next?.progress.lastSummary || "progress recorded"}` },
-		],
+		content: [{ type: "text", text: "Goal progress updated" }],
 		details: { goal: next, progress: next?.progress },
 	};
 }

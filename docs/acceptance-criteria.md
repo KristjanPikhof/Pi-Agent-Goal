@@ -92,12 +92,12 @@ Status key:
 
 ## UI and status
 
-| Criterion                                                                                   | Status                              |
-| ------------------------------------------------------------------------------------------- | ----------------------------------- |
-| Footer status reflects active, paused, complete, and no-goal states.                        | Automated, live TUI is manual smoke |
-| Widget shows short active-goal progress and disappears when not useful.                     | Automated, live TUI is manual smoke |
-| `/goal status` works in interactive mode and degrades gracefully when `ctx.hasUI` is false. | Automated                           |
-| Errors are actionable and include the next command or flag where relevant.                  | Automated                           |
+| Criterion                                                                                     | Status                              |
+| --------------------------------------------------------------------------------------------- | ----------------------------------- |
+| Goal footer status is cleared/unused; goal state is represented by widget and `/goal status`. | Automated, live TUI is manual smoke |
+| Widget shows short active-goal progress and disappears when not useful.                       | Automated, live TUI is manual smoke |
+| `/goal status` works in interactive mode and degrades gracefully when `ctx.hasUI` is false.   | Automated                           |
+| Errors are actionable and include the next command or flag where relevant.                    | Automated                           |
 
 ## Testing checklist
 
