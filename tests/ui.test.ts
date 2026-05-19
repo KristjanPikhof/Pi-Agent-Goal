@@ -107,6 +107,10 @@ describe("goal UI renderers", () => {
 			]),
 		);
 
+		applyGoalUi(ctx, goal({ status: "complete" }));
+		expect(ctx.ui.setStatus).toHaveBeenLastCalledWith("goal", "goal: complete");
+		expect(ctx.ui.setWidget).toHaveBeenLastCalledWith("goal", undefined);
+
 		applyGoalUi(ctx, null);
 		expect(ctx.ui.setStatus).toHaveBeenLastCalledWith("goal", undefined);
 		expect(ctx.ui.setWidget).toHaveBeenLastCalledWith("goal", undefined);

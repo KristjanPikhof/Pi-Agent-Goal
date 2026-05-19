@@ -9,7 +9,7 @@ import {
 	type GoalWorkflowContext,
 } from "./commands.js";
 import { loadGoalState, saveGoalState, validateObjective } from "./state.js";
-import { renderGoalStatus } from "./ui.js";
+import { applyGoalUi, renderGoalStatus } from "./ui.js";
 
 import type { GoalDraftProposal } from "./goal-prep.js";
 import type { GoalProgress, GoalSourceDoc, GoalState } from "./types.js";
@@ -361,6 +361,7 @@ export function executeCompleteGoal(
 		},
 		current,
 	);
+	applyGoalUi(ctx, next);
 	return {
 		content: [{ type: "text", text: evidence ? `Goal complete. Evidence: ${evidence}` : "Goal complete." }],
 		details: { goal: next, evidence },

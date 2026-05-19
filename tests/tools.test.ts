@@ -315,7 +315,7 @@ describe("goal tool execution", () => {
 			details: { error: "no_goal" },
 		});
 
-		const { pi, ctx, branch } = createHarness();
+		const { pi, ctx, branch, ui } = createHarness();
 		executeCreateGoal(
 			{ objective: "Complete me", explicit_request: true, acceptance_criteria: ["criterion"] },
 			ctx,
@@ -323,6 +323,8 @@ describe("goal tool execution", () => {
 		);
 		const result = executeCompleteGoal({ evidence: "all criteria passed" }, ctx, pi);
 
+		expect(ui.setStatus).toHaveBeenCalledWith("goal", "goal: complete");
+		expect(ui.setWidget).toHaveBeenCalledWith("goal", undefined);
 		expect(result.content[0].text).toContain("Evidence: all criteria passed");
 		expect(latestGoalEntry(branch).action).toBe("complete");
 		expect(latestGoalEntry(branch).reason).toContain("all criteria passed");
