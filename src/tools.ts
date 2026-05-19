@@ -247,6 +247,7 @@ export function executeCreateGoal(
 		},
 		current,
 	);
+	applyGoalUi(ctx, next);
 	return {
 		content: [{ type: "text", text: `Created goal: ${next?.objective ?? params.objective}` }],
 		details: { goal: next, sourcePaths: next?.sourceDocs.map((doc) => doc.path) ?? [] },
@@ -397,6 +398,7 @@ export function executeUpdateGoalProgress(
 		},
 		current,
 	);
+	applyGoalUi(ctx, next);
 	return {
 		content: [
 			{ type: "text", text: `Updated goal progress: ${next?.progress.lastSummary || "progress recorded"}` },

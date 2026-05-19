@@ -140,7 +140,7 @@ describe("goal tool execution", () => {
 	});
 
 	it("create_goal fails without explicit authorization and when a goal exists", () => {
-		const { pi, ctx, branch } = createHarness();
+		const { pi, ctx, branch, ui } = createHarness();
 		const denied = executeCreateGoal({ objective: "No permission", explicit_request: false }, ctx, pi);
 		expect(denied).toMatchObject({ isError: true, details: { error: "permission_denied" } });
 		expect(branch).toHaveLength(0);
@@ -148,6 +148,11 @@ describe("goal tool execution", () => {
 		const created = executeCreateGoal({ objective: "Allowed", explicit_request: true }, ctx, pi);
 		expect(created.isError).toBeUndefined();
 		expect(latestGoalEntry(branch).action).toBe("create");
+		expect(ui.setStatus).toHaveBeenCalledWith("goal", undefined);
+		expect(ui.setWidget).toHaveBeenCalledWith(
+			"goal",
+			expect.arrayContaining(["Goal · Active · AC: 0 · Allowed"]),
+		);
 
 		const duplicate = executeCreateGoal({ objective: "Rewrite", explicit_request: true }, ctx, pi);
 		expect(duplicate).toMatchObject({ isError: true, details: { error: "goal_exists" } });
@@ -336,7 +341,7 @@ describe("goal tool execution", () => {
 	});
 
 	it("update_goal_progress only mutates progress fields", () => {
-		const { pi, ctx, branch } = createHarness();
+		const { pi, ctx, branch, ui } = createHarness();
 		executeCreateGoal(
 			{
 				objective: "Track me",
@@ -354,6 +359,11 @@ describe("goal tool execution", () => {
 		);
 
 		expect(result.content[0].text).toContain("progress summary");
+		expect(ui.setStatus).toHaveBeenLastCalledWith("goal", undefined);
+		expect(ui.setWidget).toHaveBeenLastCalledWith(
+			"goal",
+			expect.arrayContaining(["Goal · Active · AC: 1 · Blocked: 1 · Track me", "Now · two"]),
+		);
 		expect(latestGoalEntry(branch).action).toBe("progress");
 		expect(latestGoalEntry(branch).state).toMatchObject({
 			objective: "Track me",
