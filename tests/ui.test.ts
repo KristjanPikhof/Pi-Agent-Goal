@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
 	applyGoalUi,
-	formatGoalStatusLabel,
 	GOAL_USAGE,
 	noGoalMessage,
 	nonInteractiveConfirmationMessage,
@@ -27,7 +26,7 @@ function goal(overrides: Partial<GoalState> = {}): GoalState {
 			{ path: "docs/extra.md", kind: "doc", brief: "Extra brief", extractedAt: 1 },
 		],
 		constraints: ["Keep output concise"],
-		acceptanceCriteria: ["Footer status reflects state", "Widget shows progress"],
+		acceptanceCriteria: ["Status command reflects state", "Widget shows progress"],
 		progress: {
 			done: ["state wired"],
 			current: "polishing widgets",
@@ -52,13 +51,6 @@ function customEntry(data: GoalStateEntry) {
 }
 
 describe("goal UI renderers", () => {
-	it("formats footer status for active, paused, complete, and no goal states", () => {
-		expect(formatGoalStatusLabel(goal({ status: "active" }))).toBe("goal: active");
-		expect(formatGoalStatusLabel(goal({ status: "paused" }))).toBe("goal: paused");
-		expect(formatGoalStatusLabel(goal({ status: "complete" }))).toBe("goal: complete");
-		expect(formatGoalStatusLabel(null)).toBeUndefined();
-	});
-
 	it("renders compact active widgets with optional blocked and current work lines", () => {
 		expect(renderGoalWidget(goal())).toEqual([
 			"Goal · Active · AC: 2 · Blocked: 1 · Ship polished goal UI with helpful summaries",
@@ -84,7 +76,7 @@ describe("goal UI renderers", () => {
 		expect(summary).toContain("Next actions: /goal status, /goal pause, /goal complete, /goal clear");
 
 		const status = renderGoalStatus(goal());
-		expect(status).toContain("Acceptance criteria:\n- Footer status reflects state");
+		expect(status).toContain("Acceptance criteria:\n- Status command reflects state");
 		expect(status).toContain("Current work:\n- polishing widgets");
 		expect(status).toContain("Source docs:\n- docs/prd.md (prd): PRD brief");
 		expect(status).toContain("Commands:");
@@ -96,10 +88,10 @@ describe("goal UI renderers", () => {
 		expect(emptyCriteriaStatus).not.toContain("Acceptance criteria:\n- none");
 	});
 
-	it("applies status/widget and no-ops without UI methods", () => {
+	it("clears footer status while applying widgets and no-ops without UI methods", () => {
 		const ctx = { ui: { setStatus: vi.fn(), setWidget: vi.fn() } };
 		applyGoalUi(ctx, goal());
-		expect(ctx.ui.setStatus).toHaveBeenLastCalledWith("goal", "goal: active");
+		expect(ctx.ui.setStatus).toHaveBeenLastCalledWith("goal", undefined);
 		expect(ctx.ui.setWidget).toHaveBeenLastCalledWith(
 			"goal",
 			expect.arrayContaining([
@@ -108,7 +100,7 @@ describe("goal UI renderers", () => {
 		);
 
 		applyGoalUi(ctx, goal({ status: "complete" }));
-		expect(ctx.ui.setStatus).toHaveBeenLastCalledWith("goal", "goal: complete");
+		expect(ctx.ui.setStatus).toHaveBeenLastCalledWith("goal", undefined);
 		expect(ctx.ui.setWidget).toHaveBeenLastCalledWith("goal", undefined);
 
 		applyGoalUi(ctx, null);
@@ -126,7 +118,7 @@ describe("goal UI renderers", () => {
 		expect(nonInteractiveConfirmationMessage("/goal clear")).toContain("requires --yes");
 	});
 
-	it("refreshes footer/widget from branch state on runtime session_start and session_tree", async () => {
+	it("clears footer status and refreshes widget from branch state on runtime session_start and session_tree", async () => {
 		const created = persist({ action: "create", goalId: "goal-1", objective: "Runtime UI", now: 1 }, null);
 		const branch = [customEntry(created.entry)];
 		const handlers = new Map<string, (event: unknown, ctx?: unknown) => Promise<unknown>>();
@@ -144,7 +136,7 @@ describe("goal UI renderers", () => {
 		registerGoalRuntime(pi);
 
 		await handlers.get("session_start")?.({}, ctx);
-		expect(ctx.ui.setStatus).toHaveBeenCalledWith("goal", "goal: active");
+		expect(ctx.ui.setStatus).toHaveBeenCalledWith("goal", undefined);
 		expect(ctx.ui.setWidget).toHaveBeenCalledWith(
 			"goal",
 			expect.arrayContaining(["Goal · Active · AC: 0 · Runtime UI"]),

@@ -323,7 +323,7 @@ describe("goal tool execution", () => {
 		);
 		const result = executeCompleteGoal({ evidence: "all criteria passed" }, ctx, pi);
 
-		expect(ui.setStatus).toHaveBeenCalledWith("goal", "goal: complete");
+		expect(ui.setStatus).toHaveBeenCalledWith("goal", undefined);
 		expect(ui.setWidget).toHaveBeenCalledWith("goal", undefined);
 		expect(result.content[0].text).toContain("Evidence: all criteria passed");
 		expect(latestGoalEntry(branch).action).toBe("complete");

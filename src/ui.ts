@@ -77,12 +77,8 @@ export function renderGoalWidget(goal: GoalState): string[] | undefined {
 	return lines;
 }
 
-export function formatGoalStatusLabel(goal: GoalState | null): string | undefined {
-	return goal ? `goal: ${goal.status}` : undefined;
-}
-
 export function applyGoalUi(ctx: GoalUiContext, goal: GoalState | null): void {
-	ctx.ui?.setStatus?.("goal", formatGoalStatusLabel(goal));
+	ctx.ui?.setStatus?.("goal", undefined);
 	ctx.ui?.setWidget?.("goal", goal ? renderGoalWidget(goal) : undefined);
 }
 

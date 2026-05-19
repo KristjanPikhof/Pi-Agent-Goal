@@ -147,7 +147,7 @@ describe("session lifecycle integration coverage", () => {
 		};
 		registerGoalRuntime(runtimePi);
 		await handlers.get("session_start")?.({ reason: "resume" }, runtimeCtx);
-		expect(runtimeCtx.ui.setStatus).toHaveBeenCalledWith("goal", "goal: active");
+		expect(runtimeCtx.ui.setStatus).toHaveBeenCalledWith("goal", undefined);
 		await handlers.get("session_tree")?.({}, runtimeCtx);
 		expect(runtimeCtx.ui.setWidget).toHaveBeenCalledWith(
 			"goal",
