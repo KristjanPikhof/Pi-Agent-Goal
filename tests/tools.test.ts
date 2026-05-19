@@ -10,6 +10,7 @@ import {
 	formatGoalToolCall,
 	formatGoalToolResult,
 	formatProposeGoalDraftToolCall,
+	formatUpdateGoalProgressToolCall,
 	getGoalParams,
 	proposeGoalDraftParams,
 	proposeGoalDraftPromptGuidelines,
@@ -31,6 +32,7 @@ function createHarness() {
 			promptSnippet?: string;
 			promptGuidelines?: string[];
 			execute: (...args: never[]) => Promise<unknown>;
+			renderCall?: (args: Record<string, unknown>) => { render(width: number): string[] };
 		}
 	>();
 	const pi = {
@@ -397,17 +399,57 @@ describe("goal tool execution", () => {
 });
 
 describe("goal tool renderers", () => {
-	it("formats tool calls and results concisely", () => {
-		expect(formatGoalToolCall("create_goal", "Ship it")).toBe("create_goal: Ship it");
-		expect(formatGoalToolCall("get_goal")).toBe("get_goal");
+	it("formats tool calls as human-readable title/body displays", () => {
+		expect(formatGoalToolCall("create_goal", "Ship it")).toBe("Create goal\nShip it");
+		expect(formatGoalToolCall("get_goal")).toBe("Get goal");
+		expect(formatGoalToolCall("complete_goal", "all checks passed")).toBe("Complete goal\nall checks passed");
 		expect(
 			formatProposeGoalDraftToolCall({
 				objective: "Review branch",
 				acceptanceCriteria: ["Review the diff", "Report risks"],
 			}),
 		).toBe(
-			"propose_goal_draft:\nObjective: Review branch\nAcceptance criteria:\n- Review the diff\n- Report risks",
+			"Propose goal draft\nObjective: Review branch\nAcceptance criteria:\n- Review the diff\n- Report risks",
 		);
+		expect(
+			formatUpdateGoalProgressToolCall({
+				summary:
+					"Core implementation is complete; one integration test still expects the previous widget format.",
+				current: "Fix renderer test",
+			}),
+		).toBe(
+			"Update goal progress\nCore implementation is complete; one integration test still expects the previous widget format.",
+		);
+		expect(formatUpdateGoalProgressToolCall({ current: "Fix renderer test" })).toBe(
+			"Update goal progress\nFix renderer test",
+		);
+		expect(formatUpdateGoalProgressToolCall({ done: ["implementation", "tests"] })).toBe(
+			"Update goal progress\nDone: implementation; tests",
+		);
+	});
+
+	it("registered update_goal_progress renderCall includes summary args without legacy prefix", () => {
+		const { pi, tools } = createHarness();
+		registerGoalTools(pi);
+
+		const rendered = tools
+			.get("update_goal_progress")
+			?.renderCall?.({
+				summary:
+					"Core implementation is complete; one integration test still expects the previous widget format.",
+			})
+			.render(120)
+			.map((line) => line.trim())
+			.filter(Boolean);
+
+		expect(rendered).toEqual([
+			"Update goal progress",
+			"Core implementation is complete; one integration test still expects the previous widget format.",
+		]);
+		expect(rendered?.join("\n")).not.toContain("Updated goal progress:");
+	});
+
+	it("formats tool results concisely", () => {
 		expect(
 			formatGoalToolResult({ content: [{ type: "text", text: "Goal complete." }], details: undefined }),
 		).toBe("Goal complete.");

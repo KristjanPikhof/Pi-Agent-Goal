@@ -137,7 +137,12 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
 			return executeCreateGoal(params as CreateGoalToolInput, ctx as GoalToolContext, pi);
 		},
-		renderCall: (args) => new Text(formatGoalToolCall("create_goal", args.objective), 0, 0),
+		renderCall: (args) =>
+			new Text(
+				formatGoalToolCall("create_goal", (args as Partial<CreateGoalToolInput> | undefined)?.objective),
+				0,
+				0,
+			),
 		renderResult: (result) => new Text(formatGoalToolResult(result as GoalToolResult), 0, 0),
 	});
 
@@ -170,7 +175,12 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
 			return executeCompleteGoal(params as CompleteGoalToolInput, ctx as GoalToolContext, pi);
 		},
-		renderCall: () => new Text(formatGoalToolCall("complete_goal"), 0, 0),
+		renderCall: (args) =>
+			new Text(
+				formatGoalToolCall("complete_goal", (args as Partial<CompleteGoalToolInput> | undefined)?.evidence),
+				0,
+				0,
+			),
 		renderResult: (result) => new Text(formatGoalToolResult(result as GoalToolResult), 0, 0),
 	});
 
@@ -187,7 +197,8 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
 			return executeUpdateGoalProgress(params as UpdateGoalProgressToolInput, ctx as GoalToolContext, pi);
 		},
-		renderCall: () => new Text(formatGoalToolCall("update_goal_progress"), 0, 0),
+		renderCall: (args) =>
+			new Text(formatUpdateGoalProgressToolCall(args as UpdateGoalProgressToolInput), 0, 0),
 		renderResult: (result) => new Text(formatGoalToolResult(result as GoalToolResult), 0, 0),
 	});
 }
@@ -393,17 +404,23 @@ export function executeUpdateGoalProgress(
 	};
 }
 
-export function formatGoalToolCall(toolName: string, objective?: string): string {
-	return objective ? `${toolName}: ${objective}` : toolName;
+export function formatGoalToolCall(toolName: string, body?: string): string {
+	const title = goalToolTitle(toolName);
+	const normalizedBody = body?.trim();
+	return normalizedBody ? `${title}\n${normalizedBody}` : title;
 }
 
 export function formatProposeGoalDraftToolCall(input: ProposeGoalDraftToolInput): string {
-	const lines = ["propose_goal_draft:", `Objective: ${input.objective}`];
+	const lines = [`Objective: ${input.objective}`];
 	const criteria = normalizeStringList(input.acceptanceCriteria);
 	if (criteria.length > 0) {
 		lines.push("Acceptance criteria:", ...criteria.map((item) => `- ${item}`));
 	}
-	return lines.join("\n");
+	return formatGoalToolCall("propose_goal_draft", lines.join("\n"));
+}
+
+export function formatUpdateGoalProgressToolCall(input?: Partial<UpdateGoalProgressToolInput>): string {
+	return formatGoalToolCall("update_goal_progress", formatGoalProgressCallBody(input));
 }
 
 export function formatGoalToolResult(result: GoalToolResult): string {
@@ -418,6 +435,35 @@ function errorResult(message: string, code: string, goal?: GoalState, terminate 
 		isError: true,
 		terminate,
 	};
+}
+
+function goalToolTitle(toolName: string): string {
+	switch (toolName) {
+		case "get_goal":
+			return "Get goal";
+		case "create_goal":
+			return "Create goal";
+		case "propose_goal_draft":
+			return "Propose goal draft";
+		case "complete_goal":
+			return "Complete goal";
+		case "update_goal_progress":
+			return "Update goal progress";
+		default:
+			return toolName;
+	}
+}
+
+function formatGoalProgressCallBody(input?: Partial<UpdateGoalProgressToolInput>): string | undefined {
+	const summary = input?.summary?.trim();
+	if (summary) return summary;
+	const current = input?.current?.trim();
+	if (current) return current;
+	const done = normalizeStringList(input?.done);
+	if (done.length > 0) return `Done: ${done.join("; ")}`;
+	const blocked = normalizeStringList(input?.blocked);
+	if (blocked.length > 0) return `Blocked: ${blocked.join("; ")}`;
+	return undefined;
 }
 
 function normalizeGoalDraftParams(
