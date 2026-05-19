@@ -7,6 +7,7 @@ import {
 	executeGetGoal,
 	executeProposeGoalDraft,
 	executeUpdateGoalProgress,
+	formatCompleteGoalToolResult,
 	formatGoalToolCall,
 	formatGoalToolResult,
 	formatProposeGoalDraftToolCall,
@@ -416,7 +417,9 @@ describe("goal tool renderers", () => {
 	it("formats tool calls as human-readable title/body displays", () => {
 		expect(formatGoalToolCall("create_goal", "Ship it")).toBe("Create goal\nShip it");
 		expect(formatGoalToolCall("get_goal")).toBe("Get goal");
-		expect(formatGoalToolCall("complete_goal", "all checks passed")).toBe("Complete goal\nall checks passed");
+		expect(formatGoalToolCall("complete_goal", "all checks passed")).toBe(
+			"✓ Complete goal\nall checks passed",
+		);
 		expect(
 			formatProposeGoalDraftToolCall({
 				objective: "Review branch",
@@ -463,10 +466,52 @@ describe("goal tool renderers", () => {
 		expect(rendered?.join("\n")).not.toContain("Updated goal progress:");
 	});
 
+	it("registered complete_goal renderers show evidence once in the call display", () => {
+		const { pi, tools } = createHarness();
+		registerGoalTools(pi);
+
+		const callRendered = tools
+			.get("complete_goal")
+			?.renderCall?.({ evidence: "Reviewed branch compact-goal-widget-ui against likely base main." })
+			.render(120)
+			.map((line) => line.trim())
+			.filter(Boolean);
+		const resultRendered = tools
+			.get("complete_goal")
+			?.renderResult?.({
+				content: [
+					{
+						type: "text",
+						text: "Goal complete. Evidence: Reviewed branch compact-goal-widget-ui against likely base main.",
+					},
+				],
+				details: { evidence: "Reviewed branch compact-goal-widget-ui against likely base main." },
+			})
+			.render(120)
+			.map((line) => line.trim())
+			.filter(Boolean);
+
+		expect(callRendered).toEqual([
+			"✓ Complete goal",
+			"Reviewed branch compact-goal-widget-ui against likely base main.",
+		]);
+		expect(resultRendered).toEqual([]);
+	});
+
 	it("formats tool results concisely", () => {
 		expect(
-			formatGoalToolResult({ content: [{ type: "text", text: "Goal complete." }], details: undefined }),
-		).toBe("Goal complete.");
+			formatCompleteGoalToolResult({
+				content: [{ type: "text", text: "Goal complete. Evidence: all checks passed" }],
+				details: { evidence: "all checks passed" },
+			}),
+		).toBe("");
+		expect(
+			formatCompleteGoalToolResult({
+				content: [{ type: "text", text: "No active goal exists to complete." }],
+				details: { error: "no_goal" },
+				isError: true,
+			}),
+		).toBe("Error: No active goal exists to complete.");
 		expect(
 			formatGoalToolResult({
 				content: [{ type: "text", text: "Goal progress updated" }],

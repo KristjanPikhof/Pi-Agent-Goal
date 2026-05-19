@@ -181,7 +181,7 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 				0,
 				0,
 			),
-		renderResult: (result) => new Text(formatGoalToolResult(result as GoalToolResult), 0, 0),
+		renderResult: (result) => new Text(formatCompleteGoalToolResult(result as GoalToolResult), 0, 0),
 	});
 
 	pi.registerTool({
@@ -429,6 +429,10 @@ export function formatGoalToolResult(result: GoalToolResult): string {
 	return result.isError ? `Error: ${text}` : text;
 }
 
+export function formatCompleteGoalToolResult(result: GoalToolResult): string {
+	return result.isError ? formatGoalToolResult(result) : "";
+}
+
 function errorResult(message: string, code: string, goal?: GoalState, terminate = false): GoalToolResult {
 	return {
 		content: [{ type: "text", text: message }],
@@ -447,7 +451,7 @@ function goalToolTitle(toolName: string): string {
 		case "propose_goal_draft":
 			return "Propose goal draft";
 		case "complete_goal":
-			return "Complete goal";
+			return "✓ Complete goal";
 		case "update_goal_progress":
 			return "Update goal progress";
 		default:
