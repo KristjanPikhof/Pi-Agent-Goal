@@ -149,7 +149,10 @@ describe("session lifecycle integration coverage", () => {
 		await handlers.get("session_start")?.({ reason: "resume" }, runtimeCtx);
 		expect(runtimeCtx.ui.setStatus).toHaveBeenCalledWith("goal", "goal: active");
 		await handlers.get("session_tree")?.({}, runtimeCtx);
-		expect(runtimeCtx.ui.setWidget).toHaveBeenCalledWith("goal", expect.arrayContaining(["goal: active"]));
+		expect(runtimeCtx.ui.setWidget).toHaveBeenCalledWith(
+			"goal",
+			expect.arrayContaining(["Goal · Active · AC: 0 · Tree goal"]),
+		);
 	});
 
 	it("covers docs import and model tool boundaries end-to-end", async () => {

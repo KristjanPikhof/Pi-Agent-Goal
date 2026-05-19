@@ -59,15 +59,20 @@ describe("goal UI renderers", () => {
 		expect(formatGoalStatusLabel(null)).toBeUndefined();
 	});
 
-	it("renders concise active widgets with progress and source hints", () => {
+	it("renders compact active widgets with optional blocked and current work lines", () => {
 		expect(renderGoalWidget(goal())).toEqual([
-			"goal: active",
-			"→ Ship polished goal UI with helpful summaries",
-			"now: polishing widgets",
-			"criteria: 2",
-			"sources: docs/prd.md, docs/ux.md +1",
-			"blocked: 1",
+			"Goal · Active · AC: 2 · Blocked: 1 · Ship polished goal UI with helpful summaries",
+			"Now · polishing widgets",
 		]);
+
+		expect(
+			renderGoalWidget(
+				goal({
+					acceptanceCriteria: [],
+					progress: { done: [], current: "", blocked: [], lastSummary: "UI helpers implemented" },
+				}),
+			),
+		).toEqual(["Goal · Active · AC: 0 · Ship polished goal UI with helpful summaries"]);
 		expect(renderGoalWidget(goal({ status: "paused" }))).toBeUndefined();
 		expect(renderGoalWidget(goal({ status: "complete" }))).toBeUndefined();
 	});
@@ -95,7 +100,12 @@ describe("goal UI renderers", () => {
 		const ctx = { ui: { setStatus: vi.fn(), setWidget: vi.fn() } };
 		applyGoalUi(ctx, goal());
 		expect(ctx.ui.setStatus).toHaveBeenLastCalledWith("goal", "goal: active");
-		expect(ctx.ui.setWidget).toHaveBeenLastCalledWith("goal", expect.arrayContaining(["goal: active"]));
+		expect(ctx.ui.setWidget).toHaveBeenLastCalledWith(
+			"goal",
+			expect.arrayContaining([
+				"Goal · Active · AC: 2 · Blocked: 1 · Ship polished goal UI with helpful summaries",
+			]),
+		);
 
 		applyGoalUi(ctx, null);
 		expect(ctx.ui.setStatus).toHaveBeenLastCalledWith("goal", undefined);
@@ -131,7 +141,10 @@ describe("goal UI renderers", () => {
 
 		await handlers.get("session_start")?.({}, ctx);
 		expect(ctx.ui.setStatus).toHaveBeenCalledWith("goal", "goal: active");
-		expect(ctx.ui.setWidget).toHaveBeenCalledWith("goal", expect.arrayContaining(["goal: active"]));
+		expect(ctx.ui.setWidget).toHaveBeenCalledWith(
+			"goal",
+			expect.arrayContaining(["Goal · Active · AC: 0 · Runtime UI"]),
+		);
 
 		const clear = persist({ action: "clear", goalId: "goal-1", now: 2 }, created.state);
 		branch.push(customEntry(clear.entry));
