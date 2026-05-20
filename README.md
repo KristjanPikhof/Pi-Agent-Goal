@@ -130,7 +130,7 @@ Continuation only queues when the goal is active, Pi is idle, and no pending use
 
 - No Codex SQLite `thread_goals` table or app-server RPC compatibility. Pi uses session custom entries instead.
 - No exact Codex token budget or wall-clock accounting. Pi uses an opt-in max-turn cap and progress checks.
-- No exact Codex goal menu or bottom-pane UI. Pi uses footer status, widgets, command output, and tool renderers.
+- No exact Codex goal menu or bottom-pane UI. Pi uses the compact active-goal widget, `/goal status` command output, and tool renderers.
 - No general model `update_goal` tool. This is intentional, to prevent silent objective or scope rewrites.
 - Live TUI lifecycle checks for `/compact`, `/reload`, `/resume`, `/tree`, and `/fork` are manual smoke coverage. Record that evidence before release, or mark the release blocked. Automated tests cover the underlying hooks and reconstruction behavior, not the live TUI itself.
 

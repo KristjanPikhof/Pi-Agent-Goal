@@ -18,7 +18,7 @@ Read in this order:
 - Model tools: `get_goal`, `create_goal`, `propose_goal_draft`, `complete_goal`, and `update_goal_progress` with narrow permissions. Draft proposals save only after Start; completion and progress tools reject paused goals.
 - Hidden active-goal context injection plus stale context filtering.
 - `session_before_compact` goal summary/details preservation.
-- Footer status, active-goal widget, actionable command errors, and concise tool renderers.
+- Compact active-goal widget, `/goal status` command output, actionable command errors, and concise tool renderers.
 - Opt-in safe idle continuation behind `--goal-continuation`.
 - Unit and integration-style tests covering reducer, command parsing and lifecycle, import safety and merge behavior, tools, prompts, compaction hooks, continuation guards, UI, branch-shaped reconstruction, stale `goalId` behavior, and session lifecycle harness flows.
 
