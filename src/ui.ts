@@ -68,21 +68,17 @@ export function renderGoalStatus(goal: GoalState): string {
 
 export function renderGoalWidget(goal: GoalState): string[] | undefined {
 	if (goal.status !== "active") return undefined;
-	const lines = [`goal: active`, `→ ${truncate(goal.objective, 80)}`];
-	if (goal.progress.current) lines.push(`now: ${truncate(goal.progress.current, 80)}`);
-	else if (goal.progress.lastSummary) lines.push(`progress: ${truncate(goal.progress.lastSummary, 80)}`);
-	if (goal.acceptanceCriteria.length > 0) lines.push(`criteria: ${goal.acceptanceCriteria.length}`);
-	if (goal.sourceDocs.length > 0) lines.push(`sources: ${formatSourceHint(goal)}`);
-	if (goal.progress.blocked.length > 0) lines.push(`blocked: ${goal.progress.blocked.length}`);
+
+	const metadata = ["Goal", "Active", `AC: ${goal.acceptanceCriteria.length}`];
+	if (goal.progress.blocked.length > 0) metadata.push(`Blocked: ${goal.progress.blocked.length}`);
+
+	const lines = [`${metadata.join(" · ")} · ${truncate(goal.objective, 80)}`];
+	if (goal.progress.current) lines.push(`Now · ${truncate(goal.progress.current, 80)}`);
 	return lines;
 }
 
-export function formatGoalStatusLabel(goal: GoalState | null): string | undefined {
-	return goal ? `goal: ${goal.status}` : undefined;
-}
-
 export function applyGoalUi(ctx: GoalUiContext, goal: GoalState | null): void {
-	ctx.ui?.setStatus?.("goal", formatGoalStatusLabel(goal));
+	ctx.ui?.setStatus?.("goal", undefined);
 	ctx.ui?.setWidget?.("goal", goal ? renderGoalWidget(goal) : undefined);
 }
 
@@ -98,13 +94,6 @@ function nextActionsForStatus(goal: GoalState): string {
 	if (goal.status === "active") return "/goal status, /goal pause, /goal complete, /goal clear";
 	if (goal.status === "paused") return "/goal resume, /goal status, /goal clear";
 	return "/goal status, /goal clear, or /goal <objective> --replace";
-}
-
-function formatSourceHint(goal: GoalState): string {
-	const paths = goal.sourceDocs.map((doc) => doc.path);
-	const visible = paths.slice(0, 2).join(", ");
-	const remaining = paths.length - 2;
-	return remaining > 0 ? `${visible} +${remaining}` : visible;
 }
 
 function formatList(items: string[]): string[] {

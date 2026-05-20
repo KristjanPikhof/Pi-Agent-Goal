@@ -7,9 +7,11 @@ import {
 	executeGetGoal,
 	executeProposeGoalDraft,
 	executeUpdateGoalProgress,
+	formatCompleteGoalToolResult,
 	formatGoalToolCall,
 	formatGoalToolResult,
 	formatProposeGoalDraftToolCall,
+	formatUpdateGoalProgressToolCall,
 	getGoalParams,
 	proposeGoalDraftParams,
 	proposeGoalDraftPromptGuidelines,
@@ -31,6 +33,8 @@ function createHarness() {
 			promptSnippet?: string;
 			promptGuidelines?: string[];
 			execute: (...args: never[]) => Promise<unknown>;
+			renderCall?: (args: Record<string, unknown>) => { render(width: number): string[] };
+			renderResult?: (result: Record<string, unknown>) => { render(width: number): string[] };
 		}
 	>();
 	const pi = {
@@ -138,7 +142,7 @@ describe("goal tool execution", () => {
 	});
 
 	it("create_goal fails without explicit authorization and when a goal exists", () => {
-		const { pi, ctx, branch } = createHarness();
+		const { pi, ctx, branch, ui } = createHarness();
 		const denied = executeCreateGoal({ objective: "No permission", explicit_request: false }, ctx, pi);
 		expect(denied).toMatchObject({ isError: true, details: { error: "permission_denied" } });
 		expect(branch).toHaveLength(0);
@@ -146,6 +150,11 @@ describe("goal tool execution", () => {
 		const created = executeCreateGoal({ objective: "Allowed", explicit_request: true }, ctx, pi);
 		expect(created.isError).toBeUndefined();
 		expect(latestGoalEntry(branch).action).toBe("create");
+		expect(ui.setStatus).toHaveBeenCalledWith("goal", undefined);
+		expect(ui.setWidget).toHaveBeenCalledWith(
+			"goal",
+			expect.arrayContaining(["Goal · Active · AC: 0 · Allowed"]),
+		);
 
 		const duplicate = executeCreateGoal({ objective: "Rewrite", explicit_request: true }, ctx, pi);
 		expect(duplicate).toMatchObject({ isError: true, details: { error: "goal_exists" } });
@@ -313,7 +322,7 @@ describe("goal tool execution", () => {
 			details: { error: "no_goal" },
 		});
 
-		const { pi, ctx, branch } = createHarness();
+		const { pi, ctx, branch, ui } = createHarness();
 		executeCreateGoal(
 			{ objective: "Complete me", explicit_request: true, acceptance_criteria: ["criterion"] },
 			ctx,
@@ -321,6 +330,8 @@ describe("goal tool execution", () => {
 		);
 		const result = executeCompleteGoal({ evidence: "all criteria passed" }, ctx, pi);
 
+		expect(ui.setStatus).toHaveBeenCalledWith("goal", undefined);
+		expect(ui.setWidget).toHaveBeenCalledWith("goal", undefined);
 		expect(result.content[0].text).toContain("Evidence: all criteria passed");
 		expect(latestGoalEntry(branch).action).toBe("complete");
 		expect(latestGoalEntry(branch).reason).toContain("all criteria passed");
@@ -332,7 +343,7 @@ describe("goal tool execution", () => {
 	});
 
 	it("update_goal_progress only mutates progress fields", () => {
-		const { pi, ctx, branch } = createHarness();
+		const { pi, ctx, branch, ui } = createHarness();
 		executeCreateGoal(
 			{
 				objective: "Track me",
@@ -349,7 +360,13 @@ describe("goal tool execution", () => {
 			pi,
 		);
 
-		expect(result.content[0].text).toContain("progress summary");
+		expect(result.content[0].text).toBe("Goal progress updated");
+		expect(formatGoalToolResult(result)).toBe("Goal progress updated");
+		expect(ui.setStatus).toHaveBeenLastCalledWith("goal", undefined);
+		expect(ui.setWidget).toHaveBeenLastCalledWith(
+			"goal",
+			expect.arrayContaining(["Goal · Active · AC: 1 · Blocked: 1 · Track me", "Now · two"]),
+		);
 		expect(latestGoalEntry(branch).action).toBe("progress");
 		expect(latestGoalEntry(branch).state).toMatchObject({
 			objective: "Track me",
@@ -397,20 +414,110 @@ describe("goal tool execution", () => {
 });
 
 describe("goal tool renderers", () => {
-	it("formats tool calls and results concisely", () => {
-		expect(formatGoalToolCall("create_goal", "Ship it")).toBe("create_goal: Ship it");
-		expect(formatGoalToolCall("get_goal")).toBe("get_goal");
+	it("formats tool calls as human-readable title/body displays", () => {
+		expect(formatGoalToolCall("create_goal", "Ship it")).toBe("Create goal\nShip it");
+		expect(formatGoalToolCall("get_goal")).toBe("Get goal");
+		expect(formatGoalToolCall("complete_goal", "all checks passed")).toBe(
+			"✓ Complete goal\nall checks passed",
+		);
 		expect(
 			formatProposeGoalDraftToolCall({
 				objective: "Review branch",
 				acceptanceCriteria: ["Review the diff", "Report risks"],
 			}),
 		).toBe(
-			"propose_goal_draft:\nObjective: Review branch\nAcceptance criteria:\n- Review the diff\n- Report risks",
+			"Propose goal draft\nObjective: Review branch\nAcceptance criteria:\n- Review the diff\n- Report risks",
 		);
 		expect(
-			formatGoalToolResult({ content: [{ type: "text", text: "Goal complete." }], details: undefined }),
-		).toBe("Goal complete.");
+			formatUpdateGoalProgressToolCall({
+				summary:
+					"Core implementation is complete; one integration test still expects the previous widget format.",
+				current: "Fix renderer test",
+			}),
+		).toBe(
+			"Update goal progress\nCore implementation is complete; one integration test still expects the previous widget format.",
+		);
+		expect(formatUpdateGoalProgressToolCall({ current: "Fix renderer test" })).toBe(
+			"Update goal progress\nFix renderer test",
+		);
+		expect(formatUpdateGoalProgressToolCall({ done: ["implementation", "tests"] })).toBe(
+			"Update goal progress\nDone: implementation; tests",
+		);
+	});
+
+	it("registered update_goal_progress renderCall includes summary args without legacy prefix", () => {
+		const { pi, tools } = createHarness();
+		registerGoalTools(pi);
+
+		const rendered = tools
+			.get("update_goal_progress")
+			?.renderCall?.({
+				summary:
+					"Core implementation is complete; one integration test still expects the previous widget format.",
+			})
+			.render(120)
+			.map((line) => line.trim())
+			.filter(Boolean);
+
+		expect(rendered).toEqual([
+			"Update goal progress",
+			"Core implementation is complete; one integration test still expects the previous widget format.",
+		]);
+		expect(rendered?.join("\n")).not.toContain("Updated goal progress:");
+	});
+
+	it("registered complete_goal renderers show evidence once in the call display", () => {
+		const { pi, tools } = createHarness();
+		registerGoalTools(pi);
+
+		const callRendered = tools
+			.get("complete_goal")
+			?.renderCall?.({ evidence: "Reviewed branch compact-goal-widget-ui against likely base main." })
+			.render(120)
+			.map((line) => line.trim())
+			.filter(Boolean);
+		const resultRendered = tools
+			.get("complete_goal")
+			?.renderResult?.({
+				content: [
+					{
+						type: "text",
+						text: "Goal complete. Evidence: Reviewed branch compact-goal-widget-ui against likely base main.",
+					},
+				],
+				details: { evidence: "Reviewed branch compact-goal-widget-ui against likely base main." },
+			})
+			.render(120)
+			.map((line) => line.trim())
+			.filter(Boolean);
+
+		expect(callRendered).toEqual([
+			"✓ Complete goal",
+			"Reviewed branch compact-goal-widget-ui against likely base main.",
+		]);
+		expect(resultRendered).toEqual([]);
+	});
+
+	it("formats tool results concisely", () => {
+		expect(
+			formatCompleteGoalToolResult({
+				content: [{ type: "text", text: "Goal complete. Evidence: all checks passed" }],
+				details: { evidence: "all checks passed" },
+			}),
+		).toBe("");
+		expect(
+			formatCompleteGoalToolResult({
+				content: [{ type: "text", text: "No active goal exists to complete." }],
+				details: { error: "no_goal" },
+				isError: true,
+			}),
+		).toBe("Error: No active goal exists to complete.");
+		expect(
+			formatGoalToolResult({
+				content: [{ type: "text", text: "Goal progress updated" }],
+				details: { progress: { lastSummary: "already shown in the action body" } },
+			}),
+		).toBe("Goal progress updated");
 		expect(
 			formatGoalToolResult({
 				content: [{ type: "text", text: "Denied" }],

@@ -55,7 +55,7 @@ extensions/pi-goal/index.ts
 | Model tools  | `get_goal`, `create_goal`, `update_goal` limited to completion.                    | `get_goal`, `create_goal`, review-only `propose_goal_draft`, `complete_goal`, plus progress-only `update_goal_progress`. No general objective rewrite tool. |
 | Compaction   | Codex preserves goal context through its compaction pipeline.                      | Pi `session_before_compact` appends active goal summary/details while canonical state stays in custom entries.                                              |
 | Continuation | Codex runtime continues active goals while idle with runtime budget tracking.      | Pi continuation is opt-in, capped by max turns, and guarded by idle/pending-message/stale-goal/progress checks.                                             |
-| UI           | Codex-specific menu and bottom-pane behavior.                                      | Pi footer status, active-goal widget, command output, and tool renderers.                                                                                   |
+| UI           | Codex-specific menu and bottom-pane behavior.                                      | Pi compact active-goal widget, `/goal status` command output, and tool renderers.                                                                           |
 
 Known parity gaps are intentional for this rollout: no Codex app-server RPC compatibility, no SQLite table, no exact token or wall-clock accounting, and no exact Codex menu UI.
 
@@ -204,8 +204,8 @@ The UI layer is lightweight:
 - plain text `/goal` input uses the chat agent plus `propose_goal_draft` to produce objective and acceptance criteria before review,
 - draft review uses public Pi UI primitives only: `ctx.ui.select`, `ctx.ui.editor`, and `ctx.ui.confirm`,
 - Start saves the draft and queues the one-shot handoff, Edit opens a prefilled modal markdown editor, and Cancel saves nothing,
-- footer status shows `goal: active`, `goal: paused`, or `goal: complete`, and clears when no goal exists,
-- active widget shows objective, current/progress summary, criteria count, source hints, and blocker count,
+- no legacy footer status is rendered; active goal state is represented by the compact active-goal widget and `/goal status` command output,
+- active widget is intentionally compact: it shows objective, criteria count, blocker count when blocked, and a current-work line when `progress.current` is set; it does not render source hints or fall back to `lastSummary`,
 - `/goal status` is readable in command output,
 - missing UI methods no-op safely,
 - non-interactive errors tell the user which flag or command to run next,
@@ -226,7 +226,7 @@ pi --no-session --no-extensions -e ./extensions/index.ts -p /goal
 pi --no-session --no-extensions -e ./extensions/index.ts --goal-continuation -p /goal
 ```
 
-The remaining live TUI coverage is documented in [`acceptance-criteria.md`](acceptance-criteria.md#manual-session-lifecycle-smoke-checklist). It covers interactive `/compact`, `/reload`, `/resume`, `/tree`, `/fork`, and visible footer/widget lifecycle checks. Record those smoke results before release, or mark the release blocked instead of treating automated harness tests as live TUI evidence.
+The remaining live TUI coverage is documented in [`acceptance-criteria.md`](acceptance-criteria.md#manual-session-lifecycle-smoke-checklist). It covers interactive `/compact`, `/reload`, `/resume`, `/tree`, `/fork`, and visible active-goal widget plus `/goal status` lifecycle checks. Record those smoke results before release, or mark the release blocked instead of treating automated harness tests as live TUI evidence.
 
 ## Troubleshooting
 
@@ -245,5 +245,5 @@ The remaining live TUI coverage is documented in [`acceptance-criteria.md`](acce
 
 ## Future work
 
-- Optional richer Pi TUI popup if users need more than footer/widget plus command output.
+- Optional richer Pi TUI popup if users need more than the compact active-goal widget plus `/goal status` command output.
 - Optional stricter Codex parity features, such as token/time accounting or RPC compatibility, if Pi users need them.

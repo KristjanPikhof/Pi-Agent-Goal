@@ -22,7 +22,7 @@ Status key:
 | `/goal start` starts the current active goal with a one-shot follow-up handoff.                                                                                                                           | Automated                                           |
 | `--start` opts create, import, and resume flows into immediate start, and is required for non-interactive immediate start.                                                                                | Automated by parser and command lifecycle tests     |
 | `/goal edit` requires an existing goal and persists user-confirmed edits.                                                                                                                                 | Automated with harness editor                       |
-| `/goal clear` removes the goal and hides status/widget UI.                                                                                                                                                | Automated                                           |
+| `/goal clear` removes the goal and hides active-goal widget UI.                                                                                                                                           | Automated                                           |
 | `/goal pause` stops hidden context injection, continuation eligibility, completion, and progress updates.                                                                                                 | Automated                                           |
 | `/goal resume` reactivates a paused goal without rewriting objective or criteria.                                                                                                                         | Automated                                           |
 | `/goal complete` marks only active goals complete and records completion state.                                                                                                                           | Automated                                           |
@@ -92,12 +92,12 @@ Status key:
 
 ## UI and status
 
-| Criterion                                                                                   | Status                              |
-| ------------------------------------------------------------------------------------------- | ----------------------------------- |
-| Footer status reflects active, paused, complete, and no-goal states.                        | Automated, live TUI is manual smoke |
-| Widget shows short active-goal progress and disappears when not useful.                     | Automated, live TUI is manual smoke |
-| `/goal status` works in interactive mode and degrades gracefully when `ctx.hasUI` is false. | Automated                           |
-| Errors are actionable and include the next command or flag where relevant.                  | Automated                           |
+| Criterion                                                                                                            | Status                              |
+| -------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| No legacy footer status is rendered; goal state is represented by the compact active-goal widget and `/goal status`. | Automated, live TUI is manual smoke |
+| Widget shows short active-goal progress and disappears when not useful.                                              | Automated, live TUI is manual smoke |
+| `/goal status` works in interactive mode and degrades gracefully when `ctx.hasUI` is false.                          | Automated                           |
+| Errors are actionable and include the next command or flag where relevant.                                           | Automated                           |
 
 ## Testing checklist
 
@@ -125,10 +125,10 @@ Automation covers reducer, command parsing, import safety and merge behavior, to
 2. Run `/goal` and confirm usage renders without starting an agent turn.
 3. Run `/goal Ship a multi-turn verification goal`, confirm the command asks the chat agent to draft with `propose_goal_draft`, and wait for the review UI. Choose Cancel and confirm no goal is saved. Run it again, choose Edit, confirm the modal markdown draft is prefilled with the objective and acceptance criteria fields, change one criterion, then choose Start and confirm one follow-up agent turn is queued.
 4. Run `/goal start` and confirm one follow-up agent turn is queued for the active goal.
-5. Run `/goal status`, `/goal pause`, `/goal resume --start`, `/goal complete --yes`, and `/goal clear --yes`; confirm status/widget update or disappear at each step and that `--start` on resume queues only the explicit handoff.
+5. Run `/goal status`, `/goal pause`, `/goal resume --start`, `/goal complete --yes`, and `/goal clear --yes`; confirm `/goal status` output and active-goal widget update or disappear at each step and that `--start` on resume queues only the explicit handoff.
 6. Create `docs/prd.md`, run `/goal import docs/prd.md`, review the confirmation, and confirm `/goal status` shows source docs and extracted criteria. Then import a second doc into the same goal and confirm source docs, constraints, and criteria merge without replacing the objective. Repeat a non-interactive import with `--yes --start` and confirm it starts immediately.
 7. Trigger `/compact`; confirm `/goal status` still shows objective, criteria, source brief, and progress, then send a normal prompt and verify hidden goal context is regenerated for the active goal.
-8. Run `/reload` or restart/resume the session; confirm footer/widget and `/goal status` reconstruct from current branch custom entries.
+8. Run `/reload` or restart/resume the session; confirm the active-goal widget and `/goal status` reconstruct from current branch custom entries.
 9. Use `/fork` or `/tree` to navigate between branches with different goal mutations; confirm the selected branch shows its own goal state and stale context from the other branch is absent.
 10. Start Pi with continuation enabled:
 
