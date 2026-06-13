@@ -8,7 +8,12 @@
 		"lint": "eslint .",
 		"format": "prettier --check .",
 		"test": "vitest run",
-		"prepublishOnly": "npm run typecheck && npm run lint && npm run format && npm test"
+		"test:coverage": "vitest run --coverage",
+		"smoke:pi:goal": "node tests/smoke-pi.mjs goal",
+		"smoke:pi:goal-continuation": "node tests/smoke-pi.mjs continuation",
+		"smoke:pi": "npm run smoke:pi:goal && npm run smoke:pi:goal-continuation",
+		"smoke:package": "node tests/package-smoke.mjs",
+		"prepublishOnly": "npm run typecheck && npm run lint && npm run format && npm test && npm run test:coverage && npm run smoke:pi && npm run smoke:package"
 	},
 	"keywords": [
 		"pi",
