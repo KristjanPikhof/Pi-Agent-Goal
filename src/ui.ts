@@ -20,7 +20,7 @@ export interface GoalUiContext {
 	hasUI?: boolean;
 	ui?: {
 		setStatus?: (key: string, value: string | undefined) => void;
-		setWidget?: (key: string, value: GoalWidgetContent | undefined) => void;
+		setWidget?: unknown;
 	};
 }
 
@@ -184,11 +184,11 @@ export function applyGoalUi(ctx: GoalUiContext, goal: GoalState | null): void {
 	ctx.ui?.setStatus?.("goal", undefined);
 	const presentation = goal ? createGoalWidgetPresentation(goal) : undefined;
 	if (!presentation) {
-		ctx.ui?.setWidget?.("goal", undefined);
+		setGoalWidget(ctx, undefined);
 		return;
 	}
 	const content = ctx.mode === "tui" ? createGoalWidgetFactory(presentation) : renderGoalWidgetPresentation(presentation);
-	ctx.ui?.setWidget?.("goal", content);
+	setGoalWidget(ctx, content);
 }
 
 export function noGoalMessage(action: string): string {
@@ -197,6 +197,11 @@ export function noGoalMessage(action: string): string {
 
 export function nonInteractiveConfirmationMessage(command: string): string {
 	return `${command} requires --yes in non-interactive mode. Re-run with --yes after reviewing the action.`;
+}
+
+function setGoalWidget(ctx: GoalUiContext, content: GoalWidgetContent | undefined): void {
+	if (typeof ctx.ui?.setWidget !== "function") return;
+	(ctx.ui.setWidget as (key: string, value: GoalWidgetContent | undefined) => void)("goal", content);
 }
 
 function styleWidgetPart(

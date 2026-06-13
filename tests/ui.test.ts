@@ -1,3 +1,4 @@
+import { visibleWidth } from "@earendil-works/pi-tui";
 import { describe, expect, it, vi } from "vitest";
 import {
 	applyGoalUi,
@@ -143,7 +144,7 @@ describe("goal UI renderers", () => {
 		expect(fg).toHaveBeenCalledWith("warning", "Blocked: 1");
 		expect(fg).toHaveBeenCalledWith("success", "✓ 1");
 		expect(fg).toHaveBeenCalledWith("accent", "Now");
-		expect(lines.every((line) => line.length <= 42)).toBe(true);
+		expect(lines.every((line) => visibleWidth(line) <= 42)).toBe(true);
 		expect(() => component.invalidate()).not.toThrow();
 	});
 

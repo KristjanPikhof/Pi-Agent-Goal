@@ -1,6 +1,6 @@
 import type { ExtensionAPI, ExtensionContext, InputEvent } from "@earendil-works/pi-coding-agent";
 import { createGoalStateSnapshot, loadGoalState } from "./state.js";
-import { applyGoalUi, type GoalWidgetContent, renderContinuationStatus } from "./ui.js";
+import { applyGoalUi, renderContinuationStatus } from "./ui.js";
 import {
 	compactGoalDetails,
 	GOAL_CONTEXT_CUSTOM_TYPE,
@@ -38,7 +38,7 @@ interface ContinuationContext extends GoalRuntimeContext {
 	hasUI?: boolean;
 	ui?: {
 		setStatus?: (key: string, value: string | undefined) => void;
-		setWidget?: (key: string, value: GoalWidgetContent | undefined) => void;
+		setWidget?: (key: string, value: string[] | undefined) => void;
 	};
 }
 
