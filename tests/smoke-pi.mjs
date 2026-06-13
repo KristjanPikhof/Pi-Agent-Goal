@@ -2,10 +2,11 @@
 /* global AbortSignal, console, process */
 import { spawn } from "node:child_process";
 import { mkdir, rm } from "node:fs/promises";
-import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const repoRoot = resolve(new URL("..", import.meta.url).pathname);
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const piBin = join(repoRoot, "node_modules", ".bin", process.platform === "win32" ? "pi.cmd" : "pi");
 const mode = process.argv[2] ?? "goal";
 const timeoutMs = Number(process.env.PI_GOAL_SMOKE_TIMEOUT_MS ?? 30_000);
