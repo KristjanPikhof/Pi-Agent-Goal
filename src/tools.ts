@@ -98,14 +98,13 @@ interface GoalToolContext extends Partial<GoalWorkflowContext> {
 	sessionManager: { getBranch(): Array<{ type: string; customType?: string; data?: unknown }> };
 }
 
-type GoalToolResult = {
+export type GoalToolResult = {
 	content: Array<{ type: "text"; text: string }>;
 	details: Record<string, unknown> | undefined;
-	isError?: boolean;
 	terminate?: boolean;
 };
 
-type GoalTheme = {
+export type GoalTheme = {
 	fg?: (token: "toolTitle" | "toolOutput" | "success" | "error" | "muted", text: string) => string;
 	bold?: (text: string) => string;
 };
@@ -458,8 +457,7 @@ export function formatCompleteGoalToolResult(
 function refusalResult(message: string, code: string, goal?: GoalState): GoalToolResult {
 	return {
 		content: [{ type: "text", text: message }],
-		details: { error: code, status: "refused", reason: code, goal },
-		isError: true,
+		details: { status: "refused", reason: code, goal },
 	};
 }
 

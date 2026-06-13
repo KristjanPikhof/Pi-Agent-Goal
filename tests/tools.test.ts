@@ -168,7 +168,7 @@ describe("goal tool execution", () => {
 		expect(branch).toHaveLength(0);
 
 		const created = executeCreateGoal({ objective: "Allowed", explicit_request: true }, ctx, pi);
-		expect(created.isError).toBeUndefined();
+		expect(created).not.toHaveProperty("isError");
 		expect(latestGoalEntry(branch).action).toBe("create");
 		expect(ui.setStatus).toHaveBeenCalledWith("goal", undefined);
 		expect(ui.setWidget).toHaveBeenCalledWith(

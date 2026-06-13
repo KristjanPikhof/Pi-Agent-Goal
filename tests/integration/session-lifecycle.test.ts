@@ -185,8 +185,7 @@ describe("session lifecycle integration coverage", () => {
 				pi,
 			),
 		).toMatchObject({
-			isError: true,
-			details: { error: "permission_denied" },
+			details: { status: "refused", reason: "permission_denied" },
 		});
 
 		const progress = executeUpdateGoalProgress(
@@ -194,7 +193,7 @@ describe("session lifecycle integration coverage", () => {
 			toolCtx,
 			pi,
 		);
-		expect(progress.isError).not.toBe(true);
+		expect(progress).not.toHaveProperty("isError");
 		expect(latestGoal(branch)?.progress).toMatchObject({ lastSummary: "tool progress" });
 
 		const complete = executeCompleteGoal({ evidence: "all checks passed" }, toolCtx, pi);
