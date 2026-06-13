@@ -140,12 +140,14 @@ Update progress through `update_goal_progress`, then let an idle continuation qu
 
 11. Confirm this automatic continuation path is distinct from `/goal start` and `--start`: it should only queue while Pi is idle and the continuation flag is enabled.
 
-12. Run quick non-interactive load checks:
+12. Run quick non-interactive load checks (automated by `npm run smoke:pi`):
 
     ```bash
     pi --no-session --no-extensions -e ./extensions/index.ts -p /goal
     pi --no-session --no-extensions -e ./extensions/index.ts --goal-continuation -p /goal
     ```
+
+13. Run package contents/load metadata checks (automated by `npm run smoke:package`) and targeted module coverage for `src/runtime.ts`, `src/tools.ts`, `src/ui.ts`, `src/state.ts`, and `src/import.ts` (automated by `npm run test:coverage`).
 
 ## Definition of done status
 
