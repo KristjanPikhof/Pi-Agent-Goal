@@ -48,15 +48,14 @@ Setting a goal from plain text asks the chat agent to draft a reviewable objecti
 
 Use `/goal start` when an active goal already exists and you want a one-shot handoff to the agent. This is different from automatic idle continuation; it queues one explicit follow-up turn.
 
-For non-interactive mode, add `--start` to the command that creates, imports, or resumes the goal when you need work to begin immediately:
+For non-interactive mode, add `--start` to an already-approved command that imports or resumes a goal when you need work to begin immediately:
 
 ```bash
-pi -e npm:pi-agent-goal -p "/goal Ship the onboarding cleanup --start"
 pi -e npm:pi-agent-goal -p "/goal import docs/prd.md --yes --start"
 pi -e npm:pi-agent-goal -p "/goal resume --start"
 ```
 
-Without `--start`, non-interactive import/resume commands only update goal state. Plain `/goal` text still needs the agent-mediated review callback before anything is saved, so use an interactive Pi session for that drafting path.
+Without `--start`, non-interactive import/resume commands only update goal state. Plain `/goal` text, including `/goal <objective> --start`, only queues the agent-mediated drafting/review path and still needs the `propose_goal_draft` review callback before anything is saved or started, so use an interactive Pi session for that drafting path or an explicitly approved tool path for persistence.
 
 ## Settings.json form
 

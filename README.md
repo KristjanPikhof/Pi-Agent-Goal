@@ -38,10 +38,11 @@ If you created the goal without `--start`, start it later:
 /goal start
 ```
 
-For non-interactive runs that should begin work immediately, opt in with `--start`:
+For non-interactive runs, plain `/goal` text, including `/goal <objective> --start`, only queues the agent-mediated drafting/review path and does not save or start work by itself. Use an already-approved path when the run should begin work immediately, such as importing reviewed docs with `--yes --start` or resuming an existing paused goal with `--start`:
 
 ```bash
-pi -e npm:pi-agent-goal -p "/goal Ship the onboarding cleanup --start"
+pi -e npm:pi-agent-goal -p "/goal import docs/prd.md --yes --start"
+pi -e npm:pi-agent-goal -p "/goal resume --start"
 ```
 
 ## Install
@@ -144,7 +145,7 @@ Continuation only queues when the goal is active, Pi is idle, and no pending use
 - No exact Codex goal menu or bottom-pane UI. Pi uses the compact active-goal widget, `/goal status` command output, and tool renderers. In TUI mode the widget uses themed Pi components; in RPC, JSON, print, or older hosts it falls back to readable plain text/status output.
 - No general model `update_goal` tool. This is intentional, to prevent silent objective or scope rewrites.
 - Live TUI lifecycle checks for `/compact`, `/reload`, `/resume`, `/tree`, `/fork`, and the visible active-goal widget are manual smoke coverage. Record the command transcript, expected state before/after, and any screenshot or session notes before release, or mark the release blocked. Automated tests cover the underlying hooks and reconstruction behavior, not the live TUI itself.
-- Optional Pi features such as project-trust-specific config, `getSystemPromptOptions`, and autocomplete triggers are not adopted yet. There is no current `/goal` use case that needs per-trust behavior, dynamic system-prompt options beyond the existing hidden context hook, or command autocomplete. Avoid adding those surfaces until a concrete workflow requires them.
+- Optional Pi features such as project-trust-specific config and `getSystemPromptOptions` are not adopted yet. Basic `/goal` subcommand argument completions are implemented; richer autocomplete should wait until a concrete workflow requires it.
 
 ## Troubleshooting
 
@@ -152,7 +153,7 @@ Continuation only queues when the goal is active, Pi is idle, and no pending use
 | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/goal import` says the path is outside the workspace           | The requested path or its realpath resolved outside the workspace, including symlink escapes. Run from the workspace root or move/copy the source file inside it.                                                                                                                                           |
 | `/goal import` requires `--yes`                                 | Non-interactive mode cannot show confirmation. Review the source docs, then rerun with `--yes`. Add `--start` only when the import should also start a one-shot agent handoff. Directory imports fail if supported docs exceed the configured `maxFiles`; narrow the path or raise the limit in code/tests. |
-| Replacing a goal fails in non-interactive mode                  | Rerun `/goal <objective> --replace`. Add `--start` too if the replacement should begin immediately.                                                                                                                                                                                                         |
+| Replacing a goal fails in non-interactive mode                  | Rerun `/goal <objective> --replace` only to authorize queuing a replacement draft. Plain replacement text still saves/starts only after review; use import/resume or explicitly approved tool persistence for non-interactive immediate start.                                                              |
 | `/goal edit` fails                                              | The editor is interactive-only. Use `/goal <objective> --replace` instead.                                                                                                                                                                                                                                  |
 | `/goal <text>` says the draft was queued, but no review appears | The chat agent must call `propose_goal_draft`. If it answered in prose or stopped early, ask it to call the tool with objective and acceptance criteria. No goal is saved until that callback runs.                                                                                                         |
 | `propose_goal_draft` reports `review_ui_unavailable`            | The draft review needs interactive `select` and `editor` UI. Re-run in the Pi TUI, or use an explicit approved `create_goal` request if you really need a non-interactive save.                                                                                                                             |

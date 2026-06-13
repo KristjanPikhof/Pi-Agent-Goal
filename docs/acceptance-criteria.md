@@ -68,15 +68,15 @@ Status key:
 
 ## Harness and theme alignment
 
-| Criterion                                                                                                                                                   | Status                              |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
-| Runtime reads current `InputEvent.text` and keeps compatibility fallbacks for older input shapes.                                                           | Automated                           |
-| Explicit handoffs use follow-up delivery for `/goal start`, `--start`, and continuation turns.                                                              | Automated                           |
-| Tool policy denials return soft refusals with `details.status: "refused"`; invalid input and unexpected failures remain hard errors.                        | Automated                           |
-| Tool renderers use semantic theme tokens and remain readable without a theme.                                                                               | Automated                           |
-| Active-goal widget uses themed TUI components when `ctx.mode` is `tui`.                                                                                     | Automated, live TUI is manual smoke |
-| RPC, JSON, print, and no-widget hosts receive readable plain-text/status fallback.                                                                          | Automated                           |
-| Project-trust-specific config, `getSystemPromptOptions`, and autocomplete triggers are intentionally not used until a concrete pi-goal workflow needs them. | Source review and docs review       |
+| Criterion                                                                                                                                                                                                                                                 | Status                                            |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| Runtime reads current `InputEvent.text` and keeps compatibility fallbacks for older input shapes.                                                                                                                                                         | Automated                                         |
+| Explicit handoffs use follow-up delivery for `/goal start`, `--start`, and continuation turns.                                                                                                                                                            | Automated                                         |
+| Tool policy denials return soft refusals with `details.status: "refused"`; invalid input and unexpected failures remain hard errors.                                                                                                                      | Automated                                         |
+| Tool renderers use semantic theme tokens and remain readable without a theme.                                                                                                                                                                             | Automated                                         |
+| Active-goal widget uses themed TUI components when `ctx.mode` is `tui`.                                                                                                                                                                                   | Automated, live TUI is manual smoke               |
+| RPC, JSON, print, and no-widget hosts receive readable plain-text/status fallback.                                                                                                                                                                        | Automated                                         |
+| Project-trust-specific config and `getSystemPromptOptions` are intentionally not used until a concrete pi-goal workflow needs them. Basic `/goal` subcommand argument completions are implemented; richer context-aware autocomplete remains future work. | Automated by command registration and docs review |
 
 ## Hidden context
 

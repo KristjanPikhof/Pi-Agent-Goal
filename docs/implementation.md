@@ -141,7 +141,7 @@ Use these forms:
 /goal resume --start
 ```
 
-`/goal start` is for an already active goal. `--start` is for create, import, and resume flows that should start immediately, especially in non-interactive `-p` runs where Pi cannot ask a follow-up question.
+`/goal start` is for an already active goal. `--start` is for reviewed create, import, and resume flows that should start immediately. In non-interactive `-p` runs, plain `/goal` text, even with `--start`, only queues the agent-mediated drafting/review path; use import with `--yes --start`, resume with `--start`, or an explicitly approved tool path when persistence and immediate start are required.
 
 The start handoff queues a single follow-up prompt for the current active `goalId`. It does not enable recurring idle work, does not bypass paused or complete states, and does not replace the `--goal-continuation` runtime flag.
 
@@ -239,11 +239,11 @@ The UI layer is theme-aware but still works without TUI-only APIs:
 
 This rollout intentionally avoids a few current Pi extension surfaces:
 
-| Pi feature                    | Why it is not used yet                                                                                                                                                              |
-| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Project-trust-specific config | `/goal` state is stored in the session branch and existing command confirmations already guard risky mutations. There is no separate trusted/untrusted behavior to configure.       |
-| `getSystemPromptOptions`      | The extension already injects active-goal context through the runtime hook and compaction path. A dynamic system-prompt option would duplicate that context without a current need. |
-| Autocomplete triggers         | The command set is small and documented in `/goal` usage. Adding autocomplete is useful only if users report command discovery friction.                                            |
+| Pi feature                    | Why it is not used yet                                                                                                                                                                |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Project-trust-specific config | `/goal` state is stored in the session branch and existing command confirmations already guard risky mutations. There is no separate trusted/untrusted behavior to configure.         |
+| `getSystemPromptOptions`      | The extension already injects active-goal context through the runtime hook and compaction path. A dynamic system-prompt option would duplicate that context without a current need.   |
+| Rich autocomplete             | Basic `/goal` subcommand argument completions are registered in `src/commands.ts`; richer context-aware completions remain future work until users report command discovery friction. |
 
 Add these only when a concrete pi-goal workflow needs them.
 
@@ -268,18 +268,18 @@ The remaining live TUI coverage is documented in [`acceptance-criteria.md`](acce
 
 ## Troubleshooting
 
-| Symptom                                             | Cause and fix                                                                                                                                                                                         |
-| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Import path rejected as outside workspace           | Run Pi from the workspace root or import a file inside the workspace. Symlinks are checked by realpath and cannot point outside the workspace.                                                        |
-| Directory import reports too many docs              | Narrow the directory path or raise the configured `maxFiles` limit. The import fails rather than silently dropping docs.                                                                              |
-| Import requires `--yes`                             | Non-interactive mode cannot confirm. Review the source, then rerun with `--yes`. Add `--start` only if that import should immediately hand work to the agent.                                         |
-| Goal replacement rejected                           | Use interactive confirmation or rerun with `--replace`. The flag is stripped from the saved objective. Add `--start` only when the replacement should begin immediately.                              |
-| `edit` fails                                        | `/goal edit` needs interactive UI. Use `/goal <objective> --replace` without UI.                                                                                                                      |
-| `/goal <text>` queued a draft but no review appears | The command only asks the chat agent to draft. The agent must call `propose_goal_draft`; a prose answer saves nothing. Ask the agent to call the tool with objective and acceptance criteria.         |
-| `propose_goal_draft` cannot review                  | The tool requires interactive `select` and `editor` UI. Without them it returns `review_ui_unavailable`, terminates the drafting turn, and saves nothing. Use the Pi TUI for this review path.        |
-| `/goal start` does not queue                        | Confirm a goal exists, is active, and the follow-up messaging API is available. Resume paused goals first; clear or replace complete goals.                                                           |
-| Continuation does not queue                         | Enable `--goal-continuation`, keep the goal active, wait until Pi is idle, and ensure no pending user messages exist. Do not confuse this with `/goal start`, which queues only one explicit handoff. |
-| Goal appears branch-stale                           | Run `/goal status` on the selected branch. The source of truth is the branch's `goal-state` entries.                                                                                                  |
+| Symptom                                             | Cause and fix                                                                                                                                                                                                                                                     |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Import path rejected as outside workspace           | Run Pi from the workspace root or import a file inside the workspace. Symlinks are checked by realpath and cannot point outside the workspace.                                                                                                                    |
+| Directory import reports too many docs              | Narrow the directory path or raise the configured `maxFiles` limit. The import fails rather than silently dropping docs.                                                                                                                                          |
+| Import requires `--yes`                             | Non-interactive mode cannot confirm. Review the source, then rerun with `--yes`. Add `--start` only if that import should immediately hand work to the agent.                                                                                                     |
+| Goal replacement rejected                           | Use interactive confirmation or rerun with `--replace` only to authorize queuing a replacement draft. Plain replacement text still saves/starts only after review; use import/resume or explicitly approved tool persistence for non-interactive immediate start. |
+| `edit` fails                                        | `/goal edit` needs interactive UI. Use `/goal <objective> --replace` without UI.                                                                                                                                                                                  |
+| `/goal <text>` queued a draft but no review appears | The command only asks the chat agent to draft. The agent must call `propose_goal_draft`; a prose answer saves nothing. Ask the agent to call the tool with objective and acceptance criteria.                                                                     |
+| `propose_goal_draft` cannot review                  | The tool requires interactive `select` and `editor` UI. Without them it returns `review_ui_unavailable`, terminates the drafting turn, and saves nothing. Use the Pi TUI for this review path.                                                                    |
+| `/goal start` does not queue                        | Confirm a goal exists, is active, and the follow-up messaging API is available. Resume paused goals first; clear or replace complete goals.                                                                                                                       |
+| Continuation does not queue                         | Enable `--goal-continuation`, keep the goal active, wait until Pi is idle, and ensure no pending user messages exist. Do not confuse this with `/goal start`, which queues only one explicit handoff.                                                             |
+| Goal appears branch-stale                           | Run `/goal status` on the selected branch. The source of truth is the branch's `goal-state` entries.                                                                                                                                                              |
 
 ## Future work
 
