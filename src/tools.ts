@@ -101,8 +101,12 @@ interface GoalToolContext extends Partial<GoalWorkflowContext> {
 type GoalToolResult = {
 	content: Array<{ type: "text"; text: string }>;
 	details: Record<string, unknown> | undefined;
-	isError?: boolean;
 	terminate?: boolean;
+};
+
+type GoalTheme = {
+	fg?: (token: "toolTitle" | "toolOutput" | "success" | "error" | "muted", text: string) => string;
+	bold?: (text: string) => string;
 };
 
 export function registerGoalTools(pi: ExtensionAPI): void {
@@ -110,7 +114,7 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 		name: "get_goal",
 		label: "Get Goal",
 		description: "Get the current long-running goal state and source paths.",
-		promptSnippet: "Read the current /goal state, status, progress, acceptance criteria, and source paths.",
+		promptSnippet: "Use get_goal to read the current /goal state, status, progress, acceptance criteria, and source paths.",
 		promptGuidelines: [
 			"Use get_goal when you need the current long-running objective before acting on goal state.",
 		],
@@ -127,7 +131,7 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 		label: "Create Goal",
 		description:
 			"Create a goal only when explicitly requested by the user or system/developer instructions. Fails if a goal exists.",
-		promptSnippet: "Create a user-approved /goal only when no goal exists.",
+		promptSnippet: "Use create_goal to persist a user-approved /goal only when no goal exists."
 		promptGuidelines: [
 			"Use create_goal only when the user or system/developer instructions explicitly ask to persist an already-approved goal; do not infer goals from ordinary tasks.",
 			"Do not use create_goal for agent-drafted /goal proposals; use propose_goal_draft so the user can review objective and acceptance criteria first.",
@@ -166,7 +170,7 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 		label: "Complete Goal",
 		description:
 			"Mark the active goal complete only when the objective is achieved and no required work remains.",
-		promptSnippet: "Mark the current /goal complete with evidence.",
+		promptSnippet: "Use complete_goal to mark the current /goal complete with evidence."
 		promptGuidelines: [
 			"Use complete_goal only when the active goal is achieved and no required work remains; include evidence when possible.",
 			"complete_goal cannot pause, resume, replace, or rewrite the goal objective.",
@@ -189,7 +193,7 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 		label: "Update Goal Progress",
 		description:
 			"Update execution progress for the active goal without changing objective, source docs, or criteria.",
-		promptSnippet: "Update /goal progress fields only.",
+		promptSnippet: "Use update_goal_progress to update /goal progress fields only."
 		promptGuidelines: [
 			"Use update_goal_progress only for implementation progress; it cannot rewrite objective, source docs, or acceptance criteria.",
 		],
@@ -220,14 +224,14 @@ export function executeCreateGoal(
 	pi: Pick<ExtensionAPI, "appendEntry">,
 ): GoalToolResult {
 	if (!params.explicit_request) {
-		return errorResult(
+		return refusalResult(
 			"create_goal requires explicit user or system/developer authorization.",
 			"permission_denied",
 		);
 	}
 	const current = loadGoalState(ctx);
 	if (current) {
-		return errorResult(
+		return refusalResult(
 			"A goal already exists. Use user-owned /goal replacement flow instead.",
 			"goal_exists",
 			current,
@@ -260,7 +264,7 @@ export async function executeProposeGoalDraft(
 	pi: Pick<ExtensionAPI, "appendEntry"> & Partial<GoalStartAPI>,
 ): Promise<GoalToolResult> {
 	const normalized = normalizeGoalDraftParams(params);
-	if (!normalized.ok) return errorResult(normalized.message, normalized.code, undefined, true);
+	if (!normalized.ok) throw goalToolError(normalized.message, normalized.code);
 
 	if (!ctx.hasUI || !ctx.ui?.select || !ctx.ui.editor) {
 		return {
@@ -300,7 +304,7 @@ export async function executeProposeGoalDraft(
 	}
 
 	const reviewed = normalizeReviewedProposal(review.proposal);
-	if (!reviewed.ok) return errorResult(reviewed.message, reviewed.code, current ?? undefined, true);
+	if (!reviewed.ok) throw goalToolError(reviewed.message, reviewed.code);
 
 	const next = await saveReviewedGoalAndOfferStart(
 		pi as ExtensionAPI & Partial<GoalStartAPI>,
@@ -317,12 +321,7 @@ export async function executeProposeGoalDraft(
 		},
 	);
 	if (!next) {
-		return errorResult(
-			"Goal changed before saving. No goal was saved.",
-			"stale_goal",
-			current ?? undefined,
-			true,
-		);
+		throw goalToolError("Goal changed before saving. No goal was saved.", "stale_goal");
 	}
 
 	return {
@@ -345,11 +344,11 @@ export function executeCompleteGoal(
 	pi: Pick<ExtensionAPI, "appendEntry">,
 ): GoalToolResult {
 	const current = loadGoalState(ctx);
-	if (!current) return errorResult("No active goal exists to complete.", "no_goal");
+	if (!current) return refusalResult("No active goal exists to complete.", "no_goal");
 	if (current.status === "complete")
-		return errorResult("The current goal is already complete.", "already_complete", current);
+		return refusalResult("The current goal is already complete.", "already_complete", current);
 	if (current.status !== "active")
-		return errorResult("Only active goals can be completed.", "goal_inactive", current);
+		return refusalResult("Only active goals can be completed.", "goal_inactive", current);
 
 	const evidence = params.evidence?.trim();
 	const next = saveGoalState(
@@ -375,11 +374,11 @@ export function executeUpdateGoalProgress(
 	pi: Pick<ExtensionAPI, "appendEntry">,
 ): GoalToolResult {
 	const current = loadGoalState(ctx);
-	if (!current) return errorResult("No active goal exists to update.", "no_goal");
+	if (!current) return refusalResult("No active goal exists to update.", "no_goal");
 	if (current.status === "complete")
-		return errorResult("Cannot update progress for a complete goal.", "already_complete", current);
+		return refusalResult("Cannot update progress for a complete goal.", "already_complete", current);
 	if (current.status !== "active")
-		return errorResult("Only active goals can receive progress updates.", "goal_inactive", current);
+		return refusalResult("Only active goals can receive progress updates.", "goal_inactive", current);
 
 	const progress: Partial<GoalProgress> = {
 		done: params.done,
