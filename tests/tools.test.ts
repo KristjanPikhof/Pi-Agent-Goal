@@ -33,8 +33,15 @@ function createHarness() {
 			promptSnippet?: string;
 			promptGuidelines?: string[];
 			execute: (...args: never[]) => Promise<unknown>;
-			renderCall?: (args: Record<string, unknown>) => { render(width: number): string[] };
-			renderResult?: (result: Record<string, unknown>) => { render(width: number): string[] };
+			renderCall?: (
+				args: Record<string, unknown>,
+				theme?: { fg: (token: string, text: string) => string; bold: (text: string) => string },
+			) => { render(width: number): string[] };
+			renderResult?: (
+				result: Record<string, unknown>,
+				options?: Record<string, unknown>,
+				theme?: { fg: (token: string, text: string) => string; bold: (text: string) => string },
+			) => { render(width: number): string[] };
 		}
 	>();
 	const pi = {
@@ -98,7 +105,7 @@ describe("goal tool schemas and registration", () => {
 	});
 
 	it("documents propose_goal_draft as the review-only drafting path separate from create_goal", () => {
-		expect(proposeGoalDraftPromptSnippet).toContain("call propose_goal_draft exactly once");
+		expect(proposeGoalDraftPromptSnippet).toContain("Use propose_goal_draft");
 		expect(proposeGoalDraftPromptSnippet).toContain("do not persist");
 		expect(proposeGoalDraftPromptGuidelines).toEqual(
 			expect.arrayContaining([
@@ -117,10 +124,50 @@ describe("goal tool schemas and registration", () => {
 		expect(createGoalGuidance).toContain("persist an already-approved goal");
 		expect(createGoalGuidance).toContain("Do not use create_goal for agent-drafted /goal proposals");
 		expect(createGoalGuidance).toContain("use propose_goal_draft");
+
+		for (const toolName of [
+			"get_goal",
+			"create_goal",
+			"propose_goal_draft",
+			"complete_goal",
+			"update_goal_progress",
+		]) {
+			const tool = tools.get(toolName);
+			expect(tool?.promptSnippet).toContain(toolName);
+			expect(tool?.promptGuidelines?.join("\n")).toContain(toolName);
+		}
 	});
 });
 
 describe("goal tool execution", () => {
+	it("registered execute callbacks dispatch complete and progress tools", async () => {
+		const { pi, ctx, tools } = createHarness();
+		registerGoalTools(pi);
+		executeCreateGoal({ objective: "Dispatch callbacks", explicit_request: true }, ctx, pi);
+
+		const progress = await tools
+			.get("update_goal_progress")
+			?.execute(
+				"call-1" as never,
+				{ summary: "callback progress" } as never,
+				undefined as never,
+				undefined as never,
+				ctx as never,
+			);
+		expect(progress).toMatchObject({ details: { progress: { lastSummary: "callback progress" } } });
+
+		const complete = await tools
+			.get("complete_goal")
+			?.execute(
+				"call-2" as never,
+				{ evidence: "callback complete" } as never,
+				undefined as never,
+				undefined as never,
+				ctx as never,
+			);
+		expect(complete).toMatchObject({ details: { evidence: "callback complete" } });
+	});
+
 	it("get_goal returns no-goal and current state details including source paths", () => {
 		const { pi, ctx, branch } = createHarness();
 		expect(executeGetGoal(ctx)).toMatchObject({ details: { goal: null } });
@@ -141,14 +188,15 @@ describe("goal tool execution", () => {
 		expect(latestGoalEntry(branch).state?.acceptanceCriteria).toEqual(["tools pass"]);
 	});
 
-	it("create_goal fails without explicit authorization and when a goal exists", () => {
+	it("create_goal soft-refuses without explicit authorization and when a goal exists", () => {
 		const { pi, ctx, branch, ui } = createHarness();
 		const denied = executeCreateGoal({ objective: "No permission", explicit_request: false }, ctx, pi);
-		expect(denied).toMatchObject({ isError: true, details: { error: "permission_denied" } });
+		expect(denied).toMatchObject({ details: { status: "refused", reason: "permission_denied" } });
+		expect(denied).not.toHaveProperty("isError");
 		expect(branch).toHaveLength(0);
 
 		const created = executeCreateGoal({ objective: "Allowed", explicit_request: true }, ctx, pi);
-		expect(created.isError).toBeUndefined();
+		expect(created).not.toHaveProperty("isError");
 		expect(latestGoalEntry(branch).action).toBe("create");
 		expect(ui.setStatus).toHaveBeenCalledWith("goal", undefined);
 		expect(ui.setWidget).toHaveBeenCalledWith(
@@ -157,7 +205,8 @@ describe("goal tool execution", () => {
 		);
 
 		const duplicate = executeCreateGoal({ objective: "Rewrite", explicit_request: true }, ctx, pi);
-		expect(duplicate).toMatchObject({ isError: true, details: { error: "goal_exists" } });
+		expect(duplicate).toMatchObject({ details: { status: "refused", reason: "goal_exists" } });
+		expect(duplicate).not.toHaveProperty("isError");
 		expect(latestGoalEntry(branch).state?.objective).toBe("Allowed");
 	});
 
@@ -298,28 +347,31 @@ describe("goal tool execution", () => {
 			executeCreateGoal({ objective: "Concurrent goal", explicit_request: true }, stale.ctx, stale.pi);
 			return "Start";
 		});
-		const staleResult = await executeProposeGoalDraft(
-			{ objective: "Stale draft", acceptanceCriteria: ["criterion"] },
-			stale.ctx,
-			{ ...stale.pi, sendUserMessage: vi.fn() },
-		);
-		expect(staleResult).toMatchObject({ isError: true, terminate: true, details: { error: "stale_goal" } });
+		await expect(
+			executeProposeGoalDraft({ objective: "Stale draft", acceptanceCriteria: ["criterion"] }, stale.ctx, {
+				...stale.pi,
+				sendUserMessage: vi.fn(),
+			}),
+		).rejects.toMatchObject({
+			message: "Goal changed before saving. No goal was saved.",
+			code: "stale_goal",
+		});
 		expect(latestGoalEntry(stale.branch).state?.objective).toBe("Concurrent goal");
 	});
 
-	it("propose_goal_draft validates result shape before review", async () => {
+	it("propose_goal_draft throws for invalid model-provided draft shape before review", async () => {
 		const { pi, ctx, branch, ui } = createHarness();
-		const result = await executeProposeGoalDraft({ objective: "   ", acceptanceCriteria: [" "] }, ctx, pi);
+		await expect(
+			executeProposeGoalDraft({ objective: "   ", acceptanceCriteria: [" "] }, ctx, pi),
+		).rejects.toMatchObject({ message: "Goal draft objective is required.", code: "invalid_objective" });
 		expect(branch).toHaveLength(0);
 		expect(ui.select).not.toHaveBeenCalled();
-		expect(result).toMatchObject({ isError: true, terminate: true, details: { error: "invalid_objective" } });
 	});
 
 	it("complete_goal handles no-goal cases and persists evidence without rewriting scope", () => {
 		const empty = createHarness();
 		expect(executeCompleteGoal({ evidence: "done" }, empty.ctx, empty.pi)).toMatchObject({
-			isError: true,
-			details: { error: "no_goal" },
+			details: { status: "refused", reason: "no_goal" },
 		});
 
 		const { pi, ctx, branch, ui } = createHarness();
@@ -365,7 +417,7 @@ describe("goal tool execution", () => {
 		expect(ui.setStatus).toHaveBeenLastCalledWith("goal", undefined);
 		expect(ui.setWidget).toHaveBeenLastCalledWith(
 			"goal",
-			expect.arrayContaining(["Goal · Active · AC: 1 · Blocked: 1 · Track me", "Now · two"]),
+			expect.arrayContaining(["Goal · Active · AC: 1 · Blocked: 1 · ✓ 1 · Track me", "Now · two"]),
 		);
 		expect(latestGoalEntry(branch).action).toBe("progress");
 		expect(latestGoalEntry(branch).state).toMatchObject({
@@ -386,12 +438,10 @@ describe("goal tool execution", () => {
 		);
 
 		expect(executeCompleteGoal({ evidence: "done" }, ctx, pi)).toMatchObject({
-			isError: true,
-			details: { error: "goal_inactive" },
+			details: { status: "refused", reason: "goal_inactive" },
 		});
 		expect(executeUpdateGoalProgress({ summary: "late" }, ctx, pi)).toMatchObject({
-			isError: true,
-			details: { error: "goal_inactive" },
+			details: { status: "refused", reason: "goal_inactive" },
 		});
 		expect(latestGoalEntry(branch).state?.status).toBe("paused");
 	});
@@ -399,24 +449,72 @@ describe("goal tool execution", () => {
 	it("update_goal_progress fails with no goal or complete goal", () => {
 		const empty = createHarness();
 		expect(executeUpdateGoalProgress({ summary: "x" }, empty.ctx, empty.pi)).toMatchObject({
-			isError: true,
-			details: { error: "no_goal" },
+			details: { status: "refused", reason: "no_goal" },
 		});
 
 		const { pi, ctx } = createHarness();
 		executeCreateGoal({ objective: "Done", explicit_request: true }, ctx, pi);
 		executeCompleteGoal({ evidence: "done" }, ctx, pi);
 		expect(executeUpdateGoalProgress({ summary: "late" }, ctx, pi)).toMatchObject({
-			isError: true,
-			details: { error: "already_complete" },
+			details: { status: "refused", reason: "already_complete" },
 		});
 	});
 });
 
 describe("goal tool renderers", () => {
+	it("registered renderers use semantic theme tokens while preserving readable text", () => {
+		const { pi, tools } = createHarness();
+		registerGoalTools(pi);
+		const tokens: string[] = [];
+		const theme = {
+			fg: (token: string, text: string) => {
+				tokens.push(token);
+				return text;
+			},
+			bold: (text: string) => text,
+		};
+
+		const callRendered = tools
+			.get("create_goal")
+			?.renderCall?.({ objective: "Ship themed tools" }, theme)
+			.render(120)
+			.map((line) => line.trim())
+			.filter(Boolean);
+		const successRendered = tools
+			.get("update_goal_progress")
+			?.renderResult?.(
+				{ content: [{ type: "text", text: "Goal progress updated" }], details: { progress: {} } },
+				{},
+				theme,
+			)
+			.render(120)
+			.map((line) => line.trim())
+			.filter(Boolean);
+		const outputRendered = tools
+			.get("get_goal")
+			?.renderResult?.(
+				{ content: [{ type: "text", text: "No goal is currently set." }], details: {} },
+				{},
+				theme,
+			)
+			.render(120)
+			.map((line) => line.trim())
+			.filter(Boolean);
+		formatGoalToolResult(
+			{ content: [{ type: "text", text: "Denied" }], details: undefined, isError: true },
+			theme,
+		);
+
+		expect(callRendered).toEqual(["Create goal", "Ship themed tools"]);
+		expect(successRendered).toEqual(["Goal progress updated"]);
+		expect(outputRendered).toEqual(["No goal is currently set."]);
+		expect(tokens).toEqual(expect.arrayContaining(["toolTitle", "muted", "success", "toolOutput", "error"]));
+	});
+
 	it("formats tool calls as human-readable title/body displays", () => {
 		expect(formatGoalToolCall("create_goal", "Ship it")).toBe("Create goal\nShip it");
 		expect(formatGoalToolCall("get_goal")).toBe("Get goal");
+		expect(formatGoalToolCall("unknown_goal_tool")).toBe("unknown_goal_tool");
 		expect(formatGoalToolCall("complete_goal", "all checks passed")).toBe(
 			"✓ Complete goal\nall checks passed",
 		);
@@ -443,6 +541,10 @@ describe("goal tool renderers", () => {
 		expect(formatUpdateGoalProgressToolCall({ done: ["implementation", "tests"] })).toBe(
 			"Update goal progress\nDone: implementation; tests",
 		);
+		expect(formatUpdateGoalProgressToolCall({ blocked: ["live TUI unavailable"] })).toBe(
+			"Update goal progress\nBlocked: live TUI unavailable",
+		);
+		expect(formatUpdateGoalProgressToolCall({})).toBe("Update goal progress");
 	});
 
 	it("registered update_goal_progress renderCall includes summary args without legacy prefix", () => {

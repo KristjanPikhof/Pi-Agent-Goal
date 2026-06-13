@@ -1,67 +1,76 @@
 # Setup
 
-This guide installs `pi-agent-goal` as a Pi package and shows the local checkout paths for extension development.
+Use this guide to install `pi-agent-goal` or load a local checkout while developing the extension.
 
 ## Requirements
 
-- macOS or Linux
-- Node.js `>=22.0.0`
-- `@earendil-works/pi-coding-agent ^0.74.0`
+- macOS or Linux.
+- Node.js `>=22.19.0`.
+- `pi-agent-goal` release `2026.6.14`.
+- A Pi host compatible with `@earendil-works/pi-coding-agent` and `@earendil-works/pi-tui` `^0.79.3` APIs.
 
-## Recommended install
+The published package declares Pi packages as open peer dependencies (`*`). That lets the extension use the host Pi runtime instead of bundling another copy.
 
-Install the package from npm:
+## Install from npm
+
+Global install:
 
 ```bash
 pi install npm:pi-agent-goal
 ```
 
-By default, Pi writes this to your global settings at `~/.pi/agent/settings.json`. To install it for the current project only, add `-l`:
+Project-local install:
 
 ```bash
 pi install -l npm:pi-agent-goal
 ```
 
-For a one-off run without writing settings, use:
+One-off run without writing settings:
 
 ```bash
 pi -e npm:pi-agent-goal
 ```
 
-After installation, start Pi and run:
+Then start Pi and check the command:
 
 ```text
 /goal
 ```
 
-You should see the `/goal` command help if no goal exists yet.
+With no saved goal, you should see command help.
 
-## Starting a goal
+## Start a goal
 
-Setting a goal from plain text asks the chat agent to draft a reviewable objective and acceptance criteria with `propose_goal_draft`. In an interactive Pi session with select/editor support, the callback shows Start, Edit, and Cancel: Start saves and starts one agent handoff, Edit opens a prefilled markdown editor for the objective and acceptance criteria, and Cancel saves nothing. If the model does not call the tool, or if review UI is unavailable, no goal is saved.
+Interactive flow:
 
 ```text
 /goal Ship the onboarding cleanup
+```
+
+Plain goal text asks the chat agent to call `propose_goal_draft`. The TUI review then offers Start, Edit, and Cancel. Start saves and queues one agent handoff. Edit opens a prefilled markdown editor. Cancel saves nothing.
+
+To start an already active goal:
+
+```text
 /goal start
 ```
 
-Use `/goal start` when an active goal already exists and you want a one-shot handoff to the agent. This is different from automatic idle continuation; it queues one explicit follow-up turn.
+This queues one explicit handoff. It is not automatic idle continuation.
 
-For non-interactive mode, add `--start` to the command that creates, imports, or resumes the goal when you need work to begin immediately:
+## Non-interactive starts
+
+Use import or resume when a non-interactive run should save state and start immediately:
 
 ```bash
-pi -e npm:pi-agent-goal -p "/goal Ship the onboarding cleanup --start"
 pi -e npm:pi-agent-goal -p "/goal import docs/prd.md --yes --start"
 pi -e npm:pi-agent-goal -p "/goal resume --start"
 ```
 
-Without `--start`, non-interactive import/resume commands only update goal state. Plain `/goal` text still needs the agent-mediated review callback before anything is saved, so use an interactive Pi session for that drafting path.
+Plain `/goal <objective> --start` in non-interactive mode only queues the draft/review path. It does not persist or start work by itself.
 
 ## Settings.json form
 
-If you prefer editing settings directly, add the package source to `packages`.
-
-Global, in `~/.pi/agent/settings.json`:
+Global settings live at `~/.pi/agent/settings.json`:
 
 ```json
 {
@@ -69,7 +78,7 @@ Global, in `~/.pi/agent/settings.json`:
 }
 ```
 
-Project-local, in `.pi/settings.json`:
+Project settings live at `.pi/settings.json`:
 
 ```json
 {
@@ -77,39 +86,32 @@ Project-local, in `.pi/settings.json`:
 }
 ```
 
-Project settings are local to that workspace. Use them when a repo should always load `pi-agent-goal` for anyone working there.
+Use project settings when a repo should always load the extension.
 
 ## Local checkout development
-
-Use a local checkout when you are editing this repository or testing unreleased changes.
 
 ```bash
 git clone git@github.com:KristjanPikhof/Pi-Agent-Goal.git
 cd Pi-Agent-Goal
 npm install
-```
-
-Then load the source shim directly for a one-off run:
-
-```bash
 pi --no-extensions -e ./extensions/index.ts
 ```
 
-Or link the checkout into your global extension directory:
+To link the checkout globally:
 
 ```bash
 mkdir -p ~/.pi/agent/extensions
 ln -s "$PWD/extensions/index.ts" ~/.pi/agent/extensions/pi-agent-goal.ts
 ```
 
-For project-local local development, link it under the project:
+To link it into another project:
 
 ```bash
 mkdir -p /path/to/project/.pi/extensions
 ln -s "$PWD/extensions/index.ts" /path/to/project/.pi/extensions/pi-agent-goal.ts
 ```
 
-## Package entry points
+## Package entry point
 
 Published and local installs load the source extension entry:
 
@@ -121,21 +123,37 @@ Published and local installs load the source extension entry:
 }
 ```
 
-The extension folder layout is:
+Layout:
 
 ```text
 extensions/index.ts
 extensions/pi-goal/index.ts
 ```
 
-`extensions/index.ts` is the public package entry and re-exports the plugin from `extensions/pi-goal/index.ts`. The nested entry imports the implementation from `src/index.ts`.
+`extensions/index.ts` re-exports the plugin from `extensions/pi-goal/index.ts`, which imports the implementation from `src/index.ts`.
 
-For local verification:
+## Package policy
+
+Keep `README.md`, `docs`, `extensions`, `src`, and `LICENSE` in the npm package. Keep docs links relative so they work after `npm pack` and on GitHub.
+
+Check package contents with:
+
+```bash
+npm pack --dry-run
+npm run smoke:package
+```
+
+## Local verification
+
+The canonical release list lives in [`acceptance-criteria.md`](acceptance-criteria.md#validation-commands), so keep this section as a quick local checklist rather than a second source of truth.
 
 ```bash
 npm run typecheck
 npm run lint
 npm run format
 npm test
+npm run test:coverage
+npm run smoke:pi
+npm run smoke:package
 npm pack --dry-run
 ```

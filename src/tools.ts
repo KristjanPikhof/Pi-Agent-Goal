@@ -78,7 +78,7 @@ export const updateGoalProgressParams = Type.Object(
 );
 
 export const proposeGoalDraftPromptSnippet =
-	"Draft a reviewable /goal proposal and call propose_goal_draft exactly once; do not persist it directly.";
+	"Use propose_goal_draft to draft a reviewable /goal proposal exactly once; do not persist it directly.";
 
 export const proposeGoalDraftPromptGuidelines = [
 	"Use propose_goal_draft for plain /goal drafting turns that need user review before anything is saved.",
@@ -98,11 +98,15 @@ interface GoalToolContext extends Partial<GoalWorkflowContext> {
 	sessionManager: { getBranch(): Array<{ type: string; customType?: string; data?: unknown }> };
 }
 
-type GoalToolResult = {
+export type GoalToolResult = {
 	content: Array<{ type: "text"; text: string }>;
 	details: Record<string, unknown> | undefined;
-	isError?: boolean;
 	terminate?: boolean;
+};
+
+export type GoalTheme = {
+	fg?: (token: "toolTitle" | "toolOutput" | "success" | "error" | "muted", text: string) => string;
+	bold?: (text: string) => string;
 };
 
 export function registerGoalTools(pi: ExtensionAPI): void {
@@ -110,7 +114,8 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 		name: "get_goal",
 		label: "Get Goal",
 		description: "Get the current long-running goal state and source paths.",
-		promptSnippet: "Read the current /goal state, status, progress, acceptance criteria, and source paths.",
+		promptSnippet:
+			"Use get_goal to read the current /goal state, status, progress, acceptance criteria, and source paths.",
 		promptGuidelines: [
 			"Use get_goal when you need the current long-running objective before acting on goal state.",
 		],
@@ -118,32 +123,38 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 		async execute(_toolCallId, _params, _signal, _onUpdate, ctx) {
 			return executeGetGoal(ctx as GoalToolContext);
 		},
-		renderCall: () => new Text(formatGoalToolCall("get_goal"), 0, 0),
-		renderResult: (result) => new Text(formatGoalToolResult(result as GoalToolResult), 0, 0),
+		renderCall: (_args, theme) => new Text(formatGoalToolCall("get_goal", undefined, theme), 0, 0),
+		renderResult: (result, _options, theme) =>
+			new Text(formatGoalToolResult(result as GoalToolResult, theme), 0, 0),
 	});
 
 	pi.registerTool({
 		name: "create_goal",
 		label: "Create Goal",
 		description:
-			"Create a goal only when explicitly requested by the user or system/developer instructions. Fails if a goal exists.",
-		promptSnippet: "Create a user-approved /goal only when no goal exists.",
+			"Create a goal only when explicitly requested by the user or system/developer instructions. Refuses if a goal exists.",
+		promptSnippet: "Use create_goal to persist a user-approved /goal only when no goal exists.",
 		promptGuidelines: [
 			"Use create_goal only when the user or system/developer instructions explicitly ask to persist an already-approved goal; do not infer goals from ordinary tasks.",
 			"Do not use create_goal for agent-drafted /goal proposals; use propose_goal_draft so the user can review objective and acceptance criteria first.",
-			"create_goal fails if a goal already exists; do not use it to rewrite an existing objective.",
+			"create_goal refuses if a goal already exists; do not use it to rewrite an existing objective.",
 		],
 		parameters: createGoalParams,
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
 			return executeCreateGoal(params as CreateGoalToolInput, ctx as GoalToolContext, pi);
 		},
-		renderCall: (args) =>
+		renderCall: (args, theme) =>
 			new Text(
-				formatGoalToolCall("create_goal", (args as Partial<CreateGoalToolInput> | undefined)?.objective),
+				formatGoalToolCall(
+					"create_goal",
+					(args as Partial<CreateGoalToolInput> | undefined)?.objective,
+					theme,
+				),
 				0,
 				0,
 			),
-		renderResult: (result) => new Text(formatGoalToolResult(result as GoalToolResult), 0, 0),
+		renderResult: (result, _options, theme) =>
+			new Text(formatGoalToolResult(result as GoalToolResult, theme), 0, 0),
 	});
 
 	pi.registerTool({
@@ -157,8 +168,10 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
 			return executeProposeGoalDraft(params as ProposeGoalDraftToolInput, ctx as GoalToolContext, pi);
 		},
-		renderCall: (args) => new Text(formatProposeGoalDraftToolCall(args as ProposeGoalDraftToolInput), 0, 0),
-		renderResult: (result) => new Text(formatGoalToolResult(result as GoalToolResult), 0, 0),
+		renderCall: (args, theme) =>
+			new Text(formatProposeGoalDraftToolCall(args as ProposeGoalDraftToolInput, theme), 0, 0),
+		renderResult: (result, _options, theme) =>
+			new Text(formatGoalToolResult(result as GoalToolResult, theme), 0, 0),
 	});
 
 	pi.registerTool({
@@ -166,7 +179,7 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 		label: "Complete Goal",
 		description:
 			"Mark the active goal complete only when the objective is achieved and no required work remains.",
-		promptSnippet: "Mark the current /goal complete with evidence.",
+		promptSnippet: "Use complete_goal to mark the current /goal complete with evidence.",
 		promptGuidelines: [
 			"Use complete_goal only when the active goal is achieved and no required work remains; include evidence when possible.",
 			"complete_goal cannot pause, resume, replace, or rewrite the goal objective.",
@@ -175,13 +188,18 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
 			return executeCompleteGoal(params as CompleteGoalToolInput, ctx as GoalToolContext, pi);
 		},
-		renderCall: (args) =>
+		renderCall: (args, theme) =>
 			new Text(
-				formatGoalToolCall("complete_goal", (args as Partial<CompleteGoalToolInput> | undefined)?.evidence),
+				formatGoalToolCall(
+					"complete_goal",
+					(args as Partial<CompleteGoalToolInput> | undefined)?.evidence,
+					theme,
+				),
 				0,
 				0,
 			),
-		renderResult: (result) => new Text(formatCompleteGoalToolResult(result as GoalToolResult), 0, 0),
+		renderResult: (result, _options, theme) =>
+			new Text(formatCompleteGoalToolResult(result as GoalToolResult, theme), 0, 0),
 	});
 
 	pi.registerTool({
@@ -189,7 +207,7 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 		label: "Update Goal Progress",
 		description:
 			"Update execution progress for the active goal without changing objective, source docs, or criteria.",
-		promptSnippet: "Update /goal progress fields only.",
+		promptSnippet: "Use update_goal_progress to update /goal progress fields only.",
 		promptGuidelines: [
 			"Use update_goal_progress only for implementation progress; it cannot rewrite objective, source docs, or acceptance criteria.",
 		],
@@ -197,9 +215,10 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
 			return executeUpdateGoalProgress(params as UpdateGoalProgressToolInput, ctx as GoalToolContext, pi);
 		},
-		renderCall: (args) =>
-			new Text(formatUpdateGoalProgressToolCall(args as UpdateGoalProgressToolInput), 0, 0),
-		renderResult: (result) => new Text(formatGoalToolResult(result as GoalToolResult), 0, 0),
+		renderCall: (args, theme) =>
+			new Text(formatUpdateGoalProgressToolCall(args as UpdateGoalProgressToolInput, theme), 0, 0),
+		renderResult: (result, _options, theme) =>
+			new Text(formatGoalToolResult(result as GoalToolResult, theme), 0, 0),
 	});
 }
 
@@ -220,14 +239,14 @@ export function executeCreateGoal(
 	pi: Pick<ExtensionAPI, "appendEntry">,
 ): GoalToolResult {
 	if (!params.explicit_request) {
-		return errorResult(
+		return refusalResult(
 			"create_goal requires explicit user or system/developer authorization.",
 			"permission_denied",
 		);
 	}
 	const current = loadGoalState(ctx);
 	if (current) {
-		return errorResult(
+		return refusalResult(
 			"A goal already exists. Use user-owned /goal replacement flow instead.",
 			"goal_exists",
 			current,
@@ -260,7 +279,7 @@ export async function executeProposeGoalDraft(
 	pi: Pick<ExtensionAPI, "appendEntry"> & Partial<GoalStartAPI>,
 ): Promise<GoalToolResult> {
 	const normalized = normalizeGoalDraftParams(params);
-	if (!normalized.ok) return errorResult(normalized.message, normalized.code, undefined, true);
+	if (!normalized.ok) throw goalToolError(normalized.message, normalized.code);
 
 	if (!ctx.hasUI || !ctx.ui?.select || !ctx.ui.editor) {
 		return {
@@ -300,7 +319,7 @@ export async function executeProposeGoalDraft(
 	}
 
 	const reviewed = normalizeReviewedProposal(review.proposal);
-	if (!reviewed.ok) return errorResult(reviewed.message, reviewed.code, current ?? undefined, true);
+	if (!reviewed.ok) throw goalToolError(reviewed.message, reviewed.code);
 
 	const next = await saveReviewedGoalAndOfferStart(
 		pi as ExtensionAPI & Partial<GoalStartAPI>,
@@ -317,12 +336,7 @@ export async function executeProposeGoalDraft(
 		},
 	);
 	if (!next) {
-		return errorResult(
-			"Goal changed before saving. No goal was saved.",
-			"stale_goal",
-			current ?? undefined,
-			true,
-		);
+		throw goalToolError("Goal changed before saving. No goal was saved.", "stale_goal");
 	}
 
 	return {
@@ -345,11 +359,11 @@ export function executeCompleteGoal(
 	pi: Pick<ExtensionAPI, "appendEntry">,
 ): GoalToolResult {
 	const current = loadGoalState(ctx);
-	if (!current) return errorResult("No active goal exists to complete.", "no_goal");
+	if (!current) return refusalResult("No active goal exists to complete.", "no_goal");
 	if (current.status === "complete")
-		return errorResult("The current goal is already complete.", "already_complete", current);
+		return refusalResult("The current goal is already complete.", "already_complete", current);
 	if (current.status !== "active")
-		return errorResult("Only active goals can be completed.", "goal_inactive", current);
+		return refusalResult("Only active goals can be completed.", "goal_inactive", current);
 
 	const evidence = params.evidence?.trim();
 	const next = saveGoalState(
@@ -375,11 +389,11 @@ export function executeUpdateGoalProgress(
 	pi: Pick<ExtensionAPI, "appendEntry">,
 ): GoalToolResult {
 	const current = loadGoalState(ctx);
-	if (!current) return errorResult("No active goal exists to update.", "no_goal");
+	if (!current) return refusalResult("No active goal exists to update.", "no_goal");
 	if (current.status === "complete")
-		return errorResult("Cannot update progress for a complete goal.", "already_complete", current);
+		return refusalResult("Cannot update progress for a complete goal.", "already_complete", current);
 	if (current.status !== "active")
-		return errorResult("Only active goals can receive progress updates.", "goal_inactive", current);
+		return refusalResult("Only active goals can receive progress updates.", "goal_inactive", current);
 
 	const progress: Partial<GoalProgress> = {
 		done: params.done,
@@ -405,41 +419,68 @@ export function executeUpdateGoalProgress(
 	};
 }
 
-export function formatGoalToolCall(toolName: string, body?: string): string {
-	const title = goalToolTitle(toolName);
+export function formatGoalToolCall(toolName: string, body?: string, theme?: GoalTheme): string {
+	const title = styleTheme(theme, "toolTitle", goalToolTitle(toolName), { bold: true });
 	const normalizedBody = body?.trim();
-	return normalizedBody ? `${title}\n${normalizedBody}` : title;
+	return normalizedBody ? `${title}\n${styleTheme(theme, "muted", normalizedBody)}` : title;
 }
 
-export function formatProposeGoalDraftToolCall(input: ProposeGoalDraftToolInput): string {
+export function formatProposeGoalDraftToolCall(input: ProposeGoalDraftToolInput, theme?: GoalTheme): string {
 	const lines = [`Objective: ${input.objective}`];
 	const criteria = normalizeStringList(input.acceptanceCriteria);
 	if (criteria.length > 0) {
 		lines.push("Acceptance criteria:", ...criteria.map((item) => `- ${item}`));
 	}
-	return formatGoalToolCall("propose_goal_draft", lines.join("\n"));
+	return formatGoalToolCall("propose_goal_draft", lines.join("\n"), theme);
 }
 
-export function formatUpdateGoalProgressToolCall(input?: Partial<UpdateGoalProgressToolInput>): string {
-	return formatGoalToolCall("update_goal_progress", formatGoalProgressCallBody(input));
+export function formatUpdateGoalProgressToolCall(
+	input?: Partial<UpdateGoalProgressToolInput>,
+	theme?: GoalTheme,
+): string {
+	return formatGoalToolCall("update_goal_progress", formatGoalProgressCallBody(input), theme);
 }
 
-export function formatGoalToolResult(result: GoalToolResult): string {
+export function formatGoalToolResult(
+	result: GoalToolResult & { isError?: boolean },
+	theme?: GoalTheme,
+): string {
 	const text = result.content.find((block) => block.type === "text")?.text ?? "";
-	return result.isError ? `Error: ${text}` : text;
+	if (result.isError) return styleTheme(theme, "error", `Error: ${text}`);
+	const token = isSuccessfulGoalToolText(text) ? "success" : "toolOutput";
+	return styleTheme(theme, token, text);
 }
 
-export function formatCompleteGoalToolResult(result: GoalToolResult): string {
-	return result.isError ? formatGoalToolResult(result) : "";
+export function formatCompleteGoalToolResult(
+	result: GoalToolResult & { isError?: boolean },
+	theme?: GoalTheme,
+): string {
+	return result.isError ? formatGoalToolResult(result, theme) : "";
 }
 
-function errorResult(message: string, code: string, goal?: GoalState, terminate = false): GoalToolResult {
+function refusalResult(message: string, code: string, goal?: GoalState): GoalToolResult {
 	return {
 		content: [{ type: "text", text: message }],
-		details: { error: code, goal },
-		isError: true,
-		terminate,
+		details: { status: "refused", reason: code, goal },
 	};
+}
+
+function goalToolError(message: string, code: string): Error {
+	return Object.assign(new Error(message), { code });
+}
+
+function isSuccessfulGoalToolText(text: string): boolean {
+	return /^(Created goal:|Saved goal draft|Goal progress updated|Goal complete\.)/.test(text);
+}
+
+function styleTheme(
+	theme: GoalTheme | undefined,
+	token: "toolTitle" | "toolOutput" | "success" | "error" | "muted",
+	text: string,
+	options: { bold?: boolean } = {},
+): string {
+	const styledText = options.bold ? (theme?.bold?.(text) ?? text) : text;
+	return theme?.fg?.(token, styledText) ?? styledText;
 }
 
 function goalToolTitle(toolName: string): string {

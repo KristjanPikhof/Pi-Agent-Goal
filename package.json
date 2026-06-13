@@ -1,6 +1,6 @@
 {
 	"name": "pi-agent-goal",
-	"version": "2026.5.20",
+	"version": "2026.6.14",
 	"description": "Pi extension that gives coding agents persistent /goal workflows with branch-aware state, source imports, progress tools, and explicit start handoffs.",
 	"type": "module",
 	"scripts": {
@@ -8,7 +8,12 @@
 		"lint": "eslint .",
 		"format": "prettier --check .",
 		"test": "vitest run",
-		"prepublishOnly": "npm run typecheck && npm run lint && npm run format && npm test"
+		"test:coverage": "vitest run --coverage",
+		"smoke:pi:goal": "node tests/smoke-pi.mjs goal",
+		"smoke:pi:goal-continuation": "node tests/smoke-pi.mjs continuation",
+		"smoke:pi": "npm run smoke:pi:goal && npm run smoke:pi:goal-continuation",
+		"smoke:package": "node tests/package-smoke.mjs",
+		"prepublishOnly": "npm run typecheck && npm run lint && npm run format && npm test && npm run test:coverage && npm run smoke:pi && npm run smoke:package"
 	},
 	"keywords": [
 		"pi",
@@ -60,24 +65,33 @@
 		"extensions",
 		"src",
 		"README.md",
+		"docs",
 		"LICENSE"
 	],
 	"devDependencies": {
-		"@earendil-works/pi-coding-agent": "^0.74.0",
+		"@earendil-works/pi-coding-agent": "^0.79.3",
+		"@earendil-works/pi-tui": "^0.79.3",
 		"@eslint/js": "^9.39.1",
 		"@types/node": "^24.10.1",
+		"@vitest/coverage-v8": "^4.1.8",
 		"eslint": "^9.39.1",
 		"prettier": "^3.6.2",
+		"typebox": "^1.1.38",
 		"typescript": "^5.9.3",
 		"typescript-eslint": "^8.46.3",
-		"vitest": "^4.0.8"
+		"vitest": "^4.1.8"
 	},
 	"engines": {
-		"node": ">=22.0.0"
+		"node": ">=22.19.0"
 	},
 	"peerDependencies": {
-		"@earendil-works/pi-coding-agent": ">=0.74.0",
-		"@earendil-works/pi-tui": ">=0.74.0",
-		"typebox": ">=1.0.0"
+		"@earendil-works/pi-coding-agent": "*",
+		"@earendil-works/pi-tui": "*",
+		"typebox": "*"
+	},
+	"allowScripts": {
+		"@google/genai@1.52.0": true,
+		"protobufjs@7.5.9": true,
+		"fsevents@2.3.3": true
 	}
 }

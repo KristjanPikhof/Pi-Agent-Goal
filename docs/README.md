@@ -1,42 +1,40 @@
-# Pi `/goal` extension docs
+# Pi `/goal` docs
 
-The Pi Agent Goal package uses a source-extension shape: `extensions/index.ts` loads `extensions/pi-goal/index.ts`, which wires the implementation from `src/index.ts`. These docs describe the shipped behavior, acceptance status, and remaining rollout checks.
+Start with the root [`README.md`](../README.md). It has the install path, command reference, model tools, autonomy behavior, known Codex gaps, and troubleshooting.
 
-Read in this order:
+Use these docs when you need more detail:
 
-1. [`../README.md`](../README.md), quick start, command reference, model tools, autonomy opt-in, and troubleshooting.
-2. [`setup.md`](setup.md), package install, project-local install, one-off runs, local-checkout development, and package entry points.
-3. [`implementation.md`](implementation.md), implementation details for state, commands, import, tools, context, compaction, continuation, UI, and Codex parity gaps.
-4. [`acceptance-criteria.md`](acceptance-criteria.md), acceptance checklist with automated and manual verification status.
+| Doc                                                | Use it for                                                                                                                           |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| [`setup.md`](setup.md)                             | Install options, settings.json examples, one-off runs, and local checkout development.                                               |
+| [`implementation.md`](implementation.md)           | Architecture reference for state, commands, import, tools, context, compaction, continuation, UI, and intentional Codex parity gaps. |
+| [`acceptance-criteria.md`](acceptance-criteria.md) | Release checklist, validation commands, automated coverage status, and manual TUI smoke checklist.                                   |
 
-## What shipped
+## Release facts to keep true
 
-- Branch-aware canonical goal state in Pi custom entries named `goal-state`.
-- `/goal` command lifecycle: plain text asks the chat agent to draft objective and acceptance criteria through `propose_goal_draft`; Start/Edit/Cancel review runs through public Pi UI APIs before persistence; clean `--replace` parsing, replace with confirmation, status, edit, pause, resume, complete, clear, and import.
-- Markdown/text PRD and docs-folder import with workspace realpath validation, symlink escape rejection, generated/vendor ignores, binary and size checks, directory `maxFiles` overflow errors, and compact source briefs.
-- Import semantics that create from docs when no goal exists, then merge and dedupe source docs, constraints, and criteria for an existing goal without rewriting the objective.
-- Model tools: `get_goal`, `create_goal`, `propose_goal_draft`, `complete_goal`, and `update_goal_progress` with narrow permissions. Draft proposals save only after Start; completion and progress tools reject paused goals.
-- Hidden active-goal context injection plus stale context filtering.
-- `session_before_compact` goal summary/details preservation.
-- Compact active-goal widget, `/goal status` command output, actionable command errors, and concise tool renderers.
-- Opt-in safe idle continuation behind `--goal-continuation`.
-- Unit and integration-style tests covering reducer, command parsing and lifecycle, import safety and merge behavior, tools, prompts, compaction hooks, continuation guards, UI, branch-shaped reconstruction, stale `goalId` behavior, and session lifecycle harness flows.
+- Release version: `2026.6.14`.
+- Runtime: Node.js `>=22.19.0`.
+- Pi peer dependencies: open `*` ranges.
+- Development validation: Pi packages `^0.79.3`.
+- Package contents: `extensions`, `src`, `README.md`, `docs`, and `LICENSE`.
+- Docs links: relative, so they work in GitHub and npm tarballs.
 
-## Rollout smoke commands
+## Shipped behavior
 
-Run from the repository root:
+- Branch-aware goal state stored in Pi session custom entries named `goal-state`.
+- `/goal` lifecycle for drafting, review, start, status, edit, pause, resume, complete, clear, and import.
+- Plain `/goal <objective>` asks the chat agent to draft through `propose_goal_draft`; Start/Edit/Cancel review runs before anything is saved.
+- Markdown/text PRD and docs-folder import with workspace realpath checks, symlink escape rejection, size/binary checks, generated/vendor ignores, and directory overflow errors.
+- Import creates a goal when none exists, then merges source docs, constraints, and criteria into an existing active goal without rewriting the objective.
+- Narrow model tools: `get_goal`, `create_goal`, `propose_goal_draft`, `complete_goal`, and `update_goal_progress`.
+- Hidden active-goal context and `session_before_compact` preservation.
+- Compact active-goal widget, readable `/goal status`, actionable errors, and concise tool renderers.
+- Opt-in idle continuation behind `--goal-continuation`.
 
-```bash
-npm run typecheck
-npm run lint
-npm run format
-npm test
-pi --no-session --no-extensions -e ./extensions/index.ts -p /goal
-pi --no-session --no-extensions -e ./extensions/index.ts --goal-continuation -p /goal
-```
+## Verification
 
-For live TUI lifecycle verification, use the manual checklist in [`acceptance-criteria.md`](acceptance-criteria.md#manual-session-lifecycle-smoke-checklist). Those checks cover interactive UI and session manager behavior that is not fully proven by the current test harness. Record the smoke evidence before release, or mark the release blocked.
+Use the canonical validation list in [`acceptance-criteria.md`](acceptance-criteria.md#validation-commands). Live TUI lifecycle smoke is still manual and release-blocking; use the checklist in [`acceptance-criteria.md`](acceptance-criteria.md#manual-session-lifecycle-smoke-checklist).
 
 ## Future work
 
-The implementation intentionally does not include Codex app-server RPC compatibility, Codex SQLite persistence, exact token/time accounting, or Codex's exact goal menu UI. Those are future work only if Pi needs strict Codex compatibility rather than Pi-native behavior.
+Strict Codex compatibility is not part of this rollout. That includes app-server RPC compatibility, SQLite persistence, exact token/time accounting, and Codex's exact goal menu UI.

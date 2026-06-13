@@ -174,10 +174,11 @@ describe("session lifecycle integration coverage", () => {
 
 		const toolCtx = { sessionManager: { getBranch: () => branch } };
 		expect(executeGetGoal(toolCtx).content[0]?.text).toContain("Ship imported lifecycle coverage");
-		expect(executeCreateGoal({ objective: "Rewrite", explicit_request: true }, toolCtx, pi)).toMatchObject({
-			isError: true,
-			details: { error: "goal_exists" },
+		const duplicate = executeCreateGoal({ objective: "Rewrite", explicit_request: true }, toolCtx, pi);
+		expect(duplicate).toMatchObject({
+			details: { status: "refused", reason: "goal_exists" },
 		});
+		expect(duplicate).not.toHaveProperty("isError");
 		expect(
 			executeCreateGoal(
 				{ objective: "Implicit", explicit_request: false },
@@ -185,8 +186,7 @@ describe("session lifecycle integration coverage", () => {
 				pi,
 			),
 		).toMatchObject({
-			isError: true,
-			details: { error: "permission_denied" },
+			details: { status: "refused", reason: "permission_denied" },
 		});
 
 		const progress = executeUpdateGoalProgress(
@@ -194,7 +194,7 @@ describe("session lifecycle integration coverage", () => {
 			toolCtx,
 			pi,
 		);
-		expect(progress.isError).not.toBe(true);
+		expect(progress).not.toHaveProperty("isError");
 		expect(latestGoal(branch)?.progress).toMatchObject({ lastSummary: "tool progress" });
 
 		const complete = executeCompleteGoal({ evidence: "all checks passed" }, toolCtx, pi);
