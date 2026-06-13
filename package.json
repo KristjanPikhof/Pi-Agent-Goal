@@ -1,6 +1,6 @@
 {
 	"name": "pi-agent-goal",
-	"version": "2026.5.20",
+	"version": "2026.6.13",
 	"description": "Pi extension that gives coding agents persistent /goal workflows with branch-aware state, source imports, progress tools, and explicit start handoffs.",
 	"type": "module",
 	"scripts": {
@@ -60,10 +60,11 @@
 		"extensions",
 		"src",
 		"README.md",
+		"docs",
 		"LICENSE"
 	],
 	"devDependencies": {
-		"@earendil-works/pi-coding-agent": "^0.74.0",
+		"@earendil-works/pi-coding-agent": "^0.79.3",
 		"@eslint/js": "^9.39.1",
 		"@types/node": "^24.10.1",
 		"eslint": "^9.39.1",
@@ -73,11 +74,11 @@
 		"vitest": "^4.0.8"
 	},
 	"engines": {
-		"node": ">=22.0.0"
+		"node": ">=22.19.0"
 	},
 	"peerDependencies": {
-		"@earendil-works/pi-coding-agent": ">=0.74.0",
-		"@earendil-works/pi-tui": ">=0.74.0",
-		"typebox": ">=1.0.0"
+		"@earendil-works/pi-coding-agent": "*",
+		"@earendil-works/pi-tui": "*",
+		"typebox": "*"
 	}
 }
