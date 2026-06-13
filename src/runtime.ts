@@ -39,7 +39,6 @@ interface ContinuationContext extends GoalRuntimeContext {
 	ui?: {
 		setStatus?: (key: string, value: string | undefined) => void;
 		setWidget?: (key: string, value: string[] | undefined) => void;
-		notify?: (message: string, level?: string) => void;
 	};
 }
 
@@ -115,7 +114,7 @@ export function registerGoalRuntime(pi: ExtensionAPI): void {
 	pi.on("context", async (event, ctx) => {
 		const goal = loadGoalState(ctx);
 		const messages = event.messages as ContextMessage[];
-		return { messages: filterGoalContextMessages(messages, goal) };
+		return { messages: filterGoalContextMessages(messages, goal) as typeof event.messages };
 	});
 
 	pi.on("session_before_compact", async (event) =>

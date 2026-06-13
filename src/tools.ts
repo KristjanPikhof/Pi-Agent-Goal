@@ -78,7 +78,7 @@ export const updateGoalProgressParams = Type.Object(
 );
 
 export const proposeGoalDraftPromptSnippet =
-	"Draft a reviewable /goal proposal and call propose_goal_draft exactly once; do not persist it directly.";
+	"Use propose_goal_draft to draft a reviewable /goal proposal exactly once; do not persist it directly.";
 
 export const proposeGoalDraftPromptGuidelines = [
 	"Use propose_goal_draft for plain /goal drafting turns that need user review before anything is saved.",
@@ -131,12 +131,12 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 		name: "create_goal",
 		label: "Create Goal",
 		description:
-			"Create a goal only when explicitly requested by the user or system/developer instructions. Fails if a goal exists.",
+			"Create a goal only when explicitly requested by the user or system/developer instructions. Refuses if a goal exists."
 		promptSnippet: "Use create_goal to persist a user-approved /goal only when no goal exists.",
 		promptGuidelines: [
 			"Use create_goal only when the user or system/developer instructions explicitly ask to persist an already-approved goal; do not infer goals from ordinary tasks.",
 			"Do not use create_goal for agent-drafted /goal proposals; use propose_goal_draft so the user can review objective and acceptance criteria first.",
-			"create_goal fails if a goal already exists; do not use it to rewrite an existing objective.",
+			"create_goal refuses if a goal already exists; do not use it to rewrite an existing objective.",
 		],
 		parameters: createGoalParams,
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {

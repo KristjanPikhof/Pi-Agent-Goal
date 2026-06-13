@@ -105,7 +105,7 @@ describe("goal tool schemas and registration", () => {
 	});
 
 	it("documents propose_goal_draft as the review-only drafting path separate from create_goal", () => {
-		expect(proposeGoalDraftPromptSnippet).toContain("call propose_goal_draft exactly once");
+		expect(proposeGoalDraftPromptSnippet).toContain("Use propose_goal_draft");
 		expect(proposeGoalDraftPromptSnippet).toContain("do not persist");
 		expect(proposeGoalDraftPromptGuidelines).toEqual(
 			expect.arrayContaining([
@@ -124,6 +124,18 @@ describe("goal tool schemas and registration", () => {
 		expect(createGoalGuidance).toContain("persist an already-approved goal");
 		expect(createGoalGuidance).toContain("Do not use create_goal for agent-drafted /goal proposals");
 		expect(createGoalGuidance).toContain("use propose_goal_draft");
+
+		for (const toolName of [
+			"get_goal",
+			"create_goal",
+			"propose_goal_draft",
+			"complete_goal",
+			"update_goal_progress",
+		]) {
+			const tool = tools.get(toolName);
+			expect(tool?.promptSnippet).toContain(toolName);
+			expect(tool?.promptGuidelines?.join("\n")).toContain(toolName);
+		}
 	});
 });
 
@@ -148,10 +160,11 @@ describe("goal tool execution", () => {
 		expect(latestGoalEntry(branch).state?.acceptanceCriteria).toEqual(["tools pass"]);
 	});
 
-	it("create_goal fails without explicit authorization and when a goal exists", () => {
+	it("create_goal soft-refuses without explicit authorization and when a goal exists", () => {
 		const { pi, ctx, branch, ui } = createHarness();
 		const denied = executeCreateGoal({ objective: "No permission", explicit_request: false }, ctx, pi);
-		expect(denied).toMatchObject({ isError: true, details: { error: "permission_denied" } });
+		expect(denied).toMatchObject({ details: { status: "refused", reason: "permission_denied" } });
+		expect(denied).not.toHaveProperty("isError");
 		expect(branch).toHaveLength(0);
 
 		const created = executeCreateGoal({ objective: "Allowed", explicit_request: true }, ctx, pi);
@@ -164,7 +177,8 @@ describe("goal tool execution", () => {
 		);
 
 		const duplicate = executeCreateGoal({ objective: "Rewrite", explicit_request: true }, ctx, pi);
-		expect(duplicate).toMatchObject({ isError: true, details: { error: "goal_exists" } });
+		expect(duplicate).toMatchObject({ details: { status: "refused", reason: "goal_exists" } });
+		expect(duplicate).not.toHaveProperty("isError");
 		expect(latestGoalEntry(branch).state?.objective).toBe("Allowed");
 	});
 
@@ -305,28 +319,29 @@ describe("goal tool execution", () => {
 			executeCreateGoal({ objective: "Concurrent goal", explicit_request: true }, stale.ctx, stale.pi);
 			return "Start";
 		});
-		const staleResult = await executeProposeGoalDraft(
-			{ objective: "Stale draft", acceptanceCriteria: ["criterion"] },
-			stale.ctx,
-			{ ...stale.pi, sendUserMessage: vi.fn() },
-		);
-		expect(staleResult).toMatchObject({ isError: true, terminate: true, details: { error: "stale_goal" } });
+		await expect(
+			executeProposeGoalDraft(
+				{ objective: "Stale draft", acceptanceCriteria: ["criterion"] },
+				stale.ctx,
+				{ ...stale.pi, sendUserMessage: vi.fn() },
+			),
+		).rejects.toMatchObject({ message: "Goal changed before saving. No goal was saved.", code: "stale_goal" });
 		expect(latestGoalEntry(stale.branch).state?.objective).toBe("Concurrent goal");
 	});
 
-	it("propose_goal_draft validates result shape before review", async () => {
+	it("propose_goal_draft throws for invalid model-provided draft shape before review", async () => {
 		const { pi, ctx, branch, ui } = createHarness();
-		const result = await executeProposeGoalDraft({ objective: "   ", acceptanceCriteria: [" "] }, ctx, pi);
+		await expect(
+			executeProposeGoalDraft({ objective: "   ", acceptanceCriteria: [" "] }, ctx, pi),
+		).rejects.toMatchObject({ message: "Goal draft objective is required.", code: "invalid_objective" });
 		expect(branch).toHaveLength(0);
 		expect(ui.select).not.toHaveBeenCalled();
-		expect(result).toMatchObject({ isError: true, terminate: true, details: { error: "invalid_objective" } });
 	});
 
 	it("complete_goal handles no-goal cases and persists evidence without rewriting scope", () => {
 		const empty = createHarness();
 		expect(executeCompleteGoal({ evidence: "done" }, empty.ctx, empty.pi)).toMatchObject({
-			isError: true,
-			details: { error: "no_goal" },
+			details: { status: "refused", reason: "no_goal" },
 		});
 
 		const { pi, ctx, branch, ui } = createHarness();
@@ -393,12 +408,10 @@ describe("goal tool execution", () => {
 		);
 
 		expect(executeCompleteGoal({ evidence: "done" }, ctx, pi)).toMatchObject({
-			isError: true,
-			details: { error: "goal_inactive" },
+			details: { status: "refused", reason: "goal_inactive" },
 		});
 		expect(executeUpdateGoalProgress({ summary: "late" }, ctx, pi)).toMatchObject({
-			isError: true,
-			details: { error: "goal_inactive" },
+			details: { status: "refused", reason: "goal_inactive" },
 		});
 		expect(latestGoalEntry(branch).state?.status).toBe("paused");
 	});
@@ -406,16 +419,14 @@ describe("goal tool execution", () => {
 	it("update_goal_progress fails with no goal or complete goal", () => {
 		const empty = createHarness();
 		expect(executeUpdateGoalProgress({ summary: "x" }, empty.ctx, empty.pi)).toMatchObject({
-			isError: true,
-			details: { error: "no_goal" },
+			details: { status: "refused", reason: "no_goal" },
 		});
 
 		const { pi, ctx } = createHarness();
 		executeCreateGoal({ objective: "Done", explicit_request: true }, ctx, pi);
 		executeCompleteGoal({ evidence: "done" }, ctx, pi);
 		expect(executeUpdateGoalProgress({ summary: "late" }, ctx, pi)).toMatchObject({
-			isError: true,
-			details: { error: "already_complete" },
+			details: { status: "refused", reason: "already_complete" },
 		});
 	});
 });
