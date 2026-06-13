@@ -174,10 +174,11 @@ describe("session lifecycle integration coverage", () => {
 
 		const toolCtx = { sessionManager: { getBranch: () => branch } };
 		expect(executeGetGoal(toolCtx).content[0]?.text).toContain("Ship imported lifecycle coverage");
-		expect(executeCreateGoal({ objective: "Rewrite", explicit_request: true }, toolCtx, pi)).toMatchObject({
-			isError: true,
-			details: { error: "goal_exists" },
+		const duplicate = executeCreateGoal({ objective: "Rewrite", explicit_request: true }, toolCtx, pi);
+		expect(duplicate).toMatchObject({
+			details: { status: "refused", reason: "goal_exists" },
 		});
+		expect(duplicate).not.toHaveProperty("isError");
 		expect(
 			executeCreateGoal(
 				{ objective: "Implicit", explicit_request: false },
