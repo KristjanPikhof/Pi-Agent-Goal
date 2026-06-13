@@ -33,8 +33,15 @@ function createHarness() {
 			promptSnippet?: string;
 			promptGuidelines?: string[];
 			execute: (...args: never[]) => Promise<unknown>;
-			renderCall?: (args: Record<string, unknown>) => { render(width: number): string[] };
-			renderResult?: (result: Record<string, unknown>) => { render(width: number): string[] };
+			renderCall?: (
+				args: Record<string, unknown>,
+				theme?: { fg: (token: string, text: string) => string; bold: (text: string) => string },
+			) => { render(width: number): string[] };
+			renderResult?: (
+				result: Record<string, unknown>,
+				options?: Record<string, unknown>,
+				theme?: { fg: (token: string, text: string) => string; bold: (text: string) => string },
+			) => { render(width: number): string[] };
 		}
 	>();
 	const pi = {
