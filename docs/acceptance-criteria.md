@@ -124,17 +124,17 @@ Status key:
 
 ## Validation commands
 
-Latest validation evidence for this release lane:
+Run this checklist before release:
 
 ```bash
-npm run typecheck        # passed
-npm run lint             # passed
-npm run format           # passed
-npm test                 # passed
-npm run test:coverage    # passed
-npm pack --dry-run       # passed
-npm run smoke:pi         # passed
-npm run smoke:package    # passed
+npm run typecheck
+npm run lint
+npm run format
+npm test
+npm run test:coverage
+npm pack --dry-run
+npm run smoke:pi
+npm run smoke:package
 ```
 
 Live interactive TUI lifecycle checks are a **release-blocking evidence gap until recorded in a real terminal**. Do not count automated harness tests as proof for `/reload`, `/resume`, `/tree`, `/fork`, `/compact`, or the visible widget in a real TUI session.

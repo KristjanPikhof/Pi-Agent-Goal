@@ -145,7 +145,7 @@ npm run smoke:package
 
 ## Local verification
 
-The canonical release list lives in [`acceptance-criteria.md`](acceptance-criteria.md#validation-commands).
+The canonical release list lives in [`acceptance-criteria.md`](acceptance-criteria.md#validation-commands), so keep this section as a quick local checklist rather than a second source of truth.
 
 ```bash
 npm run typecheck
