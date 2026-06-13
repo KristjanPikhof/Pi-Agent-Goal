@@ -418,41 +418,65 @@ export function executeUpdateGoalProgress(
 	};
 }
 
-export function formatGoalToolCall(toolName: string, body?: string): string {
-	const title = goalToolTitle(toolName);
+export function formatGoalToolCall(toolName: string, body?: string, theme?: GoalTheme): string {
+	const title = styleTheme(theme, "toolTitle", goalToolTitle(toolName), { bold: true });
 	const normalizedBody = body?.trim();
-	return normalizedBody ? `${title}\n${normalizedBody}` : title;
+	return normalizedBody ? `${title}\n${styleTheme(theme, "muted", normalizedBody)}` : title;
 }
 
-export function formatProposeGoalDraftToolCall(input: ProposeGoalDraftToolInput): string {
+export function formatProposeGoalDraftToolCall(input: ProposeGoalDraftToolInput, theme?: GoalTheme): string {
 	const lines = [`Objective: ${input.objective}`];
 	const criteria = normalizeStringList(input.acceptanceCriteria);
 	if (criteria.length > 0) {
 		lines.push("Acceptance criteria:", ...criteria.map((item) => `- ${item}`));
 	}
-	return formatGoalToolCall("propose_goal_draft", lines.join("\n"));
+	return formatGoalToolCall("propose_goal_draft", lines.join("\n"), theme);
 }
 
-export function formatUpdateGoalProgressToolCall(input?: Partial<UpdateGoalProgressToolInput>): string {
-	return formatGoalToolCall("update_goal_progress", formatGoalProgressCallBody(input));
+export function formatUpdateGoalProgressToolCall(
+	input?: Partial<UpdateGoalProgressToolInput>,
+	theme?: GoalTheme,
+): string {
+	return formatGoalToolCall("update_goal_progress", formatGoalProgressCallBody(input), theme);
 }
 
-export function formatGoalToolResult(result: GoalToolResult): string {
+export function formatGoalToolResult(result: GoalToolResult & { isError?: boolean }, theme?: GoalTheme): string {
 	const text = result.content.find((block) => block.type === "text")?.text ?? "";
-	return result.isError ? `Error: ${text}` : text;
+	if (result.isError) return styleTheme(theme, "error", `Error: ${text}`);
+	const token = isSuccessfulGoalToolText(text) ? "success" : "toolOutput";
+	return styleTheme(theme, token, text);
 }
 
-export function formatCompleteGoalToolResult(result: GoalToolResult): string {
-	return result.isError ? formatGoalToolResult(result) : "";
+export function formatCompleteGoalToolResult(
+	result: GoalToolResult & { isError?: boolean },
+	theme?: GoalTheme,
+): string {
+	return result.isError ? formatGoalToolResult(result, theme) : "";
 }
 
-function errorResult(message: string, code: string, goal?: GoalState, terminate = false): GoalToolResult {
+function refusalResult(message: string, code: string, goal?: GoalState): GoalToolResult {
 	return {
 		content: [{ type: "text", text: message }],
-		details: { error: code, goal },
-		isError: true,
-		terminate,
+		details: { status: "refused", reason: code, goal },
 	};
+}
+
+function goalToolError(message: string, code: string): Error {
+	return Object.assign(new Error(message), { code });
+}
+
+function isSuccessfulGoalToolText(text: string): boolean {
+	return /^(Created goal:|Saved goal draft|Goal progress updated|Goal complete\.)/.test(text);
+}
+
+function styleTheme(
+	theme: GoalTheme | undefined,
+	token: "toolTitle" | "toolOutput" | "success" | "error" | "muted",
+	text: string,
+	options: { bold?: boolean } = {},
+): string {
+	const styledText = options.bold ? (theme?.bold?.(text) ?? text) : text;
+	return theme?.fg?.(token, styledText) ?? styledText;
 }
 
 function goalToolTitle(toolName: string): string {
