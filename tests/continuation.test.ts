@@ -92,6 +92,7 @@ describe("goal continuation scheduler", () => {
 		expect(decision).toEqual({ queued: true, goalId: "goal-1" });
 		expect(sendUserMessage).toHaveBeenCalledWith(
 			expect.stringContaining("Continue working toward the active goal."),
+			{ deliverAs: "followUp" },
 		);
 		expect(appendEntry).toHaveBeenCalledWith(
 			GOAL_CONTINUATION_CUSTOM_TYPE,
@@ -259,7 +260,36 @@ describe("goal continuation scheduler", () => {
 		});
 	});
 
-	it("registered hooks stop queued/running continuations on user interrupt", async () => {
+	it("registered hooks respect queued follow-ups before scheduling another continuation", async () => {
+		const handlers = new Map<string, (event: unknown, ctx?: unknown) => Promise<unknown>>();
+		const pi = {
+			registerFlag: vi.fn(),
+			on: vi.fn((event: string, handler) => handlers.set(event, handler)),
+			appendEntry: vi.fn(),
+			sendUserMessage: vi.fn(),
+			getFlag: vi.fn((name: string) => (name === "goal-continuation" ? true : undefined)),
+		} as unknown as ExtensionAPI;
+		const created = createGoal();
+		const ctx = {
+			sessionManager: { getBranch: vi.fn(() => [customEntry(created.entry)]) },
+			isIdle: vi.fn(() => true),
+			hasPendingMessages: vi.fn(() => true),
+			ui: { setStatus: vi.fn() },
+		};
+
+		registerGoalRuntime(pi);
+		await handlers.get("agent_end")?.({}, ctx);
+		expect((pi as unknown as { sendUserMessage: ReturnType<typeof vi.fn> }).sendUserMessage).not.toHaveBeenCalled();
+
+		ctx.hasPendingMessages.mockReturnValue(false);
+		await handlers.get("agent_end")?.({}, ctx);
+		expect((pi as unknown as { sendUserMessage: ReturnType<typeof vi.fn> }).sendUserMessage).toHaveBeenCalledWith(
+			expect.stringContaining("Continue working toward the active goal."),
+			{ deliverAs: "followUp" },
+		);
+	});
+
+	it("registered hooks stop queued/running continuations on current Pi text input", async () => {
 		const handlers = new Map<string, (event: unknown, ctx?: unknown) => Promise<unknown>>();
 		const pi = {
 			registerFlag: vi.fn(),
@@ -285,11 +315,44 @@ describe("goal continuation scheduler", () => {
 		expect(
 			(pi as unknown as { sendUserMessage: ReturnType<typeof vi.fn> }).sendUserMessage,
 		).toHaveBeenCalledOnce();
-		await handlers.get("input")?.({ input: "user interrupts" }, ctx);
+		await handlers.get("input")?.({ type: "input", text: "user interrupts", source: "interactive", streamingBehavior: "followUp" }, ctx);
 
 		expect((pi as unknown as { appendEntry: ReturnType<typeof vi.fn> }).appendEntry).toHaveBeenLastCalledWith(
 			GOAL_CONTINUATION_CUSTOM_TYPE,
 			expect.objectContaining({ action: "stopped", reason: "user-interrupt" }),
+		);
+		expect(ctx.ui.setStatus).toHaveBeenLastCalledWith("goal-continuation", undefined);
+	});
+
+	it("keeps deliberate legacy input fallback and clears queued state on shutdown", async () => {
+		const handlers = new Map<string, (event: unknown, ctx?: unknown) => Promise<unknown>>();
+		const pi = {
+			registerFlag: vi.fn(),
+			on: vi.fn((event: string, handler) => handlers.set(event, handler)),
+			appendEntry: vi.fn(),
+			sendUserMessage: vi.fn(),
+			getFlag: vi.fn((name: string) => (name === "goal-continuation" ? true : undefined)),
+		} as unknown as ExtensionAPI;
+		const created = createGoal();
+		const ctx = {
+			sessionManager: { getBranch: vi.fn(() => [customEntry(created.entry)]) },
+			isIdle: vi.fn(() => true),
+			hasPendingMessages: vi.fn(() => false),
+			ui: { setStatus: vi.fn() },
+		};
+
+		registerGoalRuntime(pi);
+		await handlers.get("agent_end")?.({}, ctx);
+		await handlers.get("input")?.({ input: "Continue working toward the active goal." }, ctx);
+		expect((pi as unknown as { appendEntry: ReturnType<typeof vi.fn> }).appendEntry).not.toHaveBeenLastCalledWith(
+			GOAL_CONTINUATION_CUSTOM_TYPE,
+			expect.objectContaining({ action: "stopped", reason: "user-interrupt" }),
+		);
+
+		await handlers.get("session_shutdown")?.({ reason: "reload" }, ctx);
+		expect((pi as unknown as { appendEntry: ReturnType<typeof vi.fn> }).appendEntry).toHaveBeenLastCalledWith(
+			GOAL_CONTINUATION_CUSTOM_TYPE,
+			expect.objectContaining({ action: "stopped", reason: "stale-goal" }),
 		);
 		expect(ctx.ui.setStatus).toHaveBeenLastCalledWith("goal-continuation", undefined);
 	});

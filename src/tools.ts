@@ -122,8 +122,9 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 		async execute(_toolCallId, _params, _signal, _onUpdate, ctx) {
 			return executeGetGoal(ctx as GoalToolContext);
 		},
-		renderCall: () => new Text(formatGoalToolCall("get_goal"), 0, 0),
-		renderResult: (result) => new Text(formatGoalToolResult(result as GoalToolResult), 0, 0),
+		renderCall: (_args, theme) => new Text(formatGoalToolCall("get_goal", undefined, theme), 0, 0),
+		renderResult: (result, _options, theme) =>
+			new Text(formatGoalToolResult(result as GoalToolResult, theme), 0, 0),
 	});
 
 	pi.registerTool({
@@ -131,7 +132,7 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 		label: "Create Goal",
 		description:
 			"Create a goal only when explicitly requested by the user or system/developer instructions. Fails if a goal exists.",
-		promptSnippet: "Use create_goal to persist a user-approved /goal only when no goal exists."
+		promptSnippet: "Use create_goal to persist a user-approved /goal only when no goal exists.",
 		promptGuidelines: [
 			"Use create_goal only when the user or system/developer instructions explicitly ask to persist an already-approved goal; do not infer goals from ordinary tasks.",
 			"Do not use create_goal for agent-drafted /goal proposals; use propose_goal_draft so the user can review objective and acceptance criteria first.",
@@ -141,13 +142,18 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
 			return executeCreateGoal(params as CreateGoalToolInput, ctx as GoalToolContext, pi);
 		},
-		renderCall: (args) =>
+		renderCall: (args, theme) =>
 			new Text(
-				formatGoalToolCall("create_goal", (args as Partial<CreateGoalToolInput> | undefined)?.objective),
+				formatGoalToolCall(
+					"create_goal",
+					(args as Partial<CreateGoalToolInput> | undefined)?.objective,
+					theme,
+				),
 				0,
 				0,
 			),
-		renderResult: (result) => new Text(formatGoalToolResult(result as GoalToolResult), 0, 0),
+		renderResult: (result, _options, theme) =>
+			new Text(formatGoalToolResult(result as GoalToolResult, theme), 0, 0),
 	});
 
 	pi.registerTool({
@@ -161,8 +167,10 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
 			return executeProposeGoalDraft(params as ProposeGoalDraftToolInput, ctx as GoalToolContext, pi);
 		},
-		renderCall: (args) => new Text(formatProposeGoalDraftToolCall(args as ProposeGoalDraftToolInput), 0, 0),
-		renderResult: (result) => new Text(formatGoalToolResult(result as GoalToolResult), 0, 0),
+		renderCall: (args, theme) =>
+			new Text(formatProposeGoalDraftToolCall(args as ProposeGoalDraftToolInput, theme), 0, 0),
+		renderResult: (result, _options, theme) =>
+			new Text(formatGoalToolResult(result as GoalToolResult, theme), 0, 0),
 	});
 
 	pi.registerTool({
@@ -170,7 +178,7 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 		label: "Complete Goal",
 		description:
 			"Mark the active goal complete only when the objective is achieved and no required work remains.",
-		promptSnippet: "Use complete_goal to mark the current /goal complete with evidence."
+		promptSnippet: "Use complete_goal to mark the current /goal complete with evidence.",
 		promptGuidelines: [
 			"Use complete_goal only when the active goal is achieved and no required work remains; include evidence when possible.",
 			"complete_goal cannot pause, resume, replace, or rewrite the goal objective.",
@@ -179,13 +187,18 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
 			return executeCompleteGoal(params as CompleteGoalToolInput, ctx as GoalToolContext, pi);
 		},
-		renderCall: (args) =>
+		renderCall: (args, theme) =>
 			new Text(
-				formatGoalToolCall("complete_goal", (args as Partial<CompleteGoalToolInput> | undefined)?.evidence),
+				formatGoalToolCall(
+					"complete_goal",
+					(args as Partial<CompleteGoalToolInput> | undefined)?.evidence,
+					theme,
+				),
 				0,
 				0,
 			),
-		renderResult: (result) => new Text(formatCompleteGoalToolResult(result as GoalToolResult), 0, 0),
+		renderResult: (result, _options, theme) =>
+			new Text(formatCompleteGoalToolResult(result as GoalToolResult, theme), 0, 0),
 	});
 
 	pi.registerTool({
@@ -193,7 +206,7 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 		label: "Update Goal Progress",
 		description:
 			"Update execution progress for the active goal without changing objective, source docs, or criteria.",
-		promptSnippet: "Use update_goal_progress to update /goal progress fields only."
+		promptSnippet: "Use update_goal_progress to update /goal progress fields only.",
 		promptGuidelines: [
 			"Use update_goal_progress only for implementation progress; it cannot rewrite objective, source docs, or acceptance criteria.",
 		],
@@ -201,9 +214,10 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
 			return executeUpdateGoalProgress(params as UpdateGoalProgressToolInput, ctx as GoalToolContext, pi);
 		},
-		renderCall: (args) =>
-			new Text(formatUpdateGoalProgressToolCall(args as UpdateGoalProgressToolInput), 0, 0),
-		renderResult: (result) => new Text(formatGoalToolResult(result as GoalToolResult), 0, 0),
+		renderCall: (args, theme) =>
+			new Text(formatUpdateGoalProgressToolCall(args as UpdateGoalProgressToolInput, theme), 0, 0),
+		renderResult: (result, _options, theme) =>
+			new Text(formatGoalToolResult(result as GoalToolResult, theme), 0, 0),
 	});
 }
 
