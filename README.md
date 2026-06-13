@@ -6,7 +6,7 @@ Repository: [`KristjanPikhof/Pi-Agent-Goal`](https://github.com/KristjanPikhof/P
 
 ## Compatibility
 
-Release `2026.6.13` requires Node.js `>=22.19.0`.
+Release `2026.6.14` requires Node.js `>=22.19.0`.
 
 The package keeps Pi peer dependencies open (`*`) so it uses the Pi host already installed by the user. Development and release validation run against `@earendil-works/pi-coding-agent` and `@earendil-works/pi-tui` `^0.79.3`.
 

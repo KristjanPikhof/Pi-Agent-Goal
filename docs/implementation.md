@@ -4,7 +4,7 @@ The extension makes long-running objectives explicit, branch-aware, and safe acr
 
 ## Compatibility baseline
 
-Release `2026.6.13` requires Node.js `>=22.19.0`.
+Release `2026.6.14` requires Node.js `>=22.19.0`.
 
 Pi core packages are open peer dependencies (`*`) so Pi supplies one host runtime. Local development validates against `@earendil-works/pi-coding-agent` and `@earendil-works/pi-tui` `^0.79.3`.
 

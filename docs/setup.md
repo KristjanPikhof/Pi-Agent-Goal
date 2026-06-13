@@ -6,7 +6,7 @@ Use this guide to install `pi-agent-goal` or load a local checkout while develop
 
 - macOS or Linux.
 - Node.js `>=22.19.0`.
-- `pi-agent-goal` release `2026.6.13`.
+- `pi-agent-goal` release `2026.6.14`.
 - A Pi host compatible with `@earendil-works/pi-coding-agent` and `@earendil-works/pi-tui` `^0.79.3` APIs.
 
 The published package declares Pi packages as open peer dependencies (`*`). That lets the extension use the host Pi runtime instead of bundling another copy.

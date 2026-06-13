@@ -12,7 +12,7 @@ Use these docs when you need more detail:
 
 ## Release facts to keep true
 
-- Release version: `2026.6.13`.
+- Release version: `2026.6.14`.
 - Runtime: Node.js `>=22.19.0`.
 - Pi peer dependencies: open `*` ranges.
 - Development validation: Pi packages `^0.79.3`.

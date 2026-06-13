@@ -12,7 +12,7 @@ Status key:
 
 | Criterion                                                                 | Status                                                        |
 | ------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| Release version is `2026.6.13`.                                           | Automated by package metadata and docs review                 |
+| Release version is `2026.6.14`.                                           | Automated by package metadata and docs review                 |
 | Runtime requires Node.js `>=22.19.0`.                                     | Automated by package metadata and docs review                 |
 | Pi packages use open peer dependency ranges (`*`).                        | Automated by package metadata and docs review                 |
 | Development validation targets Pi `^0.79.3`.                              | Automated by package metadata and docs review                 |
