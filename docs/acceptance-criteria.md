@@ -8,6 +8,16 @@ Status key:
 - **Manual smoke** means the code path has harness coverage, but the live TUI/session behavior still needs a real Pi session check before release.
 - **Future work** means intentionally not implemented in this rollout.
 
+
+## Release baseline and packaging
+
+| Criterion | Status |
+| --------- | ------ |
+| Release version is `2026.6.13`. | Automated by package metadata and docs review |
+| Runtime requires Node.js `>=22.19.0`. | Automated by package metadata and docs review |
+| Pi core packages use open peer dependency ranges, while dev validation targets Pi `^0.79.3`. | Automated by package metadata and docs review |
+| Package includes `extensions`, `src`, `README.md`, `docs`, and `LICENSE`; internal docs links are relative. | Automated by `npm pack --dry-run`, `npm run smoke:package`, and docs review |
+
 ## Command behavior
 
 | Criterion                                                                                                                                                                                                 | Status                                              |
@@ -57,6 +67,19 @@ Status key:
 | Tool results include enough details for state reconstruction and UI rendering.                                | Automated                     |
 | Tool renderers are concise and readable.                                                                      | Automated                     |
 
+
+## Harness and theme alignment
+
+| Criterion | Status |
+| --------- | ------ |
+| Runtime reads current `InputEvent.text` and keeps compatibility fallbacks for older input shapes. | Automated |
+| Explicit handoffs use follow-up delivery for `/goal start`, `--start`, and continuation turns. | Automated |
+| Tool policy denials return soft refusals with `details.status: "refused"`; invalid input and unexpected failures remain hard errors. | Automated |
+| Tool renderers use semantic theme tokens and remain readable without a theme. | Automated |
+| Active-goal widget uses themed TUI components when `ctx.mode` is `tui`. | Automated, live TUI is manual smoke |
+| RPC, JSON, print, and no-widget hosts receive readable plain-text/status fallback. | Automated |
+| Project-trust-specific config, `getSystemPromptOptions`, and autocomplete triggers are intentionally not used until a concrete pi-goal workflow needs them. | Source review and docs review |
+
 ## Hidden context
 
 | Criterion                                                                                                        | Status    |
@@ -99,6 +122,23 @@ Status key:
 | `/goal status` works in interactive mode and degrades gracefully when `ctx.hasUI` is false.                          | Automated                           |
 | Errors are actionable and include the next command or flag where relevant.                                           | Automated                           |
 
+## Validation commands
+
+Latest validation evidence for this release lane:
+
+```bash
+npm run typecheck        # passed
+npm run lint             # passed
+npm run format           # passed
+npm test                 # passed, 105 tests
+npm run test:coverage    # passed
+npm pack --dry-run       # passed
+npm run smoke:pi         # passed
+npm run smoke:package    # passed
+```
+
+Live interactive TUI lifecycle checks remain manual evidence. Do not count automated harness tests as proof for `/reload`, `/resume`, `/tree`, `/fork`, `/compact`, or the visible widget in a real terminal.
+
 ## Testing checklist
 
 | Area                                                                                                                 | Status                                                                           |
@@ -114,7 +154,7 @@ Status key:
 
 ## Manual session lifecycle smoke checklist
 
-Automation covers reducer, command parsing, import safety and merge behavior, tools, hidden context, compaction hooks, continuation guards, UI renderers, and branch-shaped reconstruction. It does not prove the live TUI. Run these checks in a real TUI session before release and record the evidence, or mark release blocked:
+Automation covers reducer, command parsing, import safety and merge behavior, tools, hidden context, compaction hooks, continuation guards, UI renderers, and branch-shaped reconstruction. It does not prove the live TUI. Run these checks in a real TUI session before release and record the evidence, or mark release blocked. Evidence should include the command sequence, expected state before and after each lifecycle action, observed result, Pi/package version, terminal mode, and screenshots or transcript snippets when available:
 
 1. Start Pi with the extension:
 
@@ -151,6 +191,6 @@ Update progress through `update_goal_progress`, then let an idle continuation qu
 
 ## Definition of done status
 
-The rollout acceptance is met when automated checks pass and the docs accurately mark live TUI lifecycle checks as manual smoke rather than automated proof. Release readiness also requires recorded live TUI smoke evidence, or an explicit blocked status for that evidence. The extension currently supports agent-mediated drafting from plain `/goal` text through `propose_goal_draft`, Start/Edit/Cancel review before persistence, importing criteria from docs, starting saved goals through an explicit one-shot handoff, preserving state through branch-aware session entries and compaction hooks, exposing narrow tools, and optionally continuing while idle behind a separate explicit opt-in.
+The rollout acceptance is met when automated checks pass, package contents are verified, docs links are reviewed, and the docs accurately mark live TUI lifecycle checks as manual smoke rather than automated proof. Release readiness also requires recorded live TUI smoke evidence, or an explicit blocked status for that evidence. The extension currently supports agent-mediated drafting from plain `/goal` text through `propose_goal_draft`, Start/Edit/Cancel review before persistence, importing criteria from docs, starting saved goals through an explicit one-shot handoff, preserving state through branch-aware session entries and compaction hooks, exposing narrow tools, and optionally continuing while idle behind a separate explicit opt-in.
 
 Remaining future work is Codex-exact compatibility: app-server RPC, SQLite persistence, exact token/time budgets, and exact Codex goal menu UI.

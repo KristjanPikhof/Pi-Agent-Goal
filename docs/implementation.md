@@ -2,6 +2,13 @@
 
 The extension makes long-running objectives explicit, persistent, and safe across compaction, branches, restarts, and optional model-driven continuation. It uses Pi session primitives instead of a separate database.
 
+
+## Compatibility baseline
+
+Release `2026.6.13` targets Pi `0.79.3`-era extension and TUI APIs and requires Node.js `>=22.19.0`. `package.json` keeps Pi core packages as open peer dependencies (`*`) because Pi should supply exactly one host runtime. Development dependencies pin `@earendil-works/pi-coding-agent` and `@earendil-works/pi-tui` to `^0.79.3` so local validation catches API drift without forcing those copies into the published package.
+
+The package loads source TypeScript through `extensions/index.ts`. Package smoke checks must confirm that `extensions`, `src`, `README.md`, `docs`, and `LICENSE` are present in the tarball and that docs links remain relative.
+
 ## Implemented shape
 
 - Extension entrypoint: `src/index.ts` registers the command, model tools, and runtime hooks.
@@ -58,6 +65,23 @@ extensions/pi-goal/index.ts
 | UI           | Codex-specific menu and bottom-pane behavior.                                      | Pi compact active-goal widget, `/goal status` command output, and tool renderers.                                                                           |
 
 Known parity gaps are intentional for this rollout: no Codex app-server RPC compatibility, no SQLite table, no exact token or wall-clock accounting, and no exact Codex menu UI.
+
+
+## Runtime and harness alignment
+
+The runtime uses current Pi input and follow-up conventions:
+
+- `InputEvent.text` is the preferred source for user input, with compatibility fallbacks for older event shapes.
+- Explicit agent handoffs use `sendUserMessage(..., { deliverAs: "followUp" })`. The older `streamingBehavior: "followUp"` shape is treated as compatibility input, not the primary outbound API.
+- UI behavior is keyed from `ctx.mode`. The TUI path can install a themed widget component, while RPC, JSON, print, and older hosts receive plain rendered lines or status strings.
+
+This keeps `/goal start`, `--start`, continuation turns, and user interrupts aligned with Pi's current harness semantics.
+
+## Tool errors and refusals
+
+Model tools distinguish execution failures from expected policy refusals. Invalid model-provided schema data and unexpected runtime failures are hard errors. Normal permission or state boundaries return a soft refusal with readable content and structured details, for example `details.status: "refused"` plus a reason such as `permission_denied`, `goal_exists`, `no_goal`, `goal_inactive`, or `already_complete`.
+
+Soft refusal is intentional for model control flow. The model can explain the next user action without treating a safe denial as a crashed tool call.
 
 ## State model
 
@@ -199,17 +223,32 @@ It records `goal-continuation` custom entries for queued, started, completed-tur
 
 ## UI behavior
 
-The UI layer is lightweight:
+The UI layer is theme-aware but still works without TUI-only APIs:
 
 - plain text `/goal` input uses the chat agent plus `propose_goal_draft` to produce objective and acceptance criteria before review,
 - draft review uses public Pi UI primitives only: `ctx.ui.select`, `ctx.ui.editor`, and `ctx.ui.confirm`,
 - Start saves the draft and queues the one-shot handoff, Edit opens a prefilled modal markdown editor, and Cancel saves nothing,
 - no legacy footer status is rendered; active goal state is represented by the compact active-goal widget and `/goal status` command output,
+- TUI mode uses Pi themed widget components and semantic theme tokens,
+- RPC, JSON, print, and hosts without widget support fall back to readable plain text/status output,
 - active widget is intentionally compact: it shows objective, criteria count, blocker count when blocked, and a current-work line when `progress.current` is set; it does not render source hints or fall back to `lastSummary`,
 - `/goal status` is readable in command output,
 - missing UI methods no-op safely,
 - non-interactive errors tell the user which flag or command to run next,
 - tool renderers are concise.
+
+
+## Optional Pi features not adopted
+
+This rollout intentionally avoids a few current Pi extension surfaces:
+
+| Pi feature | Why it is not used yet |
+| ---------- | ---------------------- |
+| Project-trust-specific config | `/goal` state is stored in the session branch and existing command confirmations already guard risky mutations. There is no separate trusted/untrusted behavior to configure. |
+| `getSystemPromptOptions` | The extension already injects active-goal context through the runtime hook and compaction path. A dynamic system-prompt option would duplicate that context without a current need. |
+| Autocomplete triggers | The command set is small and documented in `/goal` usage. Adding autocomplete is useful only if users report command discovery friction. |
+
+Add these only when a concrete pi-goal workflow needs them.
 
 ## Acceptance and verification status
 
@@ -222,8 +261,10 @@ npm run typecheck
 npm run lint
 npm run format
 npm test
-pi --no-session --no-extensions -e ./extensions/index.ts -p /goal
-pi --no-session --no-extensions -e ./extensions/index.ts --goal-continuation -p /goal
+npm run test:coverage
+npm pack --dry-run
+npm run smoke:pi
+npm run smoke:package
 ```
 
 The remaining live TUI coverage is documented in [`acceptance-criteria.md`](acceptance-criteria.md#manual-session-lifecycle-smoke-checklist). It covers interactive `/compact`, `/reload`, `/resume`, `/tree`, `/fork`, and visible active-goal widget plus `/goal status` lifecycle checks. Record those smoke results before release, or mark the release blocked instead of treating automated harness tests as live TUI evidence.
