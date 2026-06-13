@@ -387,7 +387,7 @@ describe("goal tool execution", () => {
 		expect(ui.setStatus).toHaveBeenLastCalledWith("goal", undefined);
 		expect(ui.setWidget).toHaveBeenLastCalledWith(
 			"goal",
-			expect.arrayContaining(["Goal · Active · AC: 1 · Blocked: 1 · Track me", "Now · two"]),
+			expect.arrayContaining(["Goal · Active · AC: 1 · Blocked: 1 · ✓ 1 · Track me", "Now · two"]),
 		);
 		expect(latestGoalEntry(branch).action).toBe("progress");
 		expect(latestGoalEntry(branch).state).toMatchObject({
