@@ -1,4 +1,4 @@
-import type { ExtensionAPI, ExtensionContext, InputEvent } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI, InputEvent } from "@earendil-works/pi-coding-agent";
 import { createGoalStateSnapshot, loadGoalState } from "./state.js";
 import { applyGoalUi, renderContinuationStatus } from "./ui.js";
 import {
