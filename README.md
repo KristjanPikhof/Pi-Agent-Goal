@@ -4,6 +4,12 @@ Pi Agent Goal adds persistent `/goal` workflows to Pi. Set a long-running object
 
 Repository: [`KristjanPikhof/Pi-Agent-Goal`](https://github.com/KristjanPikhof/Pi-Agent-Goal)
 
+## Compatibility and release baseline
+
+`pi-agent-goal` release `2026.6.13` targets current Pi package loading and TUI APIs. It requires Node.js `>=22.19.0`. The package intentionally keeps Pi packages as peer dependencies with the open `*` range, while development and validation run against `@earendil-works/pi-coding-agent` and `@earendil-works/pi-tui` `^0.79.3`. This lets the extension follow the Pi host version installed by the user instead of bundling a second Pi runtime.
+
+Published package contents include the source extension entry (`extensions/index.ts`), implementation source (`src`), this README, `docs`, and `LICENSE`. Keep internal documentation links relative so they work from npm tarballs and repository checkouts.
+
 ## Quick start
 
 Install the package, then start Pi:
@@ -96,6 +102,11 @@ If the model replies in prose instead of calling `propose_goal_draft`, no goal i
 
 ## Model tools
 
+Model tools use two error styles:
+
+- Hard errors are reserved for invalid tool input or unexpected execution failures. Pi sees these as tool errors.
+- Soft refusals are normal policy outcomes, such as missing explicit authorization, no active goal, inactive goal state, or duplicate goal creation. These return structured text with `details.status: "refused"` and a reason code instead of throwing.
+
 The extension registers these tools for model use:
 
 - `get_goal`, reads current goal state and source paths.
@@ -130,9 +141,10 @@ Continuation only queues when the goal is active, Pi is idle, and no pending use
 
 - No Codex SQLite `thread_goals` table or app-server RPC compatibility. Pi uses session custom entries instead.
 - No exact Codex token budget or wall-clock accounting. Pi uses an opt-in max-turn cap and progress checks.
-- No exact Codex goal menu or bottom-pane UI. Pi uses the compact active-goal widget, `/goal status` command output, and tool renderers.
+- No exact Codex goal menu or bottom-pane UI. Pi uses the compact active-goal widget, `/goal status` command output, and tool renderers. In TUI mode the widget uses themed Pi components; in RPC, JSON, print, or older hosts it falls back to readable plain text/status output.
 - No general model `update_goal` tool. This is intentional, to prevent silent objective or scope rewrites.
-- Live TUI lifecycle checks for `/compact`, `/reload`, `/resume`, `/tree`, and `/fork` are manual smoke coverage. Record that evidence before release, or mark the release blocked. Automated tests cover the underlying hooks and reconstruction behavior, not the live TUI itself.
+- Live TUI lifecycle checks for `/compact`, `/reload`, `/resume`, `/tree`, `/fork`, and the visible active-goal widget are manual smoke coverage. Record the command transcript, expected state before/after, and any screenshot or session notes before release, or mark the release blocked. Automated tests cover the underlying hooks and reconstruction behavior, not the live TUI itself.
+- Optional Pi features such as project-trust-specific config, `getSystemPromptOptions`, and autocomplete triggers are not adopted yet. There is no current `/goal` use case that needs per-trust behavior, dynamic system-prompt options beyond the existing hidden context hook, or command autocomplete. Avoid adding those surfaces until a concrete workflow requires them.
 
 ## Troubleshooting
 
@@ -154,6 +166,10 @@ npm run typecheck
 npm run lint
 npm run format
 npm test
+npm run test:coverage
+npm pack --dry-run
+npm run smoke:pi
+npm run smoke:package
 ```
 
 Related docs:

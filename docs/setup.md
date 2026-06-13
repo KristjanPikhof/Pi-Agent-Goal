@@ -5,8 +5,9 @@ This guide installs `pi-agent-goal` as a Pi package and shows the local checkout
 ## Requirements
 
 - macOS or Linux
-- Node.js `>=22.0.0`
-- `@earendil-works/pi-coding-agent ^0.74.0`
+- Node.js `>=22.19.0`
+- Pi host packages compatible with `@earendil-works/pi-coding-agent` and `@earendil-works/pi-tui` `^0.79.3` APIs. The published package declares these Pi packages as open peer dependencies (`*`) so the extension uses the host Pi installation instead of bundling its own runtime.
+- `pi-agent-goal` release `2026.6.13`
 
 ## Recommended install
 
@@ -79,6 +80,16 @@ Project-local, in `.pi/settings.json`:
 
 Project settings are local to that workspace. Use them when a repo should always load `pi-agent-goal` for anyone working there.
 
+
+## Package and docs policy
+
+The npm package exposes the source extension entry directly. Keep `README.md`, `docs`, `extensions`, `src`, and `LICENSE` in the package, and keep docs links relative so they work after `npm pack` as well as in GitHub. Verify this with:
+
+```bash
+npm pack --dry-run
+npm run smoke:package
+```
+
 ## Local checkout development
 
 Use a local checkout when you are editing this repository or testing unreleased changes.
@@ -137,5 +148,8 @@ npm run typecheck
 npm run lint
 npm run format
 npm test
+npm run test:coverage
+npm run smoke:pi
+npm run smoke:package
 npm pack --dry-run
 ```

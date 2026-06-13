@@ -2,6 +2,13 @@
 
 The Pi Agent Goal package uses a source-extension shape: `extensions/index.ts` loads `extensions/pi-goal/index.ts`, which wires the implementation from `src/index.ts`. These docs describe the shipped behavior, acceptance status, and remaining rollout checks.
 
+
+## Release compatibility
+
+Release `2026.6.13` raises the runtime baseline to Node.js `>=22.19.0` and validates against Pi `0.79.3` APIs. Pi core packages stay as open peer dependencies in `package.json`; dev dependencies pin the validation floor, while the installed Pi host provides the actual runtime.
+
+The docs and package layout are part of the release contract. `npm pack --dry-run` and `npm run smoke:package` must show that `README.md`, `docs`, `extensions`, `src`, and `LICENSE` are included, with relative docs links intact.
+
 Read in this order:
 
 1. [`../README.md`](../README.md), quick start, command reference, model tools, autonomy opt-in, and troubleshooting.
@@ -31,6 +38,10 @@ npm run typecheck
 npm run lint
 npm run format
 npm test
+npm run test:coverage
+npm pack --dry-run
+npm run smoke:pi
+npm run smoke:package
 pi --no-session --no-extensions -e ./extensions/index.ts -p /goal
 pi --no-session --no-extensions -e ./extensions/index.ts --goal-continuation -p /goal
 ```
