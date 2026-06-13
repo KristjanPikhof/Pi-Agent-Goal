@@ -1,166 +1,149 @@
 # Pi Agent Goal
 
-Pi Agent Goal adds persistent `/goal` workflows to Pi. Set a long-running objective, import context from docs, keep goal state aligned with branch history, expose narrow progress tools, and start agent work explicitly when you are ready.
+Pi Agent Goal adds persistent `/goal` workflows to Pi. Use it to set a long-running objective, import context from docs, track progress, keep state aligned with branch history, and start agent work only when you ask for it.
 
 Repository: [`KristjanPikhof/Pi-Agent-Goal`](https://github.com/KristjanPikhof/Pi-Agent-Goal)
 
-## Compatibility and release baseline
+## Compatibility
 
-`pi-agent-goal` release `2026.6.13` targets current Pi package loading and TUI APIs. It requires Node.js `>=22.19.0`. The package intentionally keeps Pi packages as peer dependencies with the open `*` range, while development and validation run against `@earendil-works/pi-coding-agent` and `@earendil-works/pi-tui` `^0.79.3`. This lets the extension follow the Pi host version installed by the user instead of bundling a second Pi runtime.
+Release `2026.6.13` requires Node.js `>=22.19.0`.
 
-Published package contents include the source extension entry (`extensions/index.ts`), implementation source (`src`), this README, `docs`, and `LICENSE`. Keep internal documentation links relative so they work from npm tarballs and repository checkouts.
+The package keeps Pi peer dependencies open (`*`) so it uses the Pi host already installed by the user. Development and release validation run against `@earendil-works/pi-coding-agent` and `@earendil-works/pi-tui` `^0.79.3`.
+
+Published package contents must include `extensions`, `src`, `README.md`, `docs`, and `LICENSE`. Keep docs links relative so they work from both GitHub and npm tarballs.
 
 ## Quick start
-
-Install the package, then start Pi:
 
 ```bash
 pi install npm:pi-agent-goal
 pi
 ```
 
-In Pi, run:
+Then run:
 
 ```text
 /goal
 ```
 
-You should see usage when no goal exists yet. Create a goal, review the editable draft, then start it when you are ready:
+With no saved goal, `/goal` shows help. To create one interactively:
 
 ```text
 /goal Ship the onboarding cleanup
-# choose Start, Edit, or Cancel in interactive Pi
 ```
 
-If you created the goal without `--start`, start it later:
+Pi asks the chat agent to draft a concise objective and acceptance criteria. In the TUI, review the draft, then choose Start, Edit, or Cancel. Nothing is saved until you choose Start.
+
+If a goal already exists, start one explicit agent handoff with:
 
 ```text
 /goal start
 ```
 
-For non-interactive runs, plain `/goal` text, including `/goal <objective> --start`, only queues the agent-mediated drafting/review path and does not save or start work by itself. Use an already-approved path when the run should begin work immediately, such as importing reviewed docs with `--yes --start` or resuming an existing paused goal with `--start`:
+## Non-interactive starts
+
+Plain non-interactive `/goal <objective> --start` does not save or start work by itself. It only queues the agent-mediated draft/review path, which still needs `propose_goal_draft` and review before persistence.
+
+Use an already-approved path when a non-interactive run should begin immediately:
 
 ```bash
 pi -e npm:pi-agent-goal -p "/goal import docs/prd.md --yes --start"
 pi -e npm:pi-agent-goal -p "/goal resume --start"
 ```
 
-## Install
+## Install options
 
-The full install reference, including settings.json edits, project-local installs, one-off runs, and local-checkout symlinks, lives in [`docs/setup.md`](./docs/setup.md). The short version:
+| Need | Command |
+| --- | --- |
+| Global install | `pi install npm:pi-agent-goal` |
+| Project-local install | `pi install -l npm:pi-agent-goal` |
+| One-off run | `pi -e npm:pi-agent-goal` |
+| Local checkout run | `pi --no-extensions -e ./extensions/index.ts` |
 
-```bash
-pi install npm:pi-agent-goal      # recommended global install
-pi install -l npm:pi-agent-goal   # project-local install
-pi -e npm:pi-agent-goal           # one-off run, nothing written to settings
-```
-
-For local checkout development:
-
-```bash
-git clone git@github.com:KristjanPikhof/Pi-Agent-Goal.git
-cd Pi-Agent-Goal
-npm install
-pi --no-extensions -e ./extensions/index.ts
-```
-
-The root extension shim loads `extensions/pi-goal/index.ts`, and the package manifest points Pi at `./extensions/index.ts`:
-
-```json
-{
-	"pi": {
-		"extensions": ["./extensions/index.ts"]
-	}
-}
-```
+See [`docs/setup.md`](docs/setup.md) for settings.json examples and local development links.
 
 ## Commands
 
-| Command                                 | Behavior                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/goal`                                 | Show usage when no goal exists, otherwise show the current goal summary.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| `/goal <objective> [--start]`           | Sends the plain text to the chat agent to draft a reviewable objective and acceptance criteria through `propose_goal_draft`. The tool may include a short note in its result metadata, but only the reviewed objective, criteria, and source paths are saved. Nothing is saved until the review callback runs. Interactive Pi shows Start, Edit, and Cancel; Start saves the reviewed draft and queues the one-shot handoff, Edit opens the modal editor with objective and acceptance criteria prefilled, and Cancel saves nothing. Recognized flags such as `--replace` and `--start` are stripped from the objective even when they appear before the text. If a goal already exists, interactive Pi asks for confirmation. In non-interactive mode, use `--replace` to replace. |
-| `/goal start`                           | Start the current active goal with a one-shot follow-up handoff. This is user-requested agent work, not automatic idle continuation. Paused or complete goals must be resumed, cleared, or replaced first.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| `/goal status`                          | Show objective, status, criteria, constraints, source docs, progress, blockers, and next commands.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| `/goal import <path> [--yes] [--start]` | Import a markdown/text PRD file or docs folder. Stores source paths plus compact briefs. With no current goal, creates an active goal. With an existing active goal, imports merge source docs, constraints, and criteria instead of replacing the objective. Paused or complete goals reject import without mutation. Use `--yes` in non-interactive mode after reviewing the source, and add `--start` when that non-interactive import should begin work immediately.                                                                                                                                                                                                                                                                                                            |
-| `/goal edit`                            | Edit the objective and acceptance criteria through the interactive UI editor. Non-interactive mode should use `/goal <objective> --replace`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| `/goal pause`                           | Pause the goal, which stops hidden active-goal context, continuation, completion, and progress updates until resumed.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `/goal resume [--start]`                | Resume a paused goal as active. Complete goals are terminal until cleared or replaced. Add `--start` when a non-interactive resume should immediately hand the active goal to the agent.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| `/goal complete [--yes]`                | Mark an active goal complete. Use `--yes` when there is no interactive confirmation UI.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| `/goal clear [--yes]`                   | Clear the current goal and hide goal UI. Use `--yes` when there is no interactive confirmation UI.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Command | What it does |
+| --- | --- |
+| `/goal` | Show help or the current goal summary. |
+| `/goal <objective> [--start]` | Ask the chat agent to draft a reviewable goal with `propose_goal_draft`. Interactive Start saves and queues one handoff. Edit opens the draft editor. Cancel saves nothing. Recognized flags such as `--replace` and `--start` are stripped from the objective. |
+| `/goal start` | Queue one explicit handoff for the current active goal. This is not automatic continuation. |
+| `/goal status` | Show objective, status, criteria, constraints, source docs, progress, blockers, and next commands. |
+| `/goal import <path> [--yes] [--start]` | Import a markdown/text PRD file or docs folder. Creates a goal when none exists. Merges docs, constraints, and criteria into an existing active goal without rewriting the objective. Non-interactive mode needs `--yes`; add `--start` to begin immediately. |
+| `/goal edit` | Edit the objective and acceptance criteria in the interactive UI. Non-interactive mode should use `/goal <objective> --replace`. |
+| `/goal pause` | Pause the goal and stop hidden context, continuation, completion, and progress updates. |
+| `/goal resume [--start]` | Reactivate a paused goal. Add `--start` for an immediate non-interactive handoff. |
+| `/goal complete [--yes]` | Mark an active goal complete. |
+| `/goal clear [--yes]` | Clear the current goal and hide goal UI. |
 
-## Plain goal review flow
+## How plain goal review works
 
-Plain `/goal` text is a drafting request. The command sends a follow-up message that asks the chat agent to call `propose_goal_draft` exactly once with a concise objective and concrete acceptance criteria. The tool can include a short note for result metadata, but the review editor only persists objective, criteria, and source paths.
+Plain `/goal` text is a drafting request, not direct persistence. The command asks the chat agent to call `propose_goal_draft` once with:
 
-In interactive Pi, the callback confirms replacement when needed, then shows Start, Edit, and Cancel before anything is saved. The choices are:
+- a concise objective,
+- concrete acceptance criteria,
+- optional source paths.
 
-- **Start**, save the reviewed draft and queue the one-shot start handoff.
-- **Edit**, open a prefilled modal markdown editor for the objective and acceptance criteria, then return to review. Invalid editor content is reported and the review loop continues.
-- **Cancel**, discard the unsaved draft and save nothing.
-
-If the model replies in prose instead of calling `propose_goal_draft`, no goal is saved. Ask it to call the tool, or create a goal with an explicit approved `create_goal` request. If interactive review UI is unavailable, `propose_goal_draft` cancels with `review_ui_unavailable` and saves nothing; use an interactive Pi session for the review path. Criteria-free goals can still exist through older saved state or explicitly approved tool calls, and prompts call that out by using the objective as the source of truth.
+Only the reviewed objective, criteria, and source paths are saved. If the model replies in prose instead of calling the tool, no goal is saved. If review UI is unavailable, the tool returns `review_ui_unavailable` and saves nothing.
 
 ## Model tools
 
-Model tools use two error styles:
+The extension exposes narrow tools on purpose:
 
-- Hard errors are reserved for invalid tool input or unexpected execution failures. Pi sees these as tool errors.
-- Soft refusals are normal policy outcomes, such as missing explicit authorization, no active goal, inactive goal state, or duplicate goal creation. These return structured text with `details.status: "refused"` and a reason code instead of throwing.
+- `get_goal`, read current goal state and source paths.
+- `create_goal`, create an already-approved goal only when `explicit_request` is true and no goal exists.
+- `propose_goal_draft`, open the Start/Edit/Cancel review flow for agent-drafted `/goal` proposals.
+- `complete_goal`, mark an active goal complete with optional evidence.
+- `update_goal_progress`, update progress only.
 
-The extension registers these tools for model use:
+Expected denials, such as no active goal or missing authorization, return soft refusals with `details.status: "refused"`. Invalid input and unexpected failures remain hard tool errors.
 
-- `get_goal`, reads current goal state and source paths.
-- `create_goal`, creates a goal only when `explicit_request` is true and no goal already exists.
-- `propose_goal_draft`, opens the Start/Edit/Cancel review flow for agent-drafted `/goal` proposals and saves only after Start.
-- `complete_goal`, marks an active goal complete with optional evidence. It rejects paused and already complete goals.
-- `update_goal_progress`, updates progress only. It rejects paused or complete goals and cannot change objective, source docs, or acceptance criteria.
+## State and autonomy
 
-## State, compaction, and autonomy
+Canonical state is stored as Pi session custom entries of type `goal-state`. The extension reconstructs state from `ctx.sessionManager.getBranch()`, so forks, `/tree`, reload, and resume follow the selected branch instead of a global latest value.
 
-Canonical state is stored as Pi custom session entries with custom type `goal-state`. The active state is reconstructed from `ctx.sessionManager.getBranch()`, so forks, `/tree`, reload, and resume follow the selected branch instead of a global latest value.
+Active goals inject a short hidden `goal-context` before agent turns. Compaction preserves objective, criteria, source doc briefs, and progress in summary details. Full imported docs are not repeatedly pasted into model context.
 
-Active goals inject a short hidden `goal-context` message before agent turns. Compaction uses `session_before_compact` to preserve the active goal objective, criteria, source doc briefs, and progress in the compaction summary details. Full imported docs are not repeatedly pasted into model context.
+`/goal start` and `--start` queue one explicit handoff. They do not enable background work.
 
-Starting a goal and automatic continuation are separate controls. `/goal start` and `--start` queue a single, explicit handoff for the current active goal. They do not enable background work after that turn.
-
-Automatic continuation is a separate opt-in. Start Pi with:
+Automatic continuation is separate and opt-in:
 
 ```bash
 pi -e npm:pi-agent-goal --goal-continuation
-```
-
-Optional cap:
-
-```bash
 pi -e npm:pi-agent-goal --goal-continuation --goal-continuation-max-turns 3
 ```
 
-Continuation only queues when the goal is active, Pi is idle, and no pending user messages exist. It rechecks the goal ID before starting and stops on no progress, completion, pause, clear, replacement, user interrupt, duplicate queue, busy state, disabled flag, pending messages, or max-turn cap.
+Continuation only queues when the goal is active, Pi is idle, no pending user messages exist, and the stale-goal and max-turn guards pass.
 
-## Known gaps versus Codex
+## Known Codex parity gaps
 
-- No Codex SQLite `thread_goals` table or app-server RPC compatibility. Pi uses session custom entries instead.
-- No exact Codex token budget or wall-clock accounting. Pi uses an opt-in max-turn cap and progress checks.
-- No exact Codex goal menu or bottom-pane UI. Pi uses the compact active-goal widget, `/goal status` command output, and tool renderers. In TUI mode the widget uses themed Pi components; in RPC, JSON, print, or older hosts it falls back to readable plain text/status output.
-- No general model `update_goal` tool. This is intentional, to prevent silent objective or scope rewrites.
-- Live TUI lifecycle checks for `/compact`, `/reload`, `/resume`, `/tree`, `/fork`, and the visible active-goal widget are manual smoke coverage. Record the command transcript, expected state before/after, and any screenshot or session notes before release, or mark the release blocked. Automated tests cover the underlying hooks and reconstruction behavior, not the live TUI itself.
-- Optional Pi features such as project-trust-specific config and `getSystemPromptOptions` are not adopted yet. Basic `/goal` subcommand argument completions are implemented; richer autocomplete should wait until a concrete workflow requires it.
+These gaps are intentional for this Pi-native release:
+
+- no Codex SQLite `thread_goals` table or app-server RPC compatibility,
+- no exact Codex token budget or wall-clock accounting,
+- no exact Codex goal menu or bottom-pane UI,
+- no general model `update_goal` tool,
+- no automated proof of live TUI lifecycle behavior.
+
+Live TUI smoke for `/compact`, `/reload`, `/resume`, `/tree`, `/fork`, and the visible active-goal widget remains manual and release-blocking. Record evidence before release, or mark the release blocked. Automated tests cover the underlying hooks and reconstruction behavior, not the live terminal.
 
 ## Troubleshooting
 
-| Symptom                                                         | What to do                                                                                                                                                                                                                                                                                                  |
-| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/goal import` says the path is outside the workspace           | The requested path or its realpath resolved outside the workspace, including symlink escapes. Run from the workspace root or move/copy the source file inside it.                                                                                                                                           |
-| `/goal import` requires `--yes`                                 | Non-interactive mode cannot show confirmation. Review the source docs, then rerun with `--yes`. Add `--start` only when the import should also start a one-shot agent handoff. Directory imports fail if supported docs exceed the configured `maxFiles`; narrow the path or raise the limit in code/tests. |
-| Replacing a goal fails in non-interactive mode                  | Rerun `/goal <objective> --replace` only to authorize queuing a replacement draft. Plain replacement text still saves/starts only after review; use import/resume or explicitly approved tool persistence for non-interactive immediate start.                                                              |
-| `/goal edit` fails                                              | The editor is interactive-only. Use `/goal <objective> --replace` instead.                                                                                                                                                                                                                                  |
-| `/goal <text>` says the draft was queued, but no review appears | The chat agent must call `propose_goal_draft`. If it answered in prose or stopped early, ask it to call the tool with objective and acceptance criteria. No goal is saved until that callback runs.                                                                                                         |
-| `propose_goal_draft` reports `review_ui_unavailable`            | The draft review needs interactive `select` and `editor` UI. Re-run in the Pi TUI, or use an explicit approved `create_goal` request if you really need a non-interactive save.                                                                                                                             |
-| Hidden context or UI looks stale after branch navigation        | Run `/goal status`; state is reconstructed from the selected branch. If it is wrong, inspect recent `goal-state` custom entries in the session.                                                                                                                                                             |
-| Continuation does not start                                     | Confirm Pi was launched with `--goal-continuation`, the goal is active, Pi is idle, and there are no pending user messages.                                                                                                                                                                                 |
+| Symptom | Fix |
+| --- | --- |
+| Import path is outside the workspace | Run from the workspace root or move the file inside it. Realpaths are checked, including symlink escapes. |
+| Import requires `--yes` | Non-interactive mode cannot confirm. Review the source, rerun with `--yes`, and add `--start` only if work should begin immediately. |
+| Directory import has too many docs | Narrow the path or raise `maxFiles` in code/tests. Import fails rather than silently truncating. |
+| Replacement fails non-interactively | Use `/goal <objective> --replace` to authorize the replacement draft. It still saves only after review unless you use an approved persistence path. |
+| `/goal edit` fails | The editor is interactive-only. Use `/goal <objective> --replace` instead. |
+| Draft queued but no review appears | The chat agent must call `propose_goal_draft`. A prose answer saves nothing. |
+| `review_ui_unavailable` | Run the review path in the Pi TUI, or use an explicitly approved `create_goal` request. |
+| Continuation does not start | Launch with `--goal-continuation`, keep the goal active, wait for idle, and make sure no user messages are pending. |
+| Goal looks stale after branch navigation | Run `/goal status`; state is reconstructed from the selected branch. |
 
-## Local development
+## Local verification
+
+Canonical release checks are listed in [`docs/acceptance-criteria.md`](docs/acceptance-criteria.md#validation-commands).
 
 ```bash
 npm run typecheck
@@ -173,12 +156,13 @@ npm run smoke:pi
 npm run smoke:package
 ```
 
-Related docs:
+## More docs
 
-- [`docs/README.md`](docs/README.md), rollout notes and doc map.
-- [`docs/implementation.md`](docs/implementation.md), implemented architecture and behavior.
-- [`docs/acceptance-criteria.md`](docs/acceptance-criteria.md), acceptance status, test matrix, and smoke checklist.
+- [`docs/README.md`](docs/README.md), doc map and release notes.
+- [`docs/setup.md`](docs/setup.md), install and local development.
+- [`docs/implementation.md`](docs/implementation.md), architecture and behavior reference.
+- [`docs/acceptance-criteria.md`](docs/acceptance-criteria.md), acceptance status, test matrix, and manual smoke checklist.
 
 ## License
 
-MIT. See [`LICENSE`](./LICENSE).
+MIT. See [`LICENSE`](LICENSE).
