@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import goalExtension from "../src/index.js";
 
@@ -32,5 +33,34 @@ describe("goalExtension", () => {
 			"goal",
 			expect.objectContaining({ description: expect.stringContaining("long-running task") }),
 		);
+	});
+
+	it("keeps package metadata aligned with Pi package and docs load expectations", () => {
+		const packageJson = JSON.parse(readFileSync("package.json", "utf8")) as {
+			name: string;
+			main: string;
+			exports: Record<string, string>;
+			pi: { extensions: string[] };
+			files: string[];
+			peerDependencies: Record<string, string>;
+			scripts: Record<string, string>;
+		};
+
+		expect(packageJson.name).toBe("pi-agent-goal");
+		expect(packageJson.main).toBe("./extensions/index.ts");
+		expect(packageJson.exports["."]).toBe("./extensions/index.ts");
+		expect(packageJson.pi.extensions).toEqual(["./extensions/index.ts"]);
+		expect(packageJson.files).toEqual(expect.arrayContaining(["extensions", "src", "docs", "README.md"]));
+		expect(packageJson.peerDependencies).toMatchObject({
+			"@earendil-works/pi-coding-agent": "*",
+			"@earendil-works/pi-tui": "*",
+			typebox: "*",
+		});
+		expect(packageJson.scripts).toMatchObject({
+			"smoke:pi:goal": expect.stringContaining("tests/smoke-pi.mjs goal"),
+			"smoke:pi:goal-continuation": expect.stringContaining("tests/smoke-pi.mjs continuation"),
+			"smoke:package": expect.stringContaining("tests/package-smoke.mjs"),
+			"test:coverage": expect.stringContaining("--coverage"),
+		});
 	});
 });
