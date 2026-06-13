@@ -320,12 +320,14 @@ describe("goal tool execution", () => {
 			return "Start";
 		});
 		await expect(
-			executeProposeGoalDraft(
-				{ objective: "Stale draft", acceptanceCriteria: ["criterion"] },
-				stale.ctx,
-				{ ...stale.pi, sendUserMessage: vi.fn() },
-			),
-		).rejects.toMatchObject({ message: "Goal changed before saving. No goal was saved.", code: "stale_goal" });
+			executeProposeGoalDraft({ objective: "Stale draft", acceptanceCriteria: ["criterion"] }, stale.ctx, {
+				...stale.pi,
+				sendUserMessage: vi.fn(),
+			}),
+		).rejects.toMatchObject({
+			message: "Goal changed before saving. No goal was saved.",
+			code: "stale_goal",
+		});
 		expect(latestGoalEntry(stale.branch).state?.objective).toBe("Concurrent goal");
 	});
 
@@ -462,7 +464,11 @@ describe("goal tool renderers", () => {
 			.filter(Boolean);
 		const outputRendered = tools
 			.get("get_goal")
-			?.renderResult?.({ content: [{ type: "text", text: "No goal is currently set." }], details: {} }, {}, theme)
+			?.renderResult?.(
+				{ content: [{ type: "text", text: "No goal is currently set." }], details: {} },
+				{},
+				theme,
+			)
 			.render(120)
 			.map((line) => line.trim())
 			.filter(Boolean);

@@ -37,7 +37,14 @@ export interface GoalWidgetTheme {
 	bold?: (text: string) => string;
 }
 
-export type GoalThemeToken = "success" | "warning" | "accent" | "muted" | "dim" | "customMessageText" | "customMessageLabel";
+export type GoalThemeToken =
+	| "success"
+	| "warning"
+	| "accent"
+	| "muted"
+	| "dim"
+	| "customMessageText"
+	| "customMessageLabel";
 
 export interface GoalSymbols {
 	separator: string;
@@ -149,16 +156,24 @@ export function renderGoalWidgetPresentation(
 		metadata.push(styleWidgetPart("blocked", `Blocked: ${presentation.blockedCount}`, options.theme));
 	}
 	if (presentation.completedCount > 0) {
-		metadata.push(styleWidgetPart("completed", `${symbols.completion} ${presentation.completedCount}`, options.theme));
+		metadata.push(
+			styleWidgetPart("completed", `${symbols.completion} ${presentation.completedCount}`, options.theme),
+		);
 	}
 
 	const objective = truncatePlain(presentation.objective, 80, symbols.ellipsis);
-	const lines = [`${metadata.join(separator)}${separator}${styleWidgetPart("objective", objective, options.theme)}`];
+	const lines = [
+		`${metadata.join(separator)}${separator}${styleWidgetPart("objective", objective, options.theme)}`,
+	];
 	if (presentation.current) {
 		const current = truncatePlain(presentation.current, 80, symbols.ellipsis);
-		lines.push(`${styleWidgetPart("current", "Now", options.theme)}${separator}${styleWidgetPart("current", current, options.theme)}`);
+		lines.push(
+			`${styleWidgetPart("current", "Now", options.theme)}${separator}${styleWidgetPart("current", current, options.theme)}`,
+		);
 	}
-	return options.width === undefined ? lines : lines.map((line) => truncateToWidth(line, options.width ?? 0, symbols.ellipsis));
+	return options.width === undefined
+		? lines
+		: lines.map((line) => truncateToWidth(line, options.width ?? 0, symbols.ellipsis));
 }
 
 export function createGoalWidgetFactory(presentation: GoalWidgetPresentation): GoalWidgetFactory {
@@ -187,7 +202,8 @@ export function applyGoalUi(ctx: GoalUiContext, goal: GoalState | null): void {
 		setGoalWidget(ctx, undefined);
 		return;
 	}
-	const content = ctx.mode === "tui" ? createGoalWidgetFactory(presentation) : renderGoalWidgetPresentation(presentation);
+	const content =
+		ctx.mode === "tui" ? createGoalWidgetFactory(presentation) : renderGoalWidgetPresentation(presentation);
 	setGoalWidget(ctx, content);
 }
 
@@ -205,7 +221,16 @@ function setGoalWidget(ctx: GoalUiContext, content: GoalWidgetContent | undefine
 }
 
 function styleWidgetPart(
-	part: "label" | "active" | "paused" | "complete" | "acceptance" | "blocked" | "completed" | "current" | "objective",
+	part:
+		| "label"
+		| "active"
+		| "paused"
+		| "complete"
+		| "acceptance"
+		| "blocked"
+		| "completed"
+		| "current"
+		| "objective",
 	text: string,
 	theme?: GoalWidgetTheme,
 ): string {
@@ -259,5 +284,7 @@ function formatAcceptanceCriteriaList(items: string[]): string[] {
 }
 
 function truncatePlain(value: string, maxLength: number, ellipsis: string): string {
-	return value.length <= maxLength ? value : `${value.slice(0, Math.max(0, maxLength - ellipsis.length))}${ellipsis}`;
+	return value.length <= maxLength
+		? value
+		: `${value.slice(0, Math.max(0, maxLength - ellipsis.length))}${ellipsis}`;
 }

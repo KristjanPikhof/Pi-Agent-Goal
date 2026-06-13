@@ -68,7 +68,9 @@ function run(command, args, options) {
 		});
 		child.on("error", (error) => {
 			if (error.name === "AbortError") {
-				reject(new Error(`Smoke command timed out after ${options.timeoutMs}ms: ${command} ${args.join(" ")}`));
+				reject(
+					new Error(`Smoke command timed out after ${options.timeoutMs}ms: ${command} ${args.join(" ")}`),
+				);
 				return;
 			}
 			reject(error);

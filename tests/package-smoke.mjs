@@ -4,7 +4,9 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
-const { stdout } = await execFileAsync("npm", ["pack", "--dry-run", "--json"], { maxBuffer: 1024 * 1024 * 8 });
+const { stdout } = await execFileAsync("npm", ["pack", "--dry-run", "--json"], {
+	maxBuffer: 1024 * 1024 * 8,
+});
 const [pack] = JSON.parse(stdout);
 const files = new Set(pack.files.map((file) => file.path));
 const requiredFiles = [

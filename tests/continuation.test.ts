@@ -279,14 +279,17 @@ describe("goal continuation scheduler", () => {
 
 		registerGoalRuntime(pi);
 		await handlers.get("agent_end")?.({}, ctx);
-		expect((pi as unknown as { sendUserMessage: ReturnType<typeof vi.fn> }).sendUserMessage).not.toHaveBeenCalled();
+		expect(
+			(pi as unknown as { sendUserMessage: ReturnType<typeof vi.fn> }).sendUserMessage,
+		).not.toHaveBeenCalled();
 
 		ctx.hasPendingMessages.mockReturnValue(false);
 		await handlers.get("agent_end")?.({}, ctx);
-		expect((pi as unknown as { sendUserMessage: ReturnType<typeof vi.fn> }).sendUserMessage).toHaveBeenCalledWith(
-			expect.stringContaining("Continue working toward the active goal."),
-			{ deliverAs: "followUp" },
-		);
+		expect(
+			(pi as unknown as { sendUserMessage: ReturnType<typeof vi.fn> }).sendUserMessage,
+		).toHaveBeenCalledWith(expect.stringContaining("Continue working toward the active goal."), {
+			deliverAs: "followUp",
+		});
 	});
 
 	it("registered hooks stop queued/running continuations on current Pi text input", async () => {
@@ -315,7 +318,10 @@ describe("goal continuation scheduler", () => {
 		expect(
 			(pi as unknown as { sendUserMessage: ReturnType<typeof vi.fn> }).sendUserMessage,
 		).toHaveBeenCalledOnce();
-		await handlers.get("input")?.({ type: "input", text: "user interrupts", source: "interactive", streamingBehavior: "followUp" }, ctx);
+		await handlers.get("input")?.(
+			{ type: "input", text: "user interrupts", source: "interactive", streamingBehavior: "followUp" },
+			ctx,
+		);
 
 		expect((pi as unknown as { appendEntry: ReturnType<typeof vi.fn> }).appendEntry).toHaveBeenLastCalledWith(
 			GOAL_CONTINUATION_CUSTOM_TYPE,
@@ -344,7 +350,9 @@ describe("goal continuation scheduler", () => {
 		registerGoalRuntime(pi);
 		await handlers.get("agent_end")?.({}, ctx);
 		await handlers.get("input")?.({ input: "Continue working toward the active goal." }, ctx);
-		expect((pi as unknown as { appendEntry: ReturnType<typeof vi.fn> }).appendEntry).not.toHaveBeenLastCalledWith(
+		expect(
+			(pi as unknown as { appendEntry: ReturnType<typeof vi.fn> }).appendEntry,
+		).not.toHaveBeenLastCalledWith(
 			GOAL_CONTINUATION_CUSTOM_TYPE,
 			expect.objectContaining({ action: "stopped", reason: "user-interrupt" }),
 		);

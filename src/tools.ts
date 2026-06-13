@@ -114,7 +114,8 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 		name: "get_goal",
 		label: "Get Goal",
 		description: "Get the current long-running goal state and source paths.",
-		promptSnippet: "Use get_goal to read the current /goal state, status, progress, acceptance criteria, and source paths.",
+		promptSnippet:
+			"Use get_goal to read the current /goal state, status, progress, acceptance criteria, and source paths.",
 		promptGuidelines: [
 			"Use get_goal when you need the current long-running objective before acting on goal state.",
 		],
@@ -440,7 +441,10 @@ export function formatUpdateGoalProgressToolCall(
 	return formatGoalToolCall("update_goal_progress", formatGoalProgressCallBody(input), theme);
 }
 
-export function formatGoalToolResult(result: GoalToolResult & { isError?: boolean }, theme?: GoalTheme): string {
+export function formatGoalToolResult(
+	result: GoalToolResult & { isError?: boolean },
+	theme?: GoalTheme,
+): string {
 	const text = result.content.find((block) => block.type === "text")?.text ?? "";
 	if (result.isError) return styleTheme(theme, "error", `Error: ${text}`);
 	const token = isSuccessfulGoalToolText(text) ? "success" : "toolOutput";
