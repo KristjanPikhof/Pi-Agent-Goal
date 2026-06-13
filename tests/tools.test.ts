@@ -140,6 +140,34 @@ describe("goal tool schemas and registration", () => {
 });
 
 describe("goal tool execution", () => {
+	it("registered execute callbacks dispatch complete and progress tools", async () => {
+		const { pi, ctx, tools } = createHarness();
+		registerGoalTools(pi);
+		executeCreateGoal({ objective: "Dispatch callbacks", explicit_request: true }, ctx, pi);
+
+		const progress = await tools
+			.get("update_goal_progress")
+			?.execute(
+				"call-1" as never,
+				{ summary: "callback progress" } as never,
+				undefined as never,
+				undefined as never,
+				ctx as never,
+			);
+		expect(progress).toMatchObject({ details: { progress: { lastSummary: "callback progress" } } });
+
+		const complete = await tools
+			.get("complete_goal")
+			?.execute(
+				"call-2" as never,
+				{ evidence: "callback complete" } as never,
+				undefined as never,
+				undefined as never,
+				ctx as never,
+			);
+		expect(complete).toMatchObject({ details: { evidence: "callback complete" } });
+	});
+
 	it("get_goal returns no-goal and current state details including source paths", () => {
 		const { pi, ctx, branch } = createHarness();
 		expect(executeGetGoal(ctx)).toMatchObject({ details: { goal: null } });
@@ -486,6 +514,7 @@ describe("goal tool renderers", () => {
 	it("formats tool calls as human-readable title/body displays", () => {
 		expect(formatGoalToolCall("create_goal", "Ship it")).toBe("Create goal\nShip it");
 		expect(formatGoalToolCall("get_goal")).toBe("Get goal");
+		expect(formatGoalToolCall("unknown_goal_tool")).toBe("unknown_goal_tool");
 		expect(formatGoalToolCall("complete_goal", "all checks passed")).toBe(
 			"✓ Complete goal\nall checks passed",
 		);
@@ -512,6 +541,10 @@ describe("goal tool renderers", () => {
 		expect(formatUpdateGoalProgressToolCall({ done: ["implementation", "tests"] })).toBe(
 			"Update goal progress\nDone: implementation; tests",
 		);
+		expect(formatUpdateGoalProgressToolCall({ blocked: ["live TUI unavailable"] })).toBe(
+			"Update goal progress\nBlocked: live TUI unavailable",
+		);
+		expect(formatUpdateGoalProgressToolCall({})).toBe("Update goal progress");
 	});
 
 	it("registered update_goal_progress renderCall includes summary args without legacy prefix", () => {
