@@ -101,6 +101,7 @@ interface GoalToolContext extends Partial<GoalWorkflowContext> {
 type GoalToolResult = {
 	content: Array<{ type: "text"; text: string }>;
 	details: Record<string, unknown> | undefined;
+	isError?: boolean;
 	terminate?: boolean;
 };
 
@@ -131,7 +132,7 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 		name: "create_goal",
 		label: "Create Goal",
 		description:
-			"Create a goal only when explicitly requested by the user or system/developer instructions. Refuses if a goal exists."
+			"Create a goal only when explicitly requested by the user or system/developer instructions. Refuses if a goal exists.",
 		promptSnippet: "Use create_goal to persist a user-approved /goal only when no goal exists.",
 		promptGuidelines: [
 			"Use create_goal only when the user or system/developer instructions explicitly ask to persist an already-approved goal; do not infer goals from ordinary tasks.",
@@ -457,7 +458,8 @@ export function formatCompleteGoalToolResult(
 function refusalResult(message: string, code: string, goal?: GoalState): GoalToolResult {
 	return {
 		content: [{ type: "text", text: message }],
-		details: { status: "refused", reason: code, goal },
+		details: { error: code, status: "refused", reason: code, goal },
+		isError: true,
 	};
 }
 

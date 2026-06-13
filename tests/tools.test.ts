@@ -432,6 +432,51 @@ describe("goal tool execution", () => {
 });
 
 describe("goal tool renderers", () => {
+	it("registered renderers use semantic theme tokens while preserving readable text", () => {
+		const { pi, tools } = createHarness();
+		registerGoalTools(pi);
+		const tokens: string[] = [];
+		const theme = {
+			fg: (token: string, text: string) => {
+				tokens.push(token);
+				return text;
+			},
+			bold: (text: string) => text,
+		};
+
+		const callRendered = tools
+			.get("create_goal")
+			?.renderCall?.({ objective: "Ship themed tools" }, theme)
+			.render(120)
+			.map((line) => line.trim())
+			.filter(Boolean);
+		const successRendered = tools
+			.get("update_goal_progress")
+			?.renderResult?.(
+				{ content: [{ type: "text", text: "Goal progress updated" }], details: { progress: {} } },
+				{},
+				theme,
+			)
+			.render(120)
+			.map((line) => line.trim())
+			.filter(Boolean);
+		const outputRendered = tools
+			.get("get_goal")
+			?.renderResult?.({ content: [{ type: "text", text: "No goal is currently set." }], details: {} }, {}, theme)
+			.render(120)
+			.map((line) => line.trim())
+			.filter(Boolean);
+		formatGoalToolResult(
+			{ content: [{ type: "text", text: "Denied" }], details: undefined, isError: true },
+			theme,
+		);
+
+		expect(callRendered).toEqual(["Create goal", "Ship themed tools"]);
+		expect(successRendered).toEqual(["Goal progress updated"]);
+		expect(outputRendered).toEqual(["No goal is currently set."]);
+		expect(tokens).toEqual(expect.arrayContaining(["toolTitle", "muted", "success", "toolOutput", "error"]));
+	});
+
 	it("formats tool calls as human-readable title/body displays", () => {
 		expect(formatGoalToolCall("create_goal", "Ship it")).toBe("Create goal\nShip it");
 		expect(formatGoalToolCall("get_goal")).toBe("Get goal");
