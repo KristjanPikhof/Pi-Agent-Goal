@@ -8,14 +8,13 @@ Status key:
 - **Manual smoke** means the code path has harness coverage, but the live TUI/session behavior still needs a real Pi session check before release.
 - **Future work** means intentionally not implemented in this rollout.
 
-
 ## Release baseline and packaging
 
-| Criterion | Status |
-| --------- | ------ |
-| Release version is `2026.6.13`. | Automated by package metadata and docs review |
-| Runtime requires Node.js `>=22.19.0`. | Automated by package metadata and docs review |
-| Pi core packages use open peer dependency ranges, while dev validation targets Pi `^0.79.3`. | Automated by package metadata and docs review |
+| Criterion                                                                                                   | Status                                                                      |
+| ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Release version is `2026.6.13`.                                                                             | Automated by package metadata and docs review                               |
+| Runtime requires Node.js `>=22.19.0`.                                                                       | Automated by package metadata and docs review                               |
+| Pi core packages use open peer dependency ranges, while dev validation targets Pi `^0.79.3`.                | Automated by package metadata and docs review                               |
 | Package includes `extensions`, `src`, `README.md`, `docs`, and `LICENSE`; internal docs links are relative. | Automated by `npm pack --dry-run`, `npm run smoke:package`, and docs review |
 
 ## Command behavior
@@ -67,18 +66,17 @@ Status key:
 | Tool results include enough details for state reconstruction and UI rendering.                                | Automated                     |
 | Tool renderers are concise and readable.                                                                      | Automated                     |
 
-
 ## Harness and theme alignment
 
-| Criterion | Status |
-| --------- | ------ |
-| Runtime reads current `InputEvent.text` and keeps compatibility fallbacks for older input shapes. | Automated |
-| Explicit handoffs use follow-up delivery for `/goal start`, `--start`, and continuation turns. | Automated |
-| Tool policy denials return soft refusals with `details.status: "refused"`; invalid input and unexpected failures remain hard errors. | Automated |
-| Tool renderers use semantic theme tokens and remain readable without a theme. | Automated |
-| Active-goal widget uses themed TUI components when `ctx.mode` is `tui`. | Automated, live TUI is manual smoke |
-| RPC, JSON, print, and no-widget hosts receive readable plain-text/status fallback. | Automated |
-| Project-trust-specific config, `getSystemPromptOptions`, and autocomplete triggers are intentionally not used until a concrete pi-goal workflow needs them. | Source review and docs review |
+| Criterion                                                                                                                                                   | Status                              |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| Runtime reads current `InputEvent.text` and keeps compatibility fallbacks for older input shapes.                                                           | Automated                           |
+| Explicit handoffs use follow-up delivery for `/goal start`, `--start`, and continuation turns.                                                              | Automated                           |
+| Tool policy denials return soft refusals with `details.status: "refused"`; invalid input and unexpected failures remain hard errors.                        | Automated                           |
+| Tool renderers use semantic theme tokens and remain readable without a theme.                                                                               | Automated                           |
+| Active-goal widget uses themed TUI components when `ctx.mode` is `tui`.                                                                                     | Automated, live TUI is manual smoke |
+| RPC, JSON, print, and no-widget hosts receive readable plain-text/status fallback.                                                                          | Automated                           |
+| Project-trust-specific config, `getSystemPromptOptions`, and autocomplete triggers are intentionally not used until a concrete pi-goal workflow needs them. | Source review and docs review       |
 
 ## Hidden context
 

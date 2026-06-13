@@ -80,7 +80,6 @@ Project-local, in `.pi/settings.json`:
 
 Project settings are local to that workspace. Use them when a repo should always load `pi-agent-goal` for anyone working there.
 
-
 ## Package and docs policy
 
 The npm package exposes the source extension entry directly. Keep `README.md`, `docs`, `extensions`, `src`, and `LICENSE` in the package, and keep docs links relative so they work after `npm pack` as well as in GitHub. Verify this with:

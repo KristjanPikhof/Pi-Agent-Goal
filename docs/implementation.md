@@ -2,7 +2,6 @@
 
 The extension makes long-running objectives explicit, persistent, and safe across compaction, branches, restarts, and optional model-driven continuation. It uses Pi session primitives instead of a separate database.
 
-
 ## Compatibility baseline
 
 Release `2026.6.13` targets Pi `0.79.3`-era extension and TUI APIs and requires Node.js `>=22.19.0`. `package.json` keeps Pi core packages as open peer dependencies (`*`) because Pi should supply exactly one host runtime. Development dependencies pin `@earendil-works/pi-coding-agent` and `@earendil-works/pi-tui` to `^0.79.3` so local validation catches API drift without forcing those copies into the published package.
@@ -65,7 +64,6 @@ extensions/pi-goal/index.ts
 | UI           | Codex-specific menu and bottom-pane behavior.                                      | Pi compact active-goal widget, `/goal status` command output, and tool renderers.                                                                           |
 
 Known parity gaps are intentional for this rollout: no Codex app-server RPC compatibility, no SQLite table, no exact token or wall-clock accounting, and no exact Codex menu UI.
-
 
 ## Runtime and harness alignment
 
@@ -237,16 +235,15 @@ The UI layer is theme-aware but still works without TUI-only APIs:
 - non-interactive errors tell the user which flag or command to run next,
 - tool renderers are concise.
 
-
 ## Optional Pi features not adopted
 
 This rollout intentionally avoids a few current Pi extension surfaces:
 
-| Pi feature | Why it is not used yet |
-| ---------- | ---------------------- |
-| Project-trust-specific config | `/goal` state is stored in the session branch and existing command confirmations already guard risky mutations. There is no separate trusted/untrusted behavior to configure. |
-| `getSystemPromptOptions` | The extension already injects active-goal context through the runtime hook and compaction path. A dynamic system-prompt option would duplicate that context without a current need. |
-| Autocomplete triggers | The command set is small and documented in `/goal` usage. Adding autocomplete is useful only if users report command discovery friction. |
+| Pi feature                    | Why it is not used yet                                                                                                                                                              |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Project-trust-specific config | `/goal` state is stored in the session branch and existing command confirmations already guard risky mutations. There is no separate trusted/untrusted behavior to configure.       |
+| `getSystemPromptOptions`      | The extension already injects active-goal context through the runtime hook and compaction path. A dynamic system-prompt option would duplicate that context without a current need. |
+| Autocomplete triggers         | The command set is small and documented in `/goal` usage. Adding autocomplete is useful only if users report command discovery friction.                                            |
 
 Add these only when a concrete pi-goal workflow needs them.
 

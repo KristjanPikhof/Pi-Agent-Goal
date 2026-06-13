@@ -2,7 +2,6 @@
 
 The Pi Agent Goal package uses a source-extension shape: `extensions/index.ts` loads `extensions/pi-goal/index.ts`, which wires the implementation from `src/index.ts`. These docs describe the shipped behavior, acceptance status, and remaining rollout checks.
 
-
 ## Release compatibility
 
 Release `2026.6.13` raises the runtime baseline to Node.js `>=22.19.0` and validates against Pi `0.79.3` APIs. Pi core packages stay as open peer dependencies in `package.json`; dev dependencies pin the validation floor, while the installed Pi host provides the actual runtime.
