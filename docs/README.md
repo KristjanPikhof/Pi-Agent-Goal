@@ -4,11 +4,11 @@ Start with the root [`README.md`](../README.md). It has the install path, comman
 
 Use these docs when you need more detail:
 
-| Doc | Use it for |
-| --- | --- |
-| [`setup.md`](setup.md) | Install options, settings.json examples, one-off runs, and local checkout development. |
-| [`implementation.md`](implementation.md) | Architecture reference for state, commands, import, tools, context, compaction, continuation, UI, and intentional Codex parity gaps. |
-| [`acceptance-criteria.md`](acceptance-criteria.md) | Release checklist, validation commands, automated coverage status, and manual TUI smoke checklist. |
+| Doc                                                | Use it for                                                                                                                           |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| [`setup.md`](setup.md)                             | Install options, settings.json examples, one-off runs, and local checkout development.                                               |
+| [`implementation.md`](implementation.md)           | Architecture reference for state, commands, import, tools, context, compaction, continuation, UI, and intentional Codex parity gaps. |
+| [`acceptance-criteria.md`](acceptance-criteria.md) | Release checklist, validation commands, automated coverage status, and manual TUI smoke checklist.                                   |
 
 ## Release facts to keep true
 

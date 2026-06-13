@@ -12,18 +12,18 @@ Package smoke checks must confirm the npm tarball includes `extensions`, `src`, 
 
 ## Module map
 
-| Area | File |
-| --- | --- |
-| Extension entry | `src/index.ts` |
-| State reducer and reconstruction | `src/state.ts` |
-| `/goal` command | `src/commands.ts` |
-| UI helpers | `src/ui.ts` |
-| Docs import | `src/import.ts` |
-| Model tools | `src/tools.ts` |
-| Runtime hooks | `src/runtime.ts` |
-| Prompt rendering | `src/prompts.ts` |
-| Public package entry | `extensions/index.ts` |
-| Nested extension entry | `extensions/pi-goal/index.ts` |
+| Area                             | File                          |
+| -------------------------------- | ----------------------------- |
+| Extension entry                  | `src/index.ts`                |
+| State reducer and reconstruction | `src/state.ts`                |
+| `/goal` command                  | `src/commands.ts`             |
+| UI helpers                       | `src/ui.ts`                   |
+| Docs import                      | `src/import.ts`               |
+| Model tools                      | `src/tools.ts`                |
+| Runtime hooks                    | `src/runtime.ts`              |
+| Prompt rendering                 | `src/prompts.ts`              |
+| Public package entry             | `extensions/index.ts`         |
+| Nested extension entry           | `extensions/pi-goal/index.ts` |
 
 The package manifest points Pi at `./extensions/index.ts`.
 
@@ -49,18 +49,18 @@ Important rules:
 
 ## Command behavior
 
-| Command | Behavior |
-| --- | --- |
-| `/goal` | Show usage or the current summary. |
-| `/goal <objective> [--start]` | Strip recognized flags, confirm replacement when needed, then ask the chat agent to call `propose_goal_draft` exactly once. Nothing is saved until review completes. Interactive review offers Start, Edit, and Cancel. Non-interactive replacement requires `--replace`, but plain text still needs the review path. |
-| `/goal start` | Queue one follow-up prompt for the existing active goal. Rejects missing, paused, complete, or changed goals. |
-| `/goal status` | Show objective, criteria, constraints, progress, blockers, source docs, and next commands. |
-| `/goal import <path> [--yes] [--start]` | Import a supported file or folder. Creates a goal when none exists. Merges docs, constraints, and criteria into an existing active goal without replacing the objective. Paused or complete goals reject import. Non-interactive mode requires `--yes`; add `--start` to begin immediately. |
-| `/goal edit` | Open the interactive editor. Non-interactive mode returns an actionable fallback. |
-| `/goal pause` | Set an active goal to paused. |
-| `/goal resume [--start]` | Reactivate a paused goal. Complete goals must be cleared or replaced. |
-| `/goal complete [--yes]` | Mark an active goal complete. |
-| `/goal clear [--yes]` | Clear current goal state. |
+| Command                                 | Behavior                                                                                                                                                                                                                                                                                                              |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/goal`                                 | Show usage or the current summary.                                                                                                                                                                                                                                                                                    |
+| `/goal <objective> [--start]`           | Strip recognized flags, confirm replacement when needed, then ask the chat agent to call `propose_goal_draft` exactly once. Nothing is saved until review completes. Interactive review offers Start, Edit, and Cancel. Non-interactive replacement requires `--replace`, but plain text still needs the review path. |
+| `/goal start`                           | Queue one follow-up prompt for the existing active goal. Rejects missing, paused, complete, or changed goals.                                                                                                                                                                                                         |
+| `/goal status`                          | Show objective, criteria, constraints, progress, blockers, source docs, and next commands.                                                                                                                                                                                                                            |
+| `/goal import <path> [--yes] [--start]` | Import a supported file or folder. Creates a goal when none exists. Merges docs, constraints, and criteria into an existing active goal without replacing the objective. Paused or complete goals reject import. Non-interactive mode requires `--yes`; add `--start` to begin immediately.                           |
+| `/goal edit`                            | Open the interactive editor. Non-interactive mode returns an actionable fallback.                                                                                                                                                                                                                                     |
+| `/goal pause`                           | Set an active goal to paused.                                                                                                                                                                                                                                                                                         |
+| `/goal resume [--start]`                | Reactivate a paused goal. Complete goals must be cleared or replaced.                                                                                                                                                                                                                                                 |
+| `/goal complete [--yes]`                | Mark an active goal complete.                                                                                                                                                                                                                                                                                         |
+| `/goal clear [--yes]`                   | Clear current goal state.                                                                                                                                                                                                                                                                                             |
 
 Mutating commands wait for idle and re-read current branch state before saving. This avoids racing active agent turns or goal replacement.
 
@@ -99,13 +99,13 @@ Imports are deterministic. New docs merge by path, with the new hash and brief w
 
 ## Model tools
 
-| Tool | Boundary |
-| --- | --- |
-| `get_goal` | Read current state and source paths. |
-| `create_goal` | Requires `explicit_request: true` and no existing goal. This is for already-approved persistence, not plain `/goal` drafting. |
-| `propose_goal_draft` | Requires objective and at least one acceptance criterion. Opens Start/Edit/Cancel review and saves only after Start. Returns `review_ui_unavailable` and saves nothing when review UI is missing. |
-| `complete_goal` | Marks only the current active goal complete, with optional evidence. Rejects paused and already complete goals. |
-| `update_goal_progress` | Updates progress fields only on active goals. Cannot rewrite objective, source docs, constraints, or criteria. |
+| Tool                   | Boundary                                                                                                                                                                                          |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `get_goal`             | Read current state and source paths.                                                                                                                                                              |
+| `create_goal`          | Requires `explicit_request: true` and no existing goal. This is for already-approved persistence, not plain `/goal` drafting.                                                                     |
+| `propose_goal_draft`   | Requires objective and at least one acceptance criterion. Opens Start/Edit/Cancel review and saves only after Start. Returns `review_ui_unavailable` and saves nothing when review UI is missing. |
+| `complete_goal`        | Marks only the current active goal complete, with optional evidence. Rejects paused and already complete goals.                                                                                   |
+| `update_goal_progress` | Updates progress fields only on active goals. Cannot rewrite objective, source docs, constraints, or criteria.                                                                                    |
 
 Tool policy denials return soft refusals with `details.status: "refused"` and a reason such as `permission_denied`, `goal_exists`, `no_goal`, `goal_inactive`, or `already_complete`. Invalid schema data and unexpected runtime failures are hard errors.
 
@@ -175,22 +175,22 @@ No legacy footer status is rendered.
 
 ## Intentional non-adoptions
 
-| Feature | Why not now |
-| --- | --- |
-| Project-trust-specific config | Session branch state and confirmations already guard risky mutations. |
-| `getSystemPromptOptions` | Runtime hooks and compaction already inject active-goal context. |
-| Rich autocomplete | Basic `/goal` subcommand completions exist. Richer completions can wait for real command-discovery friction. |
+| Feature                       | Why not now                                                                                                  |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Project-trust-specific config | Session branch state and confirmations already guard risky mutations.                                        |
+| `getSystemPromptOptions`      | Runtime hooks and compaction already inject active-goal context.                                             |
+| Rich autocomplete             | Basic `/goal` subcommand completions exist. Richer completions can wait for real command-discovery friction. |
 
 ## Codex comparison
 
-| Area | Pi Agent Goal behavior |
-| --- | --- |
-| Persistence | Pi custom session entries named `goal-state`, reconstructed from the current branch. |
-| Commands | Main goal lifecycle plus explicit `/goal start`, non-interactive `--start`, confirmations, and clean flag parsing. |
-| Model tools | Narrow tools only. No general objective rewrite tool. |
-| Compaction | `session_before_compact` preserves active-goal summary/details while canonical state stays in custom entries. |
-| Continuation | Opt-in, capped by max turns, and guarded by idle, pending-message, stale-goal, and progress checks. |
-| UI | Compact active-goal widget, `/goal status`, and tool renderers. |
+| Area         | Pi Agent Goal behavior                                                                                             |
+| ------------ | ------------------------------------------------------------------------------------------------------------------ |
+| Persistence  | Pi custom session entries named `goal-state`, reconstructed from the current branch.                               |
+| Commands     | Main goal lifecycle plus explicit `/goal start`, non-interactive `--start`, confirmations, and clean flag parsing. |
+| Model tools  | Narrow tools only. No general objective rewrite tool.                                                              |
+| Compaction   | `session_before_compact` preserves active-goal summary/details while canonical state stays in custom entries.      |
+| Continuation | Opt-in, capped by max turns, and guarded by idle, pending-message, stale-goal, and progress checks.                |
+| UI           | Compact active-goal widget, `/goal status`, and tool renderers.                                                    |
 
 Intentional gaps: no Codex app-server RPC compatibility, no SQLite table, no exact token/time accounting, and no exact Codex menu UI.
 
@@ -202,18 +202,18 @@ Live TUI smoke is still manual and release-blocking for `/compact`, `/reload`, `
 
 ## Troubleshooting
 
-| Symptom | Fix |
-| --- | --- |
-| Import path rejected | Run Pi from the workspace root or import a file inside it. Symlinks cannot point outside the workspace. |
-| Directory import reports too many docs | Narrow the path or raise `maxFiles`. Import fails rather than dropping docs. |
-| Import requires `--yes` | Review the source, rerun with `--yes`, and add `--start` only for immediate handoff. |
-| Goal replacement rejected | Confirm interactively or use `--replace` to authorize the replacement draft. Persistence still needs review unless using an approved tool path. |
-| `/goal edit` fails | It needs interactive UI. Use `/goal <objective> --replace` without UI. |
-| Draft queued but no review appears | The agent must call `propose_goal_draft`; a prose answer saves nothing. |
-| `review_ui_unavailable` | Use the Pi TUI review path or an explicitly approved `create_goal` request. |
-| `/goal start` does not queue | Confirm the goal exists, is active, and follow-up messaging is available. |
-| Continuation does not queue | Enable `--goal-continuation`, keep the goal active, wait for idle, and ensure no pending messages exist. |
-| Goal appears branch-stale | Run `/goal status`; branch `goal-state` entries are the source of truth. |
+| Symptom                                | Fix                                                                                                                                             |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Import path rejected                   | Run Pi from the workspace root or import a file inside it. Symlinks cannot point outside the workspace.                                         |
+| Directory import reports too many docs | Narrow the path or raise `maxFiles`. Import fails rather than dropping docs.                                                                    |
+| Import requires `--yes`                | Review the source, rerun with `--yes`, and add `--start` only for immediate handoff.                                                            |
+| Goal replacement rejected              | Confirm interactively or use `--replace` to authorize the replacement draft. Persistence still needs review unless using an approved tool path. |
+| `/goal edit` fails                     | It needs interactive UI. Use `/goal <objective> --replace` without UI.                                                                          |
+| Draft queued but no review appears     | The agent must call `propose_goal_draft`; a prose answer saves nothing.                                                                         |
+| `review_ui_unavailable`                | Use the Pi TUI review path or an explicitly approved `create_goal` request.                                                                     |
+| `/goal start` does not queue           | Confirm the goal exists, is active, and follow-up messaging is available.                                                                       |
+| Continuation does not queue            | Enable `--goal-continuation`, keep the goal active, wait for idle, and ensure no pending messages exist.                                        |
+| Goal appears branch-stale              | Run `/goal status`; branch `goal-state` entries are the source of truth.                                                                        |
 
 ## Future work
 

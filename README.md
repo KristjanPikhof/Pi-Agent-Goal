@@ -52,29 +52,29 @@ pi -e npm:pi-agent-goal -p "/goal resume --start"
 
 ## Install options
 
-| Need | Command |
-| --- | --- |
-| Global install | `pi install npm:pi-agent-goal` |
-| Project-local install | `pi install -l npm:pi-agent-goal` |
-| One-off run | `pi -e npm:pi-agent-goal` |
-| Local checkout run | `pi --no-extensions -e ./extensions/index.ts` |
+| Need                  | Command                                       |
+| --------------------- | --------------------------------------------- |
+| Global install        | `pi install npm:pi-agent-goal`                |
+| Project-local install | `pi install -l npm:pi-agent-goal`             |
+| One-off run           | `pi -e npm:pi-agent-goal`                     |
+| Local checkout run    | `pi --no-extensions -e ./extensions/index.ts` |
 
 See [`docs/setup.md`](docs/setup.md) for settings.json examples and local development links.
 
 ## Commands
 
-| Command | What it does |
-| --- | --- |
-| `/goal` | Show help or the current goal summary. |
-| `/goal <objective> [--start]` | Ask the chat agent to draft a reviewable goal with `propose_goal_draft`. Interactive Start saves and queues one handoff. Edit opens the draft editor. Cancel saves nothing. Recognized flags such as `--replace` and `--start` are stripped from the objective. |
-| `/goal start` | Queue one explicit handoff for the current active goal. This is not automatic continuation. |
-| `/goal status` | Show objective, status, criteria, constraints, source docs, progress, blockers, and next commands. |
-| `/goal import <path> [--yes] [--start]` | Import a markdown/text PRD file or docs folder. Creates a goal when none exists. Merges docs, constraints, and criteria into an existing active goal without rewriting the objective. Non-interactive mode needs `--yes`; add `--start` to begin immediately. |
-| `/goal edit` | Edit the objective and acceptance criteria in the interactive UI. Non-interactive mode should use `/goal <objective> --replace`. |
-| `/goal pause` | Pause the goal and stop hidden context, continuation, completion, and progress updates. |
-| `/goal resume [--start]` | Reactivate a paused goal. Add `--start` for an immediate non-interactive handoff. |
-| `/goal complete [--yes]` | Mark an active goal complete. |
-| `/goal clear [--yes]` | Clear the current goal and hide goal UI. |
+| Command                                 | What it does                                                                                                                                                                                                                                                    |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/goal`                                 | Show help or the current goal summary.                                                                                                                                                                                                                          |
+| `/goal <objective> [--start]`           | Ask the chat agent to draft a reviewable goal with `propose_goal_draft`. Interactive Start saves and queues one handoff. Edit opens the draft editor. Cancel saves nothing. Recognized flags such as `--replace` and `--start` are stripped from the objective. |
+| `/goal start`                           | Queue one explicit handoff for the current active goal. This is not automatic continuation.                                                                                                                                                                     |
+| `/goal status`                          | Show objective, status, criteria, constraints, source docs, progress, blockers, and next commands.                                                                                                                                                              |
+| `/goal import <path> [--yes] [--start]` | Import a markdown/text PRD file or docs folder. Creates a goal when none exists. Merges docs, constraints, and criteria into an existing active goal without rewriting the objective. Non-interactive mode needs `--yes`; add `--start` to begin immediately.   |
+| `/goal edit`                            | Edit the objective and acceptance criteria in the interactive UI. Non-interactive mode should use `/goal <objective> --replace`.                                                                                                                                |
+| `/goal pause`                           | Pause the goal and stop hidden context, continuation, completion, and progress updates.                                                                                                                                                                         |
+| `/goal resume [--start]`                | Reactivate a paused goal. Add `--start` for an immediate non-interactive handoff.                                                                                                                                                                               |
+| `/goal complete [--yes]`                | Mark an active goal complete.                                                                                                                                                                                                                                   |
+| `/goal clear [--yes]`                   | Clear the current goal and hide goal UI.                                                                                                                                                                                                                        |
 
 ## How plain goal review works
 
@@ -129,17 +129,17 @@ Live TUI smoke for `/compact`, `/reload`, `/resume`, `/tree`, `/fork`, and the v
 
 ## Troubleshooting
 
-| Symptom | Fix |
-| --- | --- |
-| Import path is outside the workspace | Run from the workspace root or move the file inside it. Realpaths are checked, including symlink escapes. |
-| Import requires `--yes` | Non-interactive mode cannot confirm. Review the source, rerun with `--yes`, and add `--start` only if work should begin immediately. |
-| Directory import has too many docs | Narrow the path or raise `maxFiles` in code/tests. Import fails rather than silently truncating. |
-| Replacement fails non-interactively | Use `/goal <objective> --replace` to authorize the replacement draft. It still saves only after review unless you use an approved persistence path. |
-| `/goal edit` fails | The editor is interactive-only. Use `/goal <objective> --replace` instead. |
-| Draft queued but no review appears | The chat agent must call `propose_goal_draft`. A prose answer saves nothing. |
-| `review_ui_unavailable` | Run the review path in the Pi TUI, or use an explicitly approved `create_goal` request. |
-| Continuation does not start | Launch with `--goal-continuation`, keep the goal active, wait for idle, and make sure no user messages are pending. |
-| Goal looks stale after branch navigation | Run `/goal status`; state is reconstructed from the selected branch. |
+| Symptom                                  | Fix                                                                                                                                                 |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Import path is outside the workspace     | Run from the workspace root or move the file inside it. Realpaths are checked, including symlink escapes.                                           |
+| Import requires `--yes`                  | Non-interactive mode cannot confirm. Review the source, rerun with `--yes`, and add `--start` only if work should begin immediately.                |
+| Directory import has too many docs       | Narrow the path or raise `maxFiles` in code/tests. Import fails rather than silently truncating.                                                    |
+| Replacement fails non-interactively      | Use `/goal <objective> --replace` to authorize the replacement draft. It still saves only after review unless you use an approved persistence path. |
+| `/goal edit` fails                       | The editor is interactive-only. Use `/goal <objective> --replace` instead.                                                                          |
+| Draft queued but no review appears       | The chat agent must call `propose_goal_draft`. A prose answer saves nothing.                                                                        |
+| `review_ui_unavailable`                  | Run the review path in the Pi TUI, or use an explicitly approved `create_goal` request.                                                             |
+| Continuation does not start              | Launch with `--goal-continuation`, keep the goal active, wait for idle, and make sure no user messages are pending.                                 |
+| Goal looks stale after branch navigation | Run `/goal status`; state is reconstructed from the selected branch.                                                                                |
 
 ## Local verification
 
