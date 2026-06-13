@@ -7,6 +7,7 @@ export default defineConfig({
 			reporter: ["text", "json-summary"],
 			include: ["src/{runtime,tools,ui,state,import}.ts"],
 			thresholds: {
+				perFile: true,
 				lines: 80,
 				functions: 80,
 				branches: 70,

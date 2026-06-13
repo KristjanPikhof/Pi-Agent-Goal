@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* global AbortSignal, console, process */
 import { spawn } from "node:child_process";
-import { mkdir, rm } from "node:fs/promises";
+import { access, mkdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,6 +11,9 @@ const piBin = join(repoRoot, "node_modules", ".bin", process.platform === "win32
 const mode = process.argv[2] ?? "goal";
 const timeoutMs = Number(process.env.PI_GOAL_SMOKE_TIMEOUT_MS ?? 30_000);
 const tmpRoot = await mkdir(join(tmpdir(), `pi-goal-smoke-${process.pid}-${mode}`), { recursive: true });
+
+const failureOutputPattern =
+	/(?:failed to load extension|unknown command|command exited with code|\berror\b)/i;
 
 const commands = {
 	goal: ["--no-session", "--no-extensions", "-e", "./extensions/index.ts", "-p", "/goal"],
@@ -30,6 +33,8 @@ if (!(mode in commands)) {
 	process.exitCode = 2;
 } else {
 	try {
+		await access(piBin);
+		await access(join(repoRoot, "extensions", "index.ts"));
 		const result = await run(piBin, commands[mode], {
 			cwd: repoRoot,
 			env: {
@@ -40,11 +45,14 @@ if (!(mode in commands)) {
 			},
 			timeoutMs,
 		});
-		if (result.code !== 0) {
-			console.error(result.output.trim());
-			process.exitCode = result.code ?? 1;
+		const output = result.output.trim();
+		if (result.code !== 0 || failureOutputPattern.test(output)) {
+			console.error(output || `Smoke command exited with ${result.code ?? "unknown"}`);
+			process.exitCode = result.code || 1;
 		} else {
-			console.log(`smoke:${mode} ok: pi ${commands[mode].join(" ")}`);
+			console.log(
+				`smoke:${mode} ok: pi ${commands[mode].join(" ")} loaded ./extensions/index.ts without failure output`,
+			);
 		}
 	} finally {
 		await rm(tmpRoot, { recursive: true, force: true });

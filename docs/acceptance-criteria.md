@@ -128,27 +128,27 @@ Latest validation evidence for this release lane:
 npm run typecheck        # passed
 npm run lint             # passed
 npm run format           # passed
-npm test                 # passed, 105 tests
+npm test                 # passed
 npm run test:coverage    # passed
 npm pack --dry-run       # passed
 npm run smoke:pi         # passed
 npm run smoke:package    # passed
 ```
 
-Live interactive TUI lifecycle checks remain manual evidence. Do not count automated harness tests as proof for `/reload`, `/resume`, `/tree`, `/fork`, `/compact`, or the visible widget in a real terminal.
+Live interactive TUI lifecycle checks are a **release-blocking evidence gap until recorded in a real terminal**. Do not count automated harness tests as proof for `/reload`, `/resume`, `/tree`, `/fork`, `/compact`, or the visible widget in a real TUI session.
 
 ## Testing checklist
 
-| Area                                                                                                                 | Status                                                                           |
-| -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| Unit tests for state reducer and branch reconstruction.                                                              | Automated                                                                        |
-| Unit tests for doc extraction from PRD and docs folder.                                                              | Automated                                                                        |
-| Unit tests for tool permission boundaries and `propose_goal_draft` Start/Edit/Cancel behavior.                       | Automated                                                                        |
-| Integration-style tests for `/goal` command lifecycle.                                                               | Automated                                                                        |
-| Integration-style tests for reload/resume/tree/fork reconstruction behavior.                                         | Automated with simulated session events and branch fixtures                      |
-| Compaction hook tests.                                                                                               | Automated                                                                        |
-| Continuation guard tests for idle continuation, no-progress stop, stale `goalId`, duplicate queue, and max-turn cap. | Automated                                                                        |
-| Live TUI tests for `/reload`, `/resume`, `/tree`, `/fork`, and `/compact`.                                           | Manual smoke, evidence must be recorded before release or release marked blocked |
+| Area                                                                                                                 | Status                                                          |
+| -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Unit tests for state reducer and branch reconstruction.                                                              | Automated                                                       |
+| Unit tests for doc extraction from PRD and docs folder.                                                              | Automated                                                       |
+| Unit tests for tool permission boundaries and `propose_goal_draft` Start/Edit/Cancel behavior.                       | Automated                                                       |
+| Integration-style tests for `/goal` command lifecycle.                                                               | Automated                                                       |
+| Integration-style tests for reload/resume/tree/fork reconstruction behavior.                                         | Automated with simulated session events and branch fixtures     |
+| Compaction hook tests.                                                                                               | Automated                                                       |
+| Continuation guard tests for idle continuation, no-progress stop, stale `goalId`, duplicate queue, and max-turn cap. | Automated                                                       |
+| Live TUI tests for `/reload`, `/resume`, `/tree`, `/fork`, `/compact`, and the visible active-goal widget.           | **Blocked for release until manual smoke evidence is recorded** |
 
 ## Manual session lifecycle smoke checklist
 
@@ -189,6 +189,6 @@ Update progress through `update_goal_progress`, then let an idle continuation qu
 
 ## Definition of done status
 
-The rollout acceptance is met when automated checks pass, package contents are verified, docs links are reviewed, and the docs accurately mark live TUI lifecycle checks as manual smoke rather than automated proof. Release readiness also requires recorded live TUI smoke evidence, or an explicit blocked status for that evidence. The extension currently supports agent-mediated drafting from plain `/goal` text through `propose_goal_draft`, Start/Edit/Cancel review before persistence, importing criteria from docs, starting saved goals through an explicit one-shot handoff, preserving state through branch-aware session entries and compaction hooks, exposing narrow tools, and optionally continuing while idle behind a separate explicit opt-in.
+The rollout acceptance is met when automated checks pass, package contents are verified, docs links are reviewed, and the docs accurately mark live TUI lifecycle checks as manual smoke rather than automated proof. Release readiness is currently blocked until live TUI smoke evidence is recorded for `/reload`, `/resume`, `/tree`, `/fork`, `/compact`, and the visible active-goal widget. The extension currently supports agent-mediated drafting from plain `/goal` text through `propose_goal_draft`, Start/Edit/Cancel review before persistence, importing criteria from docs, starting saved goals through an explicit one-shot handoff, preserving state through branch-aware session entries and compaction hooks, exposing narrow tools, and optionally continuing while idle behind a separate explicit opt-in.
 
 Remaining future work is Codex-exact compatibility: app-server RPC, SQLite persistence, exact token/time budgets, and exact Codex goal menu UI.
