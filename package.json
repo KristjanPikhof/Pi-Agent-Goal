@@ -1,6 +1,6 @@
 {
 	"name": "pi-agent-goal",
-	"version": "2026.6.13",
+	"version": "2026.6.14",
 	"description": "Pi extension that gives coding agents persistent /goal workflows with branch-aware state, source imports, progress tools, and explicit start handoffs.",
 	"type": "module",
 	"scripts": {
