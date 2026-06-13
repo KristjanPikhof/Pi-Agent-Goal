@@ -1,12 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
 import {
 	applyGoalUi,
+	createGoalWidgetFactory,
+	createGoalWidgetPresentation,
+	getGoalSymbols,
 	GOAL_USAGE,
 	noGoalMessage,
 	nonInteractiveConfirmationMessage,
 	renderGoalStatus,
 	renderGoalSummary,
 	renderGoalWidget,
+	renderGoalWidgetPresentation,
 } from "../src/ui.js";
 import { registerGoalRuntime } from "../src/runtime.js";
 import { saveGoalState } from "../src/state.js";
@@ -51,9 +55,17 @@ function customEntry(data: GoalStateEntry) {
 }
 
 describe("goal UI renderers", () => {
-	it("renders compact active widgets with optional blocked and current work lines", () => {
+	it("renders compact active widgets with semantic data, symbols, and optional blocked/current lines", () => {
+		const presentation = createGoalWidgetPresentation(goal());
+		expect(presentation).toMatchObject({
+			status: "active",
+			acceptanceCount: 2,
+			blockedCount: 1,
+			completedCount: 1,
+			current: "polishing widgets",
+		});
 		expect(renderGoalWidget(goal())).toEqual([
-			"Goal · Active · AC: 2 · Blocked: 1 · Ship polished goal UI with helpful summaries",
+			"Goal · Active · AC: 2 · Blocked: 1 · ✓ 1 · Ship polished goal UI with helpful summaries",
 			"Now · polishing widgets",
 		]);
 
@@ -65,6 +77,14 @@ describe("goal UI renderers", () => {
 				}),
 			),
 		).toEqual(["Goal · Active · AC: 0 · Ship polished goal UI with helpful summaries"]);
+		expect(
+			renderGoalWidgetPresentation(createGoalWidgetPresentation(goal())!, {
+				symbols: getGoalSymbols({ ascii: true }),
+			}),
+		).toEqual([
+			"Goal - Active - AC: 2 - Blocked: 1 - [x] 1 - Ship polished goal UI with helpful summaries",
+			"Now - polishing widgets",
+		]);
 		expect(renderGoalWidget(goal({ status: "paused" }))).toBeUndefined();
 		expect(renderGoalWidget(goal({ status: "complete" }))).toBeUndefined();
 	});
@@ -77,6 +97,7 @@ describe("goal UI renderers", () => {
 
 		const status = renderGoalStatus(goal());
 		expect(status).toContain("Acceptance criteria:\n- Status command reflects state");
+		expect(status).toContain("Progress done:\n✓ state wired");
 		expect(status).toContain("Current work:\n- polishing widgets");
 		expect(status).toContain("Source docs:\n- docs/prd.md (prd): PRD brief");
 		expect(status).toContain("Commands:");
@@ -95,7 +116,7 @@ describe("goal UI renderers", () => {
 		expect(ctx.ui.setWidget).toHaveBeenLastCalledWith(
 			"goal",
 			expect.arrayContaining([
-				"Goal · Active · AC: 2 · Blocked: 1 · Ship polished goal UI with helpful summaries",
+				"Goal · Active · AC: 2 · Blocked: 1 · ✓ 1 · Ship polished goal UI with helpful summaries",
 			]),
 		);
 
@@ -107,6 +128,33 @@ describe("goal UI renderers", () => {
 		expect(ctx.ui.setStatus).toHaveBeenLastCalledWith("goal", undefined);
 		expect(ctx.ui.setWidget).toHaveBeenLastCalledWith("goal", undefined);
 		expect(() => applyGoalUi({}, goal())).not.toThrow();
+	});
+
+	it("renders themed widget components with width-safe output and invalidation support", () => {
+		const presentation = createGoalWidgetPresentation(goal())!;
+		const fg = vi.fn((_token: string, text: string) => text);
+		const bold = vi.fn((text: string) => text);
+		const component = createGoalWidgetFactory(presentation)({}, { fg, bold });
+		const lines = component.render(42);
+
+		expect(fg).toHaveBeenCalledWith("customMessageLabel", "Goal");
+		expect(fg).toHaveBeenCalledWith("success", "Active");
+		expect(fg).toHaveBeenCalledWith("muted", "AC: 2");
+		expect(fg).toHaveBeenCalledWith("warning", "Blocked: 1");
+		expect(fg).toHaveBeenCalledWith("success", "✓ 1");
+		expect(fg).toHaveBeenCalledWith("accent", "Now");
+		expect(lines.every((line) => line.length <= 42)).toBe(true);
+		expect(() => component.invalidate()).not.toThrow();
+	});
+
+	it("uses themed widget path only in TUI and legacy string fallback elsewhere", () => {
+		const tuiCtx = { mode: "tui" as const, ui: { setStatus: vi.fn(), setWidget: vi.fn() } };
+		applyGoalUi(tuiCtx, goal());
+		expect(tuiCtx.ui.setWidget).toHaveBeenLastCalledWith("goal", expect.any(Function));
+
+		const rpcCtx = { mode: "rpc" as const, ui: { setStatus: vi.fn(), setWidget: vi.fn() } };
+		applyGoalUi(rpcCtx, goal());
+		expect(rpcCtx.ui.setWidget).toHaveBeenLastCalledWith("goal", expect.any(Array));
 	});
 
 	it("uses actionable usage and error copy", () => {
