@@ -8,7 +8,7 @@ Repository: [`KristjanPikhof/Pi-Agent-Goal`](https://github.com/KristjanPikhof/P
 
 Release `2026.6.14` requires Node.js `>=22.19.0`.
 
-The package keeps Pi peer dependencies open (`*`) so it uses the Pi host already installed by the user. Development and release validation run against `@earendil-works/pi-coding-agent` and `@earendil-works/pi-tui` `^0.79.3`.
+The package supports `@earendil-works/pi-coding-agent` `>=0.80.5 <0.81.0` and `@earendil-works/pi-tui` `>=0.79.3 <0.81.0`. Development and release validation use both packages at `^0.80.7`. The coding-agent floor is required because continuation scheduling uses `agent_settled`.
 
 Published package contents must include `extensions`, `src`, `README.md`, `docs`, and `LICENSE`. Keep docs links relative so they work from both GitHub and npm tarballs.
 
@@ -113,7 +113,7 @@ pi -e npm:pi-agent-goal --goal-continuation
 pi -e npm:pi-agent-goal --goal-continuation --goal-continuation-max-turns 3
 ```
 
-Continuation only queues when the goal is active, Pi is idle, no pending user messages exist, and the stale-goal and max-turn guards pass.
+Continuation finalizes and considers the next turn on `agent_settled`, after Pi has finished retries, auto-compaction retries, and queued continuations. It only queues when the goal is active, Pi is idle, no pending user messages exist, and the stale-goal and max-turn guards pass.
 
 ## Known Codex parity gaps
 

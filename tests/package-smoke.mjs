@@ -13,6 +13,8 @@ const tmpRoot = await mkdtemp(join(tmpdir(), "pi-goal-package-smoke-"));
 const packDir = join(tmpRoot, "pack");
 const installDir = join(tmpRoot, "install");
 const timeoutMs = Number(process.env.PI_GOAL_PACKAGE_SMOKE_TIMEOUT_MS ?? 120_000);
+const piVersion = process.env.PI_GOAL_PACKAGE_SMOKE_PI_VERSION ?? "0.80.7";
+const piTuiVersion = process.env.PI_GOAL_PACKAGE_SMOKE_PI_TUI_VERSION ?? "0.80.7";
 
 try {
 	await runPackageSmoke();
@@ -61,8 +63,8 @@ async function runPackageSmoke() {
 			"install",
 			"--ignore-scripts",
 			tarballPath,
-			"@earendil-works/pi-coding-agent@^0.79.3",
-			"@earendil-works/pi-tui@^0.79.3",
+			`@earendil-works/pi-coding-agent@${piVersion}`,
+			`@earendil-works/pi-tui@${piTuiVersion}`,
 			"typebox",
 		],
 		{ cwd: installDir, maxBuffer: 1024 * 1024 * 8, timeout: timeoutMs },
@@ -105,7 +107,7 @@ async function runPackageSmoke() {
 	}
 
 	console.log(
-		`smoke:package ok: ${pack.filename} includes ${pack.entryCount} files and installed entry ${entry} loads with temp-installed pi`,
+		`smoke:package ok: ${pack.filename} includes ${pack.entryCount} files and installed entry ${entry} loads with pi ${piVersion} / pi-tui ${piTuiVersion}`,
 	);
 }
 

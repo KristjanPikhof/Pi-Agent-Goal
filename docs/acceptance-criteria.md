@@ -14,8 +14,9 @@ Status key:
 | ------------------------------------------------------------------------- | ------------------------------------------------------------- |
 | Release version is `2026.6.14`.                                           | Automated by package metadata and docs review                 |
 | Runtime requires Node.js `>=22.19.0`.                                     | Automated by package metadata and docs review                 |
-| Pi packages use open peer dependency ranges (`*`).                        | Automated by package metadata and docs review                 |
-| Development validation targets Pi `^0.79.3`.                              | Automated by package metadata and docs review                 |
+| Coding-agent peer range is `>=0.80.5 <0.81.0`.                            | Automated by package metadata and tests                       |
+| Pi TUI peer range is `>=0.79.3 <0.81.0`.                                  | Automated by package metadata and tests                       |
+| Development validation targets Pi packages `^0.80.7`.                     | Automated by package metadata and tests                       |
 | Package includes `extensions`, `src`, `README.md`, `docs`, and `LICENSE`. | Automated by `npm pack --dry-run` and `npm run smoke:package` |
 | Internal docs links are relative.                                         | Automated by package smoke and docs review                    |
 
@@ -115,6 +116,7 @@ Status key:
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------- |
 | Explicit start handoff remains separate from automatic idle continuation.                                                                                                | Source review |
 | `/goal start` and `--start` do not enable background work.                                                                                                               | Source review |
+| Continuation finalizes and schedules on `agent_settled`, not `agent_end`, after retries and queued continuations settle.                                                 | Automated     |
 | Runtime continuation only runs when the goal is active, Pi is idle, and no pending user messages exist.                                                                  | Automated     |
 | Continuation re-checks `goalId` before queuing and before starting work.                                                                                                 | Automated     |
 | Continuation stops on no progress, completion, pause, clear, user interrupt, replacement, duplicate queue, pending messages, busy state, disabled flag, or max-turn cap. | Automated     |
@@ -141,16 +143,16 @@ Live interactive TUI lifecycle checks are a **release-blocking evidence gap unti
 
 ## Test coverage map
 
-| Area                                                                                                            | Status                                                          |
-| --------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| State reducer and branch reconstruction.                                                                        | Automated                                                       |
-| Doc extraction from PRD and docs folder.                                                                        | Automated                                                       |
-| Tool permission boundaries and `propose_goal_draft` Start/Edit/Cancel behavior.                                 | Automated                                                       |
-| `/goal` command lifecycle.                                                                                      | Automated                                                       |
-| Reload, resume, tree, and fork reconstruction behavior.                                                         | Automated with simulated session events and branch fixtures     |
-| Compaction hook behavior.                                                                                       | Automated                                                       |
-| Continuation guards for idle continuation, no-progress stop, stale `goalId`, duplicate queue, and max-turn cap. | Automated                                                       |
-| Live TUI tests for `/reload`, `/resume`, `/tree`, `/fork`, `/compact`, and the visible active-goal widget.      | **Blocked for release until manual smoke evidence is recorded** |
+| Area                                                                                                       | Status                                                          |
+| ---------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| State reducer and branch reconstruction.                                                                   | Automated                                                       |
+| Doc extraction from PRD and docs folder.                                                                   | Automated                                                       |
+| Tool permission boundaries and `propose_goal_draft` Start/Edit/Cancel behavior.                            | Automated                                                       |
+| `/goal` command lifecycle.                                                                                 | Automated                                                       |
+| Reload, resume, tree, and fork reconstruction behavior.                                                    | Automated with simulated session events and branch fixtures     |
+| Compaction hook behavior.                                                                                  | Automated                                                       |
+| `agent_settled` finalization plus idle, no-progress, stale `goalId`, duplicate queue, and max-turn guards. | Automated                                                       |
+| Live TUI tests for `/reload`, `/resume`, `/tree`, `/fork`, `/compact`, and the visible active-goal widget. | **Blocked for release until manual smoke evidence is recorded** |
 
 ## Manual session lifecycle smoke checklist
 

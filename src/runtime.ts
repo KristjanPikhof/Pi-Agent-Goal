@@ -140,7 +140,7 @@ export function registerGoalRuntime(pi: ExtensionAPI): void {
 		startQueuedGoalContinuation(api, continuationState, ctx);
 	});
 
-	pi.on("agent_end", async (_event, ctx) => {
+	pi.on("agent_settled", async (_event, ctx) => {
 		finishRunningGoalContinuation(api, continuationState, ctx);
 		await maybeQueueGoalContinuation(api, continuationState, ctx);
 	});

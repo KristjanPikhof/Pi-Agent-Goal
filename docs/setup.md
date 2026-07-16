@@ -7,9 +7,10 @@ Use this guide to install `pi-agent-goal` or load a local checkout while develop
 - macOS or Linux.
 - Node.js `>=22.19.0`.
 - `pi-agent-goal` release `2026.6.14`.
-- A Pi host compatible with `@earendil-works/pi-coding-agent` and `@earendil-works/pi-tui` `^0.79.3` APIs.
+- `@earendil-works/pi-coding-agent` `>=0.80.5 <0.81.0`.
+- `@earendil-works/pi-tui` `>=0.79.3 <0.81.0`.
 
-The published package declares Pi packages as open peer dependencies (`*`). That lets the extension use the host Pi runtime instead of bundling another copy.
+The coding-agent floor is required for the `agent_settled` lifecycle event. The published package uses peer dependencies so the extension shares the host Pi runtime instead of bundling another copy.
 
 ## Install from npm
 
@@ -142,6 +143,8 @@ Check package contents with:
 npm pack --dry-run
 npm run smoke:package
 ```
+
+The package smoke defaults to Pi and Pi TUI 0.80.7. Set `PI_GOAL_PACKAGE_SMOKE_PI_VERSION` and `PI_GOAL_PACKAGE_SMOKE_PI_TUI_VERSION` to exercise minimum, latest, or mixed supported versions.
 
 ## Local verification
 

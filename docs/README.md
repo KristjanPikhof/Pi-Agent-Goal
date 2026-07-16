@@ -14,8 +14,8 @@ Use these docs when you need more detail:
 
 - Release version: `2026.6.14`.
 - Runtime: Node.js `>=22.19.0`.
-- Pi peer dependencies: open `*` ranges.
-- Development validation: Pi packages `^0.79.3`.
+- Pi peers: coding agent `>=0.80.5 <0.81.0`; TUI `>=0.79.3 <0.81.0`.
+- Development validation: Pi packages `^0.80.7`.
 - Package contents: `extensions`, `src`, `README.md`, `docs`, and `LICENSE`.
 - Docs links: relative, so they work in GitHub and npm tarballs.
 
@@ -29,7 +29,7 @@ Use these docs when you need more detail:
 - Narrow model tools: `get_goal`, `create_goal`, `propose_goal_draft`, `complete_goal`, and `update_goal_progress`.
 - Hidden active-goal context and `session_before_compact` preservation.
 - Compact active-goal widget, readable `/goal status`, actionable errors, and concise tool renderers.
-- Opt-in idle continuation behind `--goal-continuation`.
+- Opt-in idle continuation behind `--goal-continuation`, finalized and scheduled from Pi's `agent_settled` event.
 
 ## Verification
 
