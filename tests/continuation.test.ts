@@ -278,18 +278,76 @@ describe("goal continuation scheduler", () => {
 		};
 
 		registerGoalRuntime(pi);
-		await handlers.get("agent_end")?.({}, ctx);
+		expect(handlers.has("agent_end")).toBe(false);
+		await handlers.get("agent_settled")?.({}, ctx);
 		expect(
 			(pi as unknown as { sendUserMessage: ReturnType<typeof vi.fn> }).sendUserMessage,
 		).not.toHaveBeenCalled();
 
 		ctx.hasPendingMessages.mockReturnValue(false);
-		await handlers.get("agent_end")?.({}, ctx);
+		await handlers.get("agent_settled")?.({}, ctx);
+		await handlers.get("agent_settled")?.({}, ctx);
+		expect(
+			(pi as unknown as { sendUserMessage: ReturnType<typeof vi.fn> }).sendUserMessage,
+		).toHaveBeenCalledOnce();
 		expect(
 			(pi as unknown as { sendUserMessage: ReturnType<typeof vi.fn> }).sendUserMessage,
 		).toHaveBeenCalledWith(expect.stringContaining("Continue working toward the active goal."), {
 			deliverAs: "followUp",
 		});
+	});
+
+	it("finalizes a running continuation once only after the agent settles", async () => {
+		const handlers = new Map<string, (event: unknown, ctx?: unknown) => Promise<unknown>>();
+		const pi = {
+			registerFlag: vi.fn(),
+			on: vi.fn((event: string, handler) => handlers.set(event, handler)),
+			appendEntry: vi.fn(),
+			sendUserMessage: vi.fn(),
+			getFlag: vi.fn((name: string) => (name === "goal-continuation" ? true : undefined)),
+		} as unknown as ExtensionAPI;
+		const created = createGoal();
+		const progress = persist(
+			{
+				action: "progress",
+				goalId: "goal-1",
+				now: 2,
+				progress: { lastSummary: "settled progress" },
+			},
+			created.state,
+		);
+		const branch = [customEntry(created.entry)];
+		const ctx = {
+			sessionManager: { getBranch: vi.fn(() => branch) },
+			isIdle: vi.fn(() => true),
+			hasPendingMessages: vi.fn(() => false),
+			ui: { setStatus: vi.fn() },
+		};
+
+		registerGoalRuntime(pi);
+		await handlers.get("agent_settled")?.({}, ctx);
+		await handlers.get("agent_start")?.({}, ctx);
+		branch.push(customEntry(progress.entry));
+
+		expect(handlers.has("agent_end")).toBe(false);
+		expect((pi as unknown as { appendEntry: ReturnType<typeof vi.fn> }).appendEntry).not.toHaveBeenCalledWith(
+			GOAL_CONTINUATION_CUSTOM_TYPE,
+			expect.objectContaining({ action: "completed-turn" }),
+		);
+
+		await handlers.get("agent_settled")?.({}, ctx);
+		await handlers.get("agent_settled")?.({}, ctx);
+		const continuationRecords = (
+			pi as unknown as { appendEntry: ReturnType<typeof vi.fn> }
+		).appendEntry.mock.calls.filter(
+			([customType, record]) =>
+				customType === GOAL_CONTINUATION_CUSTOM_TYPE &&
+				(record as { action?: string }).action === "completed-turn",
+		);
+		expect(continuationRecords).toHaveLength(1);
+		expect(
+			(pi as unknown as { sendUserMessage: ReturnType<typeof vi.fn> }).sendUserMessage,
+		).toHaveBeenCalledTimes(2);
 	});
 
 	it("registered hooks stop queued/running continuations on current Pi text input", async () => {
@@ -314,7 +372,7 @@ describe("goal continuation scheduler", () => {
 			expect.objectContaining({ type: "string", default: "3" }),
 		);
 
-		await handlers.get("agent_end")?.({}, ctx);
+		await handlers.get("agent_settled")?.({}, ctx);
 		expect(
 			(pi as unknown as { sendUserMessage: ReturnType<typeof vi.fn> }).sendUserMessage,
 		).toHaveBeenCalledOnce();
@@ -348,7 +406,7 @@ describe("goal continuation scheduler", () => {
 		};
 
 		registerGoalRuntime(pi);
-		await handlers.get("agent_end")?.({}, ctx);
+		await handlers.get("agent_settled")?.({}, ctx);
 		await handlers.get("input")?.({ input: "Continue working toward the active goal." }, ctx);
 		expect(
 			(pi as unknown as { appendEntry: ReturnType<typeof vi.fn> }).appendEntry,

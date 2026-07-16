@@ -6,7 +6,7 @@ The extension makes long-running objectives explicit, branch-aware, and safe acr
 
 Release `2026.6.14` requires Node.js `>=22.19.0`.
 
-Pi core packages are open peer dependencies (`*`) so Pi supplies one host runtime. Local development validates against `@earendil-works/pi-coding-agent` and `@earendil-works/pi-tui` `^0.79.3`.
+Pi supplies the host runtime through peer dependencies. Supported ranges are `@earendil-works/pi-coding-agent` `>=0.80.5 <0.81.0` and `@earendil-works/pi-tui` `>=0.79.3 <0.81.0`; local development validates both at `^0.80.7`.
 
 Package smoke checks must confirm the npm tarball includes `extensions`, `src`, `README.md`, `docs`, and `LICENSE`, with relative docs links intact.
 
@@ -150,6 +150,8 @@ Continuation queues only when:
 - no continuation is already queued or running,
 - the max-turn cap is not reached,
 - the goal ID still matches after re-read.
+
+Finalization and scheduling run on `agent_settled`, not `agent_end`. This waits until Pi has resolved retries, auto-compaction retries, and queued continuations before the idle and pending-message guards run.
 
 It records `goal-continuation` custom entries and stops on stale goal, pause, clear, complete, replacement, user interrupt, no progress, duplicate queue, pending messages, busy state, disabled flag, or max-turn cap.
 

@@ -42,6 +42,7 @@ describe("goalExtension", () => {
 			exports: Record<string, string>;
 			pi: { extensions: string[] };
 			files: string[];
+			devDependencies: Record<string, string>;
 			peerDependencies: Record<string, string>;
 			scripts: Record<string, string>;
 		};
@@ -51,9 +52,13 @@ describe("goalExtension", () => {
 		expect(packageJson.exports["."]).toBe("./extensions/index.ts");
 		expect(packageJson.pi.extensions).toEqual(["./extensions/index.ts"]);
 		expect(packageJson.files).toEqual(expect.arrayContaining(["extensions", "src", "docs", "README.md"]));
+		expect(packageJson.devDependencies).toMatchObject({
+			"@earendil-works/pi-coding-agent": "^0.80.7",
+			"@earendil-works/pi-tui": "^0.80.7",
+		});
 		expect(packageJson.peerDependencies).toMatchObject({
-			"@earendil-works/pi-coding-agent": "*",
-			"@earendil-works/pi-tui": "*",
+			"@earendil-works/pi-coding-agent": ">=0.80.5 <0.81.0",
+			"@earendil-works/pi-tui": ">=0.79.3 <0.81.0",
 			typebox: "*",
 		});
 		expect(packageJson.scripts).toMatchObject({

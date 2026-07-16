@@ -69,8 +69,8 @@
 		"LICENSE"
 	],
 	"devDependencies": {
-		"@earendil-works/pi-coding-agent": "^0.79.3",
-		"@earendil-works/pi-tui": "^0.79.3",
+		"@earendil-works/pi-coding-agent": "^0.80.7",
+		"@earendil-works/pi-tui": "^0.80.7",
 		"@eslint/js": "^9.39.1",
 		"@types/node": "^24.10.1",
 		"@vitest/coverage-v8": "^4.1.8",
@@ -85,8 +85,8 @@
 		"node": ">=22.19.0"
 	},
 	"peerDependencies": {
-		"@earendil-works/pi-coding-agent": "*",
-		"@earendil-works/pi-tui": "*",
+		"@earendil-works/pi-coding-agent": ">=0.80.5 <0.81.0",
+		"@earendil-works/pi-tui": ">=0.79.3 <0.81.0",
 		"typebox": "*"
 	},
 	"allowScripts": {
