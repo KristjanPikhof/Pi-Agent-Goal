@@ -12,10 +12,11 @@ Use these docs when you need more detail:
 
 ## Release facts to keep true
 
-- Release version: `2026.6.14`.
+- Release version: `2026.7.18`.
 - Runtime: Node.js `>=22.19.0`.
 - Pi peers: coding agent `>=0.80.5 <0.81.0`; TUI `>=0.79.3 <0.81.0`.
-- Development validation: Pi packages `^0.80.7`.
+- Development validation: Pi packages `^0.80.10`.
+- Package smoke: minimum peers and the 0.80.10 development baseline.
 - Package contents: `extensions`, `src`, `README.md`, `docs`, and `LICENSE`.
 - Docs links: relative, so they work in GitHub and npm tarballs.
 

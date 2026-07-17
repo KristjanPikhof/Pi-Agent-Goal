@@ -6,9 +6,9 @@ Repository: [`KristjanPikhof/Pi-Agent-Goal`](https://github.com/KristjanPikhof/P
 
 ## Compatibility
 
-Release `2026.6.14` requires Node.js `>=22.19.0`.
+Release `2026.7.18` requires Node.js `>=22.19.0`.
 
-The package supports `@earendil-works/pi-coding-agent` `>=0.80.5 <0.81.0` and `@earendil-works/pi-tui` `>=0.79.3 <0.81.0`. Development and release validation use both packages at `^0.80.7`. The coding-agent floor is required because continuation scheduling uses `agent_settled`.
+The package supports `@earendil-works/pi-coding-agent` `>=0.80.5 <0.81.0` and `@earendil-works/pi-tui` `>=0.79.3 <0.81.0`. Development uses both packages at `^0.80.10`. Release validation runs package smoke checks against the minimum peer versions and the 0.80.10 development baseline. The coding-agent floor is required because continuation scheduling uses `agent_settled`.
 
 Published package contents must include `extensions`, `src`, `README.md`, `docs`, and `LICENSE`. Keep docs links relative so they work from both GitHub and npm tarballs.
 

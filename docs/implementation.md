@@ -4,11 +4,11 @@ The extension makes long-running objectives explicit, branch-aware, and safe acr
 
 ## Compatibility baseline
 
-Release `2026.6.14` requires Node.js `>=22.19.0`.
+Release `2026.7.18` requires Node.js `>=22.19.0`.
 
-Pi supplies the host runtime through peer dependencies. Supported ranges are `@earendil-works/pi-coding-agent` `>=0.80.5 <0.81.0` and `@earendil-works/pi-tui` `>=0.79.3 <0.81.0`; local development validates both at `^0.80.7`.
+Pi supplies the host runtime through peer dependencies. Supported ranges are `@earendil-works/pi-coding-agent` `>=0.80.5 <0.81.0` and `@earendil-works/pi-tui` `>=0.79.3 <0.81.0`; local development validates both at `^0.80.10`.
 
-Package smoke checks must confirm the npm tarball includes `extensions`, `src`, `README.md`, `docs`, and `LICENSE`, with relative docs links intact.
+Package smoke checks must confirm the npm tarball includes `extensions`, `src`, `README.md`, `docs`, and `LICENSE`, with relative docs links intact. Release validation loads the installed extension with the minimum versions inferred from the peer ranges and with the 0.80.10 development baseline.
 
 ## Module map
 
