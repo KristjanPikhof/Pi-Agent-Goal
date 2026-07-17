@@ -6,7 +6,7 @@ Use this guide to install `pi-agent-goal` or load a local checkout while develop
 
 - macOS or Linux.
 - Node.js `>=22.19.0`.
-- `pi-agent-goal` release `2026.6.14`.
+- `pi-agent-goal` release `2026.7.18`.
 - `@earendil-works/pi-coding-agent` `>=0.80.5 <0.81.0`.
 - `@earendil-works/pi-tui` `>=0.79.3 <0.81.0`.
 
@@ -144,7 +144,7 @@ npm pack --dry-run
 npm run smoke:package
 ```
 
-The package smoke defaults to Pi and Pi TUI 0.80.7. Set `PI_GOAL_PACKAGE_SMOKE_PI_VERSION` and `PI_GOAL_PACKAGE_SMOKE_PI_TUI_VERSION` to exercise minimum, latest, or mixed supported versions.
+The package smoke runs two pairings by default: the minimum versions inferred from the peer ranges (Pi 0.80.5 with Pi TUI 0.79.3), then the development baseline (Pi and Pi TUI 0.80.10). Set `PI_GOAL_PACKAGE_SMOKE_PI_VERSION` and `PI_GOAL_PACKAGE_SMOKE_PI_TUI_VERSION` to run one custom pairing instead. If only one override is set, the other package uses the development baseline.
 
 ## Local verification
 

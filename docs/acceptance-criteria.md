@@ -12,11 +12,12 @@ Status key:
 
 | Criterion                                                                 | Status                                                        |
 | ------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| Release version is `2026.6.14`.                                           | Automated by package metadata and docs review                 |
+| Release version is `2026.7.18`.                                           | Automated by package metadata and docs review                 |
 | Runtime requires Node.js `>=22.19.0`.                                     | Automated by package metadata and docs review                 |
 | Coding-agent peer range is `>=0.80.5 <0.81.0`.                            | Automated by package metadata and tests                       |
 | Pi TUI peer range is `>=0.79.3 <0.81.0`.                                  | Automated by package metadata and tests                       |
-| Development validation targets Pi packages `^0.80.7`.                     | Automated by package metadata and tests                       |
+| Development validation targets Pi packages `^0.80.10`.                    | Automated by package metadata and tests                       |
+| Package smoke covers minimum peers and the 0.80.10 development baseline.  | Automated by `npm run smoke:package`                          |
 | Package includes `extensions`, `src`, `README.md`, `docs`, and `LICENSE`. | Automated by `npm pack --dry-run` and `npm run smoke:package` |
 | Internal docs links are relative.                                         | Automated by package smoke and docs review                    |
 
@@ -138,6 +139,8 @@ npm pack --dry-run
 npm run smoke:pi
 npm run smoke:package
 ```
+
+`npm run smoke:package` derives its minimum pairing from the peer dependency floors and its latest validated pairing from the development dependencies. Environment overrides run one custom pairing for targeted checks.
 
 Live interactive TUI lifecycle checks are a **release-blocking evidence gap until recorded in a real terminal**. Do not count automated harness tests as proof for `/reload`, `/resume`, `/tree`, `/fork`, `/compact`, or the visible widget in a real TUI session.
 

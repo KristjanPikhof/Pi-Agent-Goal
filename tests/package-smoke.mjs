@@ -11,10 +11,7 @@ const execFileAsync = promisify(execFile);
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const tmpRoot = await mkdtemp(join(tmpdir(), "pi-goal-package-smoke-"));
 const packDir = join(tmpRoot, "pack");
-const installDir = join(tmpRoot, "install");
 const timeoutMs = Number(process.env.PI_GOAL_PACKAGE_SMOKE_TIMEOUT_MS ?? 120_000);
-const piVersion = process.env.PI_GOAL_PACKAGE_SMOKE_PI_VERSION ?? "0.80.7";
-const piTuiVersion = process.env.PI_GOAL_PACKAGE_SMOKE_PI_TUI_VERSION ?? "0.80.7";
 
 try {
 	await runPackageSmoke();
@@ -24,8 +21,9 @@ try {
 
 async function runPackageSmoke() {
 	await mkdir(packDir, { recursive: true });
-	await mkdir(installDir, { recursive: true });
 
+	const packageJson = JSON.parse(await readFile(join(repoRoot, "package.json"), "utf8"));
+	const versionMatrix = getVersionMatrix(packageJson);
 	const { stdout } = await execFileAsync("npm", ["pack", "--pack-destination", packDir, "--json"], {
 		cwd: repoRoot,
 		maxBuffer: 1024 * 1024 * 8,
@@ -56,6 +54,14 @@ async function runPackageSmoke() {
 	}
 
 	const tarballPath = join(packDir, pack.filename);
+	for (const versions of versionMatrix) {
+		await smokeInstalledPackage(tarballPath, pack, versions);
+	}
+}
+
+async function smokeInstalledPackage(tarballPath, pack, { name, piVersion, piTuiVersion }) {
+	const installDir = join(tmpRoot, `install-${name}`);
+	await mkdir(installDir, { recursive: true });
 	await writeFile(join(installDir, "package.json"), JSON.stringify({ private: true, type: "module" }));
 	await execFileAsync(
 		"npm",
@@ -77,6 +83,9 @@ async function runPackageSmoke() {
 		throw new Error(`Package smoke failed. Unexpected package entry: ${entry}`);
 	}
 
+	await assertInstalledVersion(installDir, "@earendil-works/pi-coding-agent", piVersion);
+	await assertInstalledVersion(installDir, "@earendil-works/pi-tui", piTuiVersion);
+
 	const installedPiBin = join(
 		installDir,
 		"node_modules",
@@ -92,8 +101,8 @@ async function runPackageSmoke() {
 			env: {
 				...process.env,
 				PI_OFFLINE: "1",
-				PI_CODING_AGENT_DIR: join(tmpRoot, "agent"),
-				PI_CODING_AGENT_SESSION_DIR: join(tmpRoot, "sessions"),
+				PI_CODING_AGENT_DIR: join(tmpRoot, `agent-${name}`),
+				PI_CODING_AGENT_SESSION_DIR: join(tmpRoot, `sessions-${name}`),
 			},
 			timeoutMs,
 		},
@@ -107,8 +116,58 @@ async function runPackageSmoke() {
 	}
 
 	console.log(
-		`smoke:package ok: ${pack.filename} includes ${pack.entryCount} files and installed entry ${entry} loads with pi ${piVersion} / pi-tui ${piTuiVersion}`,
+		`smoke:package ${name} ok: ${pack.filename} includes ${pack.entryCount} files and installed entry ${entry} loads with pi ${piVersion} / pi-tui ${piTuiVersion}`,
 	);
+}
+
+function getVersionMatrix(packageJson) {
+	const piOverride = process.env.PI_GOAL_PACKAGE_SMOKE_PI_VERSION;
+	const piTuiOverride = process.env.PI_GOAL_PACKAGE_SMOKE_PI_TUI_VERSION;
+	const latest = {
+		piVersion: exactVersion(packageJson.devDependencies["@earendil-works/pi-coding-agent"]),
+		piTuiVersion: exactVersion(packageJson.devDependencies["@earendil-works/pi-tui"]),
+	};
+
+	if (piOverride || piTuiOverride) {
+		return [
+			{
+				name: "override",
+				piVersion: piOverride ?? latest.piVersion,
+				piTuiVersion: piTuiOverride ?? latest.piTuiVersion,
+			},
+		];
+	}
+
+	return [
+		{
+			name: "minimum",
+			piVersion: minimumVersion(packageJson.peerDependencies["@earendil-works/pi-coding-agent"]),
+			piTuiVersion: minimumVersion(packageJson.peerDependencies["@earendil-works/pi-tui"]),
+		},
+		{ name: "latest", ...latest },
+	];
+}
+
+function minimumVersion(range) {
+	const match = /^>=([^\s]+)/.exec(range);
+	if (!match) throw new Error(`Package smoke cannot infer minimum version from peer range: ${range}`);
+	return match[1];
+}
+
+function exactVersion(range) {
+	const match = /^\^?(\d+\.\d+\.\d+)$/.exec(range);
+	if (!match) throw new Error(`Package smoke cannot infer latest validation version from: ${range}`);
+	return match[1];
+}
+
+async function assertInstalledVersion(installDir, packageName, expectedVersion) {
+	const packageJsonPath = join(installDir, "node_modules", ...packageName.split("/"), "package.json");
+	const installedVersion = JSON.parse(await readFile(packageJsonPath, "utf8")).version;
+	if (installedVersion !== expectedVersion) {
+		throw new Error(
+			`Package smoke expected ${packageName} ${expectedVersion}, installed ${installedVersion}`,
+		);
+	}
 }
 
 function run(command, args, options) {
