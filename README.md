@@ -6,9 +6,9 @@ Repository: [`KristjanPikhof/Pi-Agent-Goal`](https://github.com/KristjanPikhof/P
 
 ## Compatibility
 
-Release `2026.7.18` requires Node.js `>=22.19.0`.
+Release `2026.9.20` requires Node.js `>=22.19.0`.
 
-The package supports `@earendil-works/pi-coding-agent` `>=0.80.5 <0.81.0` and `@earendil-works/pi-tui` `>=0.79.3 <0.81.0`. Development uses both packages at `^0.80.10`. Release validation runs package smoke checks against the minimum peer versions and the 0.80.10 development baseline. The coding-agent floor is required because continuation scheduling uses `agent_settled`.
+The package supports `@earendil-works/pi-coding-agent` `>=0.86.0 <0.87.0` and `@earendil-works/pi-tui` `>=0.86.0 <0.87.0`. Development uses both packages at `^0.86.1`. Release validation runs package smoke checks against the minimum peer versions and the 0.86.1 development baseline. The coding-agent floor is required for structured system-prompt sections and the settled continuation lifecycle.
 
 Published package contents must include `extensions`, `src`, `README.md`, `docs`, and `LICENSE`. Keep docs links relative so they work from both GitHub and npm tarballs.
 
@@ -71,7 +71,7 @@ See [`docs/setup.md`](docs/setup.md) for settings.json examples and local develo
 | `/goal status`                          | Show objective, status, criteria, constraints, source docs, progress, blockers, and next commands.                                                                                                                                                              |
 | `/goal import <path> [--yes] [--start]` | Import a markdown/text PRD file or docs folder. Creates a goal when none exists. Merges docs, constraints, and criteria into an existing active goal without rewriting the objective. Non-interactive mode needs `--yes`; add `--start` to begin immediately.   |
 | `/goal edit`                            | Edit the objective and acceptance criteria in the interactive UI. Non-interactive mode should use `/goal <objective> --replace`.                                                                                                                                |
-| `/goal pause`                           | Pause the goal and stop hidden context, continuation, completion, and progress updates.                                                                                                                                                                         |
+| `/goal pause`                           | Pause the goal and stop goal system context, continuation, completion, and progress updates.                                                                                                                                                                   |
 | `/goal resume [--start]`                | Reactivate a paused goal. Add `--start` for an immediate non-interactive handoff.                                                                                                                                                                               |
 | `/goal complete [--yes]`                | Mark an active goal complete.                                                                                                                                                                                                                                   |
 | `/goal clear [--yes]`                   | Clear the current goal and hide goal UI.                                                                                                                                                                                                                        |
@@ -102,7 +102,7 @@ Expected denials, such as no active goal or missing authorization, return soft r
 
 Canonical state is stored as Pi session custom entries of type `goal-state`. The extension reconstructs state from `ctx.sessionManager.getBranch()`, so forks, `/tree`, reload, and resume follow the selected branch instead of a global latest value.
 
-Active goals inject a short hidden `goal-context` before agent turns. Compaction preserves objective, criteria, source doc briefs, and progress in summary details. Full imported docs are not repeatedly pasted into model context.
+Active goals populate Pi's transcript-backed `goal` system-prompt section before agent turns. Legacy hidden `goal-context` messages are filtered from resumed sessions. Compaction preserves objective, criteria, source doc briefs, and progress in summary details. Full imported docs are not repeatedly pasted into model context.
 
 `/goal start` and `--start` queue one explicit handoff. They do not enable background work.
 
