@@ -16,8 +16,8 @@ Status key:
 | Runtime requires Node.js `>=22.19.0`.                                     | Automated by package metadata and docs review                 |
 | Coding-agent peer range is `>=0.86.0 <0.87.0`.                            | Automated by package metadata and tests                       |
 | Pi TUI peer range is `>=0.86.0 <0.87.0`.                                  | Automated by package metadata and tests                       |
-| Development validation targets Pi packages `^0.86.1`.                    | Automated by package metadata and tests                       |
-| Package smoke covers minimum peers and the 0.86.1 development baseline.  | Automated by `npm run smoke:package`                          |
+| Development validation targets Pi packages `^0.86.1`.                     | Automated by package metadata and tests                       |
+| Package smoke covers minimum peers and the 0.86.1 development baseline.   | Automated by `npm run smoke:package`                          |
 | Package includes `extensions`, `src`, `README.md`, `docs`, and `LICENSE`. | Automated by `npm pack --dry-run` and `npm run smoke:package` |
 | Internal docs links are relative.                                         | Automated by package smoke and docs review                    |
 
@@ -39,7 +39,7 @@ Status key:
 | Plain non-interactive `/goal <objective> --start` only queues drafting/review and does not save or start by itself.     | Automated                                      |
 | `/goal edit` requires an existing goal and persists confirmed edits.                                                    | Automated with harness editor                  |
 | `/goal clear` removes the goal and hides active-goal UI.                                                                | Automated                                      |
-| `/goal pause` stops goal system context, continuation eligibility, completion, and progress updates.                     | Automated                                      |
+| `/goal pause` stops goal system context, continuation eligibility, completion, and progress updates.                    | Automated                                      |
 | `/goal resume` reactivates a paused goal without rewriting objective or criteria.                                       | Automated                                      |
 | `/goal complete` marks only active goals complete.                                                                      | Automated                                      |
 | Complete goals stay terminal until cleared or replaced.                                                                 | Automated                                      |
@@ -90,17 +90,17 @@ Status key:
 | Widget shows short active-goal progress and disappears when not useful.                            | Automated, live TUI is manual smoke               |
 | `/goal status` works interactively and degrades when `ctx.hasUI` is false.                         | Automated                                         |
 | Errors are actionable and name the next command or flag where relevant.                            | Automated                                         |
-| Goal context uses Pi's structured system-prompt sections instead of repeated custom messages.       | Automated by source and docs review               |
+| Goal context uses Pi's structured system-prompt sections instead of repeated custom messages.      | Automated by source and docs review               |
 | Basic `/goal` subcommand argument completions are implemented; richer autocomplete is future work. | Automated by command registration and docs review |
 
 ## System context, state, and compaction
 
 | Criterion                                                                                                        | Status                                                       |
 | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| Active goals populate a short `goal` system section before turns.                                               | Automated                                                    |
-| Paused, complete, or cleared goals do not populate active-goal system context.                                 | Automated                                                    |
+| Active goals populate a short `goal` system section before turns.                                                | Automated                                                    |
+| Paused, complete, or cleared goals do not populate active-goal system context.                                   | Automated                                                    |
 | System context includes objective, acceptance criteria, source paths/briefs, progress summary, and safety rules. | Automated                                                    |
-| Stale legacy goal context from older branches or replaced goals is filtered out.                              | Automated                                                    |
+| Stale legacy goal context from older branches or replaced goals is filtered out.                                 | Automated                                                    |
 | Canonical state is persisted as Pi custom entries inside the session.                                            | Automated                                                    |
 | State reconstructs from `ctx.sessionManager.getBranch()`.                                                        | Automated                                                    |
 | Branch navigation shows selected-branch state, not global latest state.                                          | Automated with branch fixtures, live `/tree` is manual smoke |

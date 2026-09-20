@@ -180,7 +180,7 @@ No legacy footer status is rendered.
 | Feature                       | Why not now                                                                                                  |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | Project-trust-specific config | Session branch state and confirmations already guard risky mutations.                                        |
-| Runtime model calls           | Goal work uses Pi's main agent turn; it does not register a custom provider or bypass Pi's model selection. |
+| Runtime model calls           | Goal work uses Pi's main agent turn; it does not register a custom provider or bypass Pi's model selection.  |
 | Rich autocomplete             | Basic `/goal` subcommand completions exist. Richer completions can wait for real command-discovery friction. |
 
 ## Codex comparison
