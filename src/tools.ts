@@ -74,7 +74,7 @@ export const updateGoalProgressParams = Type.Object(
 		blocked: Type.Optional(Type.Array(Type.String(), { description: "Current blockers." })),
 		summary: Type.Optional(Type.String({ description: "Short progress summary." })),
 	},
-	{ additionalProperties: false },
+	{ additionalProperties: false, minProperties: 1 },
 );
 
 export const proposeGoalDraftPromptSnippet =
@@ -119,6 +119,7 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 		promptGuidelines: [
 			"Use get_goal when you need the current long-running objective before acting on goal state.",
 		],
+		executionMode: "sequential",
 		parameters: getGoalParams,
 		async execute(_toolCallId, _params, _signal, _onUpdate, ctx) {
 			return executeGetGoal(ctx as GoalToolContext);
@@ -139,6 +140,7 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 			"Do not use create_goal for agent-drafted /goal proposals; use propose_goal_draft so the user can review objective and acceptance criteria first.",
 			"create_goal refuses if a goal already exists; do not use it to rewrite an existing objective.",
 		],
+		executionMode: "sequential",
 		parameters: createGoalParams,
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
 			return executeCreateGoal(params as CreateGoalToolInput, ctx as GoalToolContext, pi);
@@ -164,6 +166,7 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 			"Open a structured /goal draft for user review. Saves only after the user chooses Start in the review UI.",
 		promptSnippet: proposeGoalDraftPromptSnippet,
 		promptGuidelines: [...proposeGoalDraftPromptGuidelines],
+		executionMode: "sequential",
 		parameters: proposeGoalDraftParams,
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
 			return executeProposeGoalDraft(params as ProposeGoalDraftToolInput, ctx as GoalToolContext, pi);
@@ -184,6 +187,7 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 			"Use complete_goal only when the active goal is achieved and no required work remains; include evidence when possible.",
 			"complete_goal cannot pause, resume, replace, or rewrite the goal objective.",
 		],
+		executionMode: "sequential",
 		parameters: completeGoalParams,
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
 			return executeCompleteGoal(params as CompleteGoalToolInput, ctx as GoalToolContext, pi);
@@ -209,8 +213,9 @@ export function registerGoalTools(pi: ExtensionAPI): void {
 			"Update execution progress for the active goal without changing objective, source docs, or criteria.",
 		promptSnippet: "Use update_goal_progress to update /goal progress fields only.",
 		promptGuidelines: [
-			"Use update_goal_progress only for implementation progress; it cannot rewrite objective, source docs, or acceptance criteria.",
+			"Use update_goal_progress only for meaningful implementation progress; it cannot rewrite objective, source docs, or acceptance criteria.",
 		],
+		executionMode: "sequential",
 		parameters: updateGoalProgressParams,
 		async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
 			return executeUpdateGoalProgress(params as UpdateGoalProgressToolInput, ctx as GoalToolContext, pi);
@@ -380,6 +385,7 @@ export function executeCompleteGoal(
 	return {
 		content: [{ type: "text", text: evidence ? `Goal complete. Evidence: ${evidence}` : "Goal complete." }],
 		details: { goal: next, evidence },
+		terminate: true,
 	};
 }
 
