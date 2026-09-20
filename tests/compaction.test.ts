@@ -67,17 +67,27 @@ describe("goal runtime hooks", () => {
 		const create = persist({ action: "create", goalId: "goal-1", objective: "Goal", now: 1 }, null);
 		const pause = persist({ action: "pause", goalId: "goal-1", now: 2 }, create.state);
 		const pausedHarness = createRuntimeHarness([customEntry(create.entry), customEntry(pause.entry)]);
-		expect(await pausedHarness.handlers.get("before_agent_start")?.({}, pausedHarness.ctx)).toBeUndefined();
+		const pausedEvent = { systemPromptOptions: { sections: {} as Record<string, string> } };
+		expect(
+			await pausedHarness.handlers.get("before_agent_start")?.(pausedEvent, pausedHarness.ctx),
+		).toBeUndefined();
+		expect(pausedEvent.systemPromptOptions.sections).not.toHaveProperty(GOAL_SYSTEM_PROMPT_SECTION);
 
 		const complete = persist({ action: "complete", goalId: "goal-1", now: 3 }, create.state);
 		const completeHarness = createRuntimeHarness([customEntry(create.entry), customEntry(complete.entry)]);
+		const completeEvent = { systemPromptOptions: { sections: {} as Record<string, string> } };
 		expect(
-			await completeHarness.handlers.get("before_agent_start")?.({}, completeHarness.ctx),
+			await completeHarness.handlers.get("before_agent_start")?.(completeEvent, completeHarness.ctx),
 		).toBeUndefined();
+		expect(completeEvent.systemPromptOptions.sections).not.toHaveProperty(GOAL_SYSTEM_PROMPT_SECTION);
 
 		const clear = persist({ action: "clear", goalId: "goal-1", now: 4 }, create.state);
 		const clearHarness = createRuntimeHarness([customEntry(create.entry), customEntry(clear.entry)]);
-		expect(await clearHarness.handlers.get("before_agent_start")?.({}, clearHarness.ctx)).toBeUndefined();
+		const clearEvent = { systemPromptOptions: { sections: {} as Record<string, string> } };
+		expect(
+			await clearHarness.handlers.get("before_agent_start")?.(clearEvent, clearHarness.ctx),
+		).toBeUndefined();
+		expect(clearEvent.systemPromptOptions.sections).not.toHaveProperty(GOAL_SYSTEM_PROMPT_SECTION);
 	});
 
 	it("preserves active goal details during compaction", async () => {
