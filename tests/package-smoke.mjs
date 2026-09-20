@@ -79,7 +79,12 @@ async function smokeInstalledPackage(tarballPath, pack, { name, piVersion, piTui
 			`@earendil-works/pi-tui@${piTuiVersion}`,
 			"typebox",
 		],
-		{ cwd: installDir, maxBuffer: 1024 * 1024 * 8, timeout: timeoutMs },
+		{
+			cwd: installDir,
+			maxBuffer: 1024 * 1024 * 8,
+			timeout: timeoutMs,
+			env: withoutInheritedNpmScriptPolicy(),
+		},
 	);
 
 	const installedPackageJsonPath = join(installDir, "node_modules", "pi-agent-goal", "package.json");
@@ -124,6 +129,13 @@ async function smokeInstalledPackage(tarballPath, pack, { name, piVersion, piTui
 	console.log(
 		`smoke:package ${name} ok: ${pack.filename} includes ${pack.entryCount} files and installed entry ${entry} loads with pi ${piVersion} / pi-tui ${piTuiVersion}`,
 	);
+}
+
+function withoutInheritedNpmScriptPolicy() {
+	const env = { ...process.env };
+	delete env.npm_config_allow_scripts;
+	delete env.NPM_CONFIG_ALLOW_SCRIPTS;
+	return env;
 }
 
 function getVersionMatrix(packageJson) {
