@@ -12,7 +12,7 @@ Use these docs when you need more detail:
 
 ## Release facts to keep true
 
-- Release version: `2026.9.20`.
+- Release version: `2026.9.21`.
 - Runtime: Node.js `>=22.19.0`.
 - Pi peers: coding agent `>=0.86.0 <0.87.0`; TUI `>=0.86.0 <0.87.0`.
 - Development validation: Pi packages `^0.86.1`.

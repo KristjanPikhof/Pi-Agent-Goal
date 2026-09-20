@@ -12,7 +12,7 @@ Status key:
 
 | Criterion                                                                 | Status                                                        |
 | ------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| Release version is `2026.9.20`.                                           | Automated by package metadata and docs review                 |
+| Release version is `2026.9.21`.                                           | Automated by package metadata and docs review                 |
 | Runtime requires Node.js `>=22.19.0`.                                     | Automated by package metadata and docs review                 |
 | Coding-agent peer range is `>=0.86.0 <0.87.0`.                            | Automated by package metadata and tests                       |
 | Pi TUI peer range is `>=0.86.0 <0.87.0`.                                  | Automated by package metadata and tests                       |

@@ -6,7 +6,7 @@ Repository: [`KristjanPikhof/Pi-Agent-Goal`](https://github.com/KristjanPikhof/P
 
 ## Compatibility
 
-Release `2026.9.20` requires Node.js `>=22.19.0`.
+Release `2026.9.21` requires Node.js `>=22.19.0`.
 
 The package supports `@earendil-works/pi-coding-agent` `>=0.86.0 <0.87.0` and `@earendil-works/pi-tui` `>=0.86.0 <0.87.0`. Development uses both packages at `^0.86.1`. Release validation runs package smoke checks against the minimum peer versions and the 0.86.1 development baseline. The coding-agent floor is required for structured system-prompt sections and the settled continuation lifecycle.
 

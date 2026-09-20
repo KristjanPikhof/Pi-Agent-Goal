@@ -4,7 +4,7 @@ The extension makes long-running objectives explicit, branch-aware, and safe acr
 
 ## Compatibility baseline
 
-Release `2026.9.20` requires Node.js `>=22.19.0`.
+Release `2026.9.21` requires Node.js `>=22.19.0`.
 
 Pi supplies the host runtime through peer dependencies. Supported ranges are `@earendil-works/pi-coding-agent` `>=0.86.0 <0.87.0` and `@earendil-works/pi-tui` `>=0.86.0 <0.87.0`; local development validates both at `^0.86.1`.
 

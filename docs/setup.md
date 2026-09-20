@@ -6,7 +6,7 @@ Use this guide to install `pi-agent-goal` or load a local checkout while develop
 
 - macOS or Linux.
 - Node.js `>=22.19.0`.
-- `pi-agent-goal` release `2026.9.20`.
+- `pi-agent-goal` release `2026.9.21`.
 - `@earendil-works/pi-coding-agent` `>=0.86.0 <0.87.0`.
 - `@earendil-works/pi-tui` `>=0.86.0 <0.87.0`.
 
