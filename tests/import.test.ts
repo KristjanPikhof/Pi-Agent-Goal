@@ -251,9 +251,13 @@ describe("/goal import command", () => {
 			"Ship goal import from docs.",
 		);
 		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
-		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("Ship goal import from docs."), {
-			deliverAs: "followUp",
-		});
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(
+			expect.stringContaining("Start working toward active goal"),
+			{
+				deliverAs: "followUp",
+				expandPromptTemplates: false,
+			},
+		);
 	});
 
 	it("starts imported goals immediately with --start in no-UI mode", async () => {
@@ -266,9 +270,13 @@ describe("/goal import command", () => {
 		expect(latestGoalEntry(branch).action).toBe("create");
 		expect(ctx.ui.confirm).not.toHaveBeenCalled();
 		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
-		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("Ship goal import from docs."), {
-			deliverAs: "followUp",
-		});
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(
+			expect.stringContaining("Start working toward active goal"),
+			{
+				deliverAs: "followUp",
+				expandPromptTemplates: false,
+			},
+		);
 	});
 
 	it("does not start imported goals in no-UI mode without --start", async () => {

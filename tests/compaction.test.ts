@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { registerGoalRuntime } from "../src/runtime.js";
+import { GOAL_SYSTEM_PROMPT_SECTION } from "../src/prompts.js";
 import { saveGoalState } from "../src/state.js";
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
@@ -26,7 +27,7 @@ function createRuntimeHarness(branch: Array<{ type: string; customType?: string;
 }
 
 describe("goal runtime hooks", () => {
-	it("injects hidden context for active goals and filters stale context", async () => {
+	it("updates the goal system section for active goals and filters legacy context", async () => {
 		const create = persist(
 			{
 				action: "create",
@@ -40,13 +41,10 @@ describe("goal runtime hooks", () => {
 		const branch = [customEntry(create.entry)];
 		const { handlers, ctx } = createRuntimeHarness(branch);
 
-		const injected = (await handlers.get("before_agent_start")?.({}, ctx)) as {
-			message: { content: string; customType: string; display: false; details: { goalId: string } };
-		};
-		expect(injected).toMatchObject({
-			message: { customType: "goal-context", display: false, details: { goalId: "goal-1" } },
-		});
-		expect(injected?.message.content).toContain("Objective: Preserve context");
+		const event = { systemPromptOptions: { sections: {} as Record<string, string> } };
+		await handlers.get("before_agent_start")?.(event, ctx);
+		expect(event.systemPromptOptions.sections).toHaveProperty(GOAL_SYSTEM_PROMPT_SECTION);
+		expect(event.systemPromptOptions.sections.goal).toContain("Objective: Preserve context");
 
 		const filtered = (await handlers.get("context")?.(
 			{

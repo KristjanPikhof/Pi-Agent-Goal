@@ -53,13 +53,13 @@ describe("goalExtension", () => {
 		expect(packageJson.pi.extensions).toEqual(["./extensions/index.ts"]);
 		expect(packageJson.files).toEqual(expect.arrayContaining(["extensions", "src", "docs", "README.md"]));
 		expect(packageJson.devDependencies).toMatchObject({
-			"@earendil-works/pi-coding-agent": "^0.80.10",
-			"@earendil-works/pi-tui": "^0.80.10",
+			"@earendil-works/pi-coding-agent": "^0.86.1",
+			"@earendil-works/pi-tui": "^0.86.1",
 		});
 		expect(packageJson.peerDependencies).toMatchObject({
-			"@earendil-works/pi-coding-agent": ">=0.80.5 <0.81.0",
-			"@earendil-works/pi-tui": ">=0.79.3 <0.81.0",
-			typebox: "*",
+			"@earendil-works/pi-coding-agent": ">=0.86.0 <0.87.0",
+			"@earendil-works/pi-tui": ">=0.86.0 <0.87.0",
+			typebox: ">=1.3.7 <2.0.0",
 		});
 		expect(packageJson.scripts).toMatchObject({
 			"smoke:pi:goal": expect.stringContaining("tests/smoke-pi.mjs goal"),

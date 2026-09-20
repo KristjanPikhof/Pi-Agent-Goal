@@ -205,12 +205,16 @@ describe("/goal command lifecycle", () => {
 		expect(ctx.ui.confirm).not.toHaveBeenCalledWith("Start working on this goal now?", "ship");
 		expect(pi.sendUserMessage).toHaveBeenCalledOnce();
 		expect(pi.sendUserMessage).toHaveBeenCalledWith(
-			expect.stringContaining("Start working toward the active goal now."),
-			{ deliverAs: "followUp" },
+			expect.stringContaining("Start working toward active goal goal-1 now."),
+			{ deliverAs: "followUp", expandPromptTemplates: false },
 		);
-		expect(pi.sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("ship"), {
-			deliverAs: "followUp",
-		});
+		expect(pi.sendUserMessage).toHaveBeenCalledWith(
+			expect.stringContaining("Start working toward active goal"),
+			{
+				deliverAs: "followUp",
+				expandPromptTemplates: false,
+			},
+		);
 		expect(ctx.ui.notify).toHaveBeenLastCalledWith("Goal start queued.", "info");
 	});
 
