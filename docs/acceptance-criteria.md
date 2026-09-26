@@ -12,12 +12,12 @@ Status key:
 
 | Criterion                                                                 | Status                                                        |
 | ------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| Release version is `2026.7.18`.                                           | Automated by package metadata and docs review                 |
+| Release version is `2026.9.21`.                                           | Automated by package metadata and docs review                 |
 | Runtime requires Node.js `>=22.19.0`.                                     | Automated by package metadata and docs review                 |
-| Coding-agent peer range is `>=0.80.5 <0.81.0`.                            | Automated by package metadata and tests                       |
-| Pi TUI peer range is `>=0.79.3 <0.81.0`.                                  | Automated by package metadata and tests                       |
-| Development validation targets Pi packages `^0.80.10`.                    | Automated by package metadata and tests                       |
-| Package smoke covers minimum peers and the 0.80.10 development baseline.  | Automated by `npm run smoke:package`                          |
+| Coding-agent peer range is `>=0.86.0 <0.87.0`.                            | Automated by package metadata and tests                       |
+| Pi TUI peer range is `>=0.86.0 <0.87.0`.                                  | Automated by package metadata and tests                       |
+| Development validation targets Pi packages `^0.86.1`.                     | Automated by package metadata and tests                       |
+| Package smoke covers minimum peers and the 0.86.1 development baseline.   | Automated by `npm run smoke:package`                          |
 | Package includes `extensions`, `src`, `README.md`, `docs`, and `LICENSE`. | Automated by `npm pack --dry-run` and `npm run smoke:package` |
 | Internal docs links are relative.                                         | Automated by package smoke and docs review                    |
 
@@ -39,7 +39,7 @@ Status key:
 | Plain non-interactive `/goal <objective> --start` only queues drafting/review and does not save or start by itself.     | Automated                                      |
 | `/goal edit` requires an existing goal and persists confirmed edits.                                                    | Automated with harness editor                  |
 | `/goal clear` removes the goal and hides active-goal UI.                                                                | Automated                                      |
-| `/goal pause` stops hidden context, continuation eligibility, completion, and progress updates.                         | Automated                                      |
+| `/goal pause` stops goal system context, continuation eligibility, completion, and progress updates.                    | Automated                                      |
 | `/goal resume` reactivates a paused goal without rewriting objective or criteria.                                       | Automated                                      |
 | `/goal complete` marks only active goals complete.                                                                      | Automated                                      |
 | Complete goals stay terminal until cleared or replaced.                                                                 | Automated                                      |
@@ -81,7 +81,7 @@ Status key:
 
 | Criterion                                                                                          | Status                                            |
 | -------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| Runtime reads current `InputEvent.text` and keeps compatibility fallbacks for older input shapes.  | Automated                                         |
+| Runtime uses `InputEvent.source` to distinguish extension handoffs from user and RPC input.        | Automated                                         |
 | Explicit handoffs use follow-up delivery for `/goal start`, `--start`, and continuation turns.     | Automated                                         |
 | Tool renderers use semantic theme tokens and remain readable without a theme.                      | Automated                                         |
 | Active-goal widget uses themed TUI components when `ctx.mode` is `tui`.                            | Automated, live TUI is manual smoke               |
@@ -90,17 +90,17 @@ Status key:
 | Widget shows short active-goal progress and disappears when not useful.                            | Automated, live TUI is manual smoke               |
 | `/goal status` works interactively and degrades when `ctx.hasUI` is false.                         | Automated                                         |
 | Errors are actionable and name the next command or flag where relevant.                            | Automated                                         |
-| Project-trust-specific config and `getSystemPromptOptions` are intentionally not used.             | Automated by source and docs review               |
+| Goal context uses Pi's structured system-prompt sections instead of repeated custom messages.      | Automated by source and docs review               |
 | Basic `/goal` subcommand argument completions are implemented; richer autocomplete is future work. | Automated by command registration and docs review |
 
-## Hidden context, state, and compaction
+## System context, state, and compaction
 
 | Criterion                                                                                                        | Status                                                       |
 | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| Active goals inject a hidden short context before turns.                                                         | Automated                                                    |
-| Paused, complete, or cleared goals do not inject active-goal context.                                            | Automated                                                    |
-| Hidden context includes objective, acceptance criteria, source paths/briefs, progress summary, and safety rules. | Automated                                                    |
-| Stale hidden context from older branches or replaced goals is filtered out.                                      | Automated                                                    |
+| Active goals populate a short `goal` system section before turns.                                                | Automated                                                    |
+| Paused, complete, or cleared goals do not populate active-goal system context.                                   | Automated                                                    |
+| System context includes objective, acceptance criteria, source paths/briefs, progress summary, and safety rules. | Automated                                                    |
+| Stale legacy goal context from older branches or replaced goals is filtered out.                                 | Automated                                                    |
 | Canonical state is persisted as Pi custom entries inside the session.                                            | Automated                                                    |
 | State reconstructs from `ctx.sessionManager.getBranch()`.                                                        | Automated                                                    |
 | Branch navigation shows selected-branch state, not global latest state.                                          | Automated with branch fixtures, live `/tree` is manual smoke |
@@ -159,7 +159,7 @@ Live interactive TUI lifecycle checks are a **release-blocking evidence gap unti
 
 ## Manual session lifecycle smoke checklist
 
-Automation covers reducer, command parsing, import safety and merge behavior, tools, hidden context, compaction hooks, continuation guards, UI renderers, and branch-shaped reconstruction. It does not prove the live TUI.
+Automation covers reducer, command parsing, import safety and merge behavior, tools, goal system context, compaction hooks, continuation guards, UI renderers, and branch-shaped reconstruction. It does not prove the live TUI.
 
 Before release, run these checks in a real TUI session and record command sequence, expected state, observed result, Pi/package version, terminal mode, and screenshots or transcript snippets when available.
 
@@ -178,7 +178,7 @@ Before release, run these checks in a real TUI session and record command sequen
 8. Create `docs/prd.md`, run `/goal import docs/prd.md`, review confirmation, and confirm `/goal status` shows source docs and extracted criteria.
 9. Import a second doc into the same goal and confirm source docs, constraints, and criteria merge without replacing the objective.
 10. Repeat a non-interactive import with `--yes --start` and confirm it starts immediately.
-11. Trigger `/compact`; confirm `/goal status` still shows objective, criteria, source brief, and progress. Then send a normal prompt and verify hidden goal context is regenerated for the active goal.
+11. Trigger `/compact`; confirm `/goal status` still shows objective, criteria, source brief, and progress. Then send a normal prompt and verify the active goal system section is rebuilt for the selected branch.
 12. Run `/reload` or restart/resume the session. Confirm the active-goal widget and `/goal status` reconstruct from current branch custom entries.
 13. Use `/fork` or `/tree` to navigate between branches with different goal mutations. Confirm each branch shows its own goal state and stale context from the other branch is absent.
 14. Start Pi with continuation enabled:

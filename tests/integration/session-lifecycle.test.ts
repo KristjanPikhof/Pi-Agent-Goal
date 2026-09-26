@@ -202,7 +202,7 @@ describe("session lifecycle integration coverage", () => {
 		expect(latestGoal(branch)?.status).toBe("complete");
 	});
 
-	it("covers hidden context, compaction preservation, stale contexts, and continuation safety", async () => {
+	it("covers goal system context, compaction preservation, stale contexts, and continuation safety", async () => {
 		const create = persist(
 			{
 				action: "create",

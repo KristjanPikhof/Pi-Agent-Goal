@@ -4,11 +4,11 @@ The extension makes long-running objectives explicit, branch-aware, and safe acr
 
 ## Compatibility baseline
 
-Release `2026.7.18` requires Node.js `>=22.19.0`.
+Release `2026.9.21` requires Node.js `>=22.19.0`.
 
-Pi supplies the host runtime through peer dependencies. Supported ranges are `@earendil-works/pi-coding-agent` `>=0.80.5 <0.81.0` and `@earendil-works/pi-tui` `>=0.79.3 <0.81.0`; local development validates both at `^0.80.10`.
+Pi supplies the host runtime through peer dependencies. Supported ranges are `@earendil-works/pi-coding-agent` `>=0.86.0 <0.87.0` and `@earendil-works/pi-tui` `>=0.86.0 <0.87.0`; local development validates both at `^0.86.1`.
 
-Package smoke checks must confirm the npm tarball includes `extensions`, `src`, `README.md`, `docs`, and `LICENSE`, with relative docs links intact. Release validation loads the installed extension with the minimum versions inferred from the peer ranges and with the 0.80.10 development baseline.
+Package smoke checks must confirm the npm tarball includes `extensions`, `src`, `README.md`, `docs`, and `LICENSE`, with relative docs links intact. Release validation loads the installed extension with the minimum versions inferred from the peer ranges and with the 0.86.1 development baseline.
 
 ## Module map
 
@@ -44,7 +44,7 @@ Important rules:
 - Replacing a goal creates a new `goalId`.
 - Later mutations for stale IDs are ignored.
 - Complete goals are terminal until cleared or replaced.
-- Paused goals can resume, report status, or clear, but do not receive hidden context, progress updates, completion, or continuation.
+- Paused goals can resume, report status, or clear, but do not receive goal system context, progress updates, completion, or continuation.
 - Objectives are trimmed, non-empty, and limited to 4000 characters.
 
 ## Command behavior
@@ -109,11 +109,11 @@ Imports are deterministic. New docs merge by path, with the new hash and brief w
 
 Tool policy denials return soft refusals with `details.status: "refused"` and a reason such as `permission_denied`, `goal_exists`, `no_goal`, `goal_inactive`, or `already_complete`. Invalid schema data and unexpected runtime failures are hard errors.
 
-## Hidden context and compaction
+## System context and compaction
 
-Active goals inject one hidden custom message of type `goal-context` before an agent turn. Paused, complete, or cleared goals do not inject context.
+Active goals populate Pi's transcript-backed `goal` system-prompt section before an agent turn. The section contains escaped goal data and explicit user-data boundaries. Paused, complete, or cleared goals do not populate it.
 
-The runtime removes stale `goal-context` messages from old branches or replaced goals and keeps only the latest message for the active `goalId`.
+The runtime still removes legacy `goal-context` messages from resumed sessions so old hidden entries cannot duplicate or override the current system section.
 
 During `session_before_compact`, active goals preserve:
 
@@ -170,9 +170,9 @@ No legacy footer status is rendered.
 
 ## Runtime and harness alignment
 
-- `InputEvent.text` is the preferred input source, with compatibility fallbacks.
-- Explicit handoffs use `sendUserMessage(..., { deliverAs: "followUp" })`.
-- Older `streamingBehavior: "followUp"` is treated as compatibility input, not the primary outbound API.
+- Continuation interruption uses `InputEvent.source`; only extension-generated follow-ups preserve the continuation state.
+- Explicit handoffs use `sendUserMessage(..., { deliverAs: "followUp", expandPromptTemplates: false })`.
+- Goal tools execute sequentially because they append to one branch-aware state stream.
 - Behavior is keyed from `ctx.mode` so TUI and non-TUI hosts get the right output form.
 
 ## Intentional non-adoptions
@@ -180,7 +180,7 @@ No legacy footer status is rendered.
 | Feature                       | Why not now                                                                                                  |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | Project-trust-specific config | Session branch state and confirmations already guard risky mutations.                                        |
-| `getSystemPromptOptions`      | Runtime hooks and compaction already inject active-goal context.                                             |
+| Runtime model calls           | Goal work uses Pi's main agent turn; it does not register a custom provider or bypass Pi's model selection.  |
 | Rich autocomplete             | Basic `/goal` subcommand completions exist. Richer completions can wait for real command-discovery friction. |
 
 ## Codex comparison

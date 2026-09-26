@@ -30,6 +30,7 @@ function createHarness() {
 		{
 			name: string;
 			parameters: unknown;
+			executionMode?: string;
 			promptSnippet?: string;
 			promptGuidelines?: string[];
 			execute: (...args: never[]) => Promise<unknown>;
@@ -69,6 +70,7 @@ function latestGoalEntry(branch: Array<{ data?: unknown }>): GoalStateEntry {
 describe("goal tool schemas and registration", () => {
 	it("defines narrow schemas and registers all goal tools", () => {
 		expect((getGoalParams as { additionalProperties?: boolean }).additionalProperties).toBe(false);
+		expect((updateGoalProgressParams as { minProperties?: number }).minProperties).toBe(1);
 		expect(Object.keys(createGoalParams.properties)).toEqual([
 			"objective",
 			"explicit_request",
@@ -102,6 +104,7 @@ describe("goal tool schemas and registration", () => {
 			"update_goal_progress",
 		]);
 		expect(pi.registerTool).toHaveBeenCalledTimes(5);
+		expect([...tools.values()].every((tool) => tool.executionMode === "sequential")).toBe(true);
 	});
 
 	it("documents propose_goal_draft as the review-only drafting path separate from create_goal", () => {
@@ -165,7 +168,7 @@ describe("goal tool execution", () => {
 				undefined as never,
 				ctx as never,
 			);
-		expect(complete).toMatchObject({ details: { evidence: "callback complete" } });
+		expect(complete).toMatchObject({ details: { evidence: "callback complete" }, terminate: true });
 	});
 
 	it("get_goal returns no-goal and current state details including source paths", () => {
@@ -233,15 +236,13 @@ describe("goal tool execution", () => {
 			sourceDocs: [expect.objectContaining({ path: "docs/prd.md" })],
 		});
 		expect(sendUserMessage).toHaveBeenCalledOnce();
-		expect(sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("Ship reviewed goal"), {
-			deliverAs: "followUp",
-		});
-		expect(sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("- done"), {
-			deliverAs: "followUp",
-		});
-		expect(sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("- tests pass"), {
-			deliverAs: "followUp",
-		});
+		expect(sendUserMessage).toHaveBeenCalledWith(
+			expect.stringContaining("Start working toward active goal"),
+			{
+				deliverAs: "followUp",
+				expandPromptTemplates: false,
+			},
+		);
 		expect(result).toMatchObject({
 			terminate: true,
 			details: {
@@ -274,12 +275,13 @@ describe("goal tool execution", () => {
 			objective: "Edited goal",
 			acceptanceCriteria: ["edited criterion"],
 		});
-		expect(sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("Edited goal"), {
-			deliverAs: "followUp",
-		});
-		expect(sendUserMessage).toHaveBeenCalledWith(expect.stringContaining("- edited criterion"), {
-			deliverAs: "followUp",
-		});
+		expect(sendUserMessage).toHaveBeenCalledWith(
+			expect.stringContaining("Start working toward active goal"),
+			{
+				deliverAs: "followUp",
+				expandPromptTemplates: false,
+			},
+		);
 		expect(result.details).toMatchObject({ status: "saved", started: true });
 	});
 

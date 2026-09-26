@@ -4,6 +4,7 @@ import {
 	renderCompactGoalSummary,
 	renderGoalAgentDraftingPrompt,
 	renderGoalContext,
+	renderGoalSystemPromptSection,
 	renderGoalStartPrompt,
 } from "../src/prompts.js";
 import { createGoalContextMessage, filterGoalContextMessages } from "../src/runtime.js";
@@ -30,7 +31,7 @@ function goal(overrides: Partial<GoalState> = {}): GoalState {
 			done: ["state"],
 			current: "runtime hooks",
 			blocked: ["none <really>"],
-			lastSummary: "Implementing & testing hidden context",
+			lastSummary: "Implementing & testing goal context",
 		},
 		createdAt: 1,
 		updatedAt: 2,
@@ -69,7 +70,7 @@ describe("goal prompt rendering", () => {
 		expect(prompt).not.toContain("criteria-free goal");
 	});
 
-	it("renders escaped concise hidden goal_context", () => {
+	it("renders escaped concise legacy goal_context", () => {
 		const context = renderGoalContext(goal());
 
 		expect(context).toContain('<goal_context goal_id="goal-1">');
@@ -80,7 +81,16 @@ describe("goal prompt rendering", () => {
 		expect(context).not.toContain("<runtime>");
 	});
 
-	it("creates hidden messages only for active goals", () => {
+	it("renders the structured system section with user-data boundaries", () => {
+		const section = renderGoalSystemPromptSection(goal());
+
+		expect(section).toContain("user-provided task data");
+		expect(section).toContain('<goal_context goal_id="goal-1">');
+		expect(section).toContain("Objective: Ship &lt;runtime&gt; &amp; preserve context");
+		expect(section).toContain("Do not change the objective, source documents, or acceptance criteria");
+	});
+
+	it("creates legacy hidden messages only for active goals", () => {
 		expect(createGoalContextMessage(goal())).toMatchObject({
 			customType: GOAL_CONTEXT_CUSTOM_TYPE,
 			display: false,
@@ -90,7 +100,7 @@ describe("goal prompt rendering", () => {
 		expect(createGoalContextMessage(goal({ status: "complete" }))).toBeUndefined();
 	});
 
-	it("filters stale and duplicate hidden goal contexts", () => {
+	it("filters stale and duplicate legacy goal contexts", () => {
 		const current = goal({ goalId: "goal-2" });
 		const stale = { role: "custom", customType: GOAL_CONTEXT_CUSTOM_TYPE, content: 'old goal_id="goal-1"' };
 		const duplicate = {
@@ -113,14 +123,14 @@ describe("goal prompt rendering", () => {
 		expect(filterGoalContextMessages([fresh, ordinary], null)).toEqual([ordinary]);
 	});
 
-	it("renders start handoff with concrete generated acceptance criteria", () => {
+	it("renders a concise start handoff that points to the structured goal section", () => {
 		const prompt = renderGoalStartPrompt(
 			goal({ acceptanceCriteria: ["Build the thing", "Tests prove the behavior"] }),
 		);
 
-		expect(prompt).toContain("Acceptance criteria:\n- Build the thing\n- Tests prove the behavior");
-		expect(prompt).not.toContain("No acceptance criteria were specified");
-		expect(prompt).not.toContain("- none");
+		expect(prompt).toContain("Start working toward active goal goal-1 now.");
+		expect(prompt).toContain("goal system section as the source of truth");
+		expect(prompt).not.toContain("Acceptance criteria:");
 	});
 
 	it("renders intentional empty acceptance criteria copy in prompts", () => {
@@ -129,7 +139,7 @@ describe("goal prompt rendering", () => {
 		const context = renderGoalContext(emptyGoal);
 		const summary = renderCompactGoalSummary(emptyGoal);
 
-		for (const rendered of [startPrompt, context, summary]) {
+		for (const rendered of [context, summary]) {
 			expect(rendered).toContain(
 				"No acceptance criteria were specified for this goal; use the objective as the source of truth.",
 			);
@@ -146,7 +156,7 @@ describe("goal prompt rendering", () => {
 		expect(summary).toContain("Objective: Ship <runtime> & preserve context");
 		expect(summary).toContain("- Escape <xml> & do not rewrite scope");
 		expect(summary).toContain("docs/prd.md: Use <brief> & criteria safely");
-		expect(summary).toContain("- Summary: Implementing & testing hidden context");
+		expect(summary).toContain("- Summary: Implementing & testing goal context");
 		expect(summary).toContain("- Done: state");
 	});
 });

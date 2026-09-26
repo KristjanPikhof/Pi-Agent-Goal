@@ -91,8 +91,8 @@ describe("goal continuation scheduler", () => {
 
 		expect(decision).toEqual({ queued: true, goalId: "goal-1" });
 		expect(sendUserMessage).toHaveBeenCalledWith(
-			expect.stringContaining("Continue working toward the active goal."),
-			{ deliverAs: "followUp" },
+			expect.stringContaining("Continue working toward active goal goal-1."),
+			{ deliverAs: "followUp", expandPromptTemplates: false },
 		);
 		expect(appendEntry).toHaveBeenCalledWith(
 			GOAL_CONTINUATION_CUSTOM_TYPE,
@@ -292,8 +292,9 @@ describe("goal continuation scheduler", () => {
 		).toHaveBeenCalledOnce();
 		expect(
 			(pi as unknown as { sendUserMessage: ReturnType<typeof vi.fn> }).sendUserMessage,
-		).toHaveBeenCalledWith(expect.stringContaining("Continue working toward the active goal."), {
+		).toHaveBeenCalledWith(expect.stringContaining("Continue working toward active goal goal-1."), {
 			deliverAs: "followUp",
+			expandPromptTemplates: false,
 		});
 	});
 
@@ -388,7 +389,7 @@ describe("goal continuation scheduler", () => {
 		expect(ctx.ui.setStatus).toHaveBeenLastCalledWith("goal-continuation", undefined);
 	});
 
-	it("keeps deliberate legacy input fallback and clears queued state on shutdown", async () => {
+	it("uses the extension input source and clears queued state on shutdown", async () => {
 		const handlers = new Map<string, (event: unknown, ctx?: unknown) => Promise<unknown>>();
 		const pi = {
 			registerFlag: vi.fn(),
@@ -407,7 +408,10 @@ describe("goal continuation scheduler", () => {
 
 		registerGoalRuntime(pi);
 		await handlers.get("agent_settled")?.({}, ctx);
-		await handlers.get("input")?.({ input: "Continue working toward the active goal." }, ctx);
+		await handlers.get("input")?.(
+			{ type: "input", text: "Continue working toward active goal goal-1.", source: "extension" },
+			ctx,
+		);
 		expect(
 			(pi as unknown as { appendEntry: ReturnType<typeof vi.fn> }).appendEntry,
 		).not.toHaveBeenLastCalledWith(

@@ -4,9 +4,11 @@ import { applyGoalUi, renderContinuationStatus } from "./ui.js";
 import {
 	compactGoalDetails,
 	GOAL_CONTEXT_CUSTOM_TYPE,
+	GOAL_SYSTEM_PROMPT_SECTION,
 	renderCompactGoalSummary,
 	renderContinuationPrompt,
 	renderGoalContext,
+	renderGoalSystemPromptSection,
 } from "./prompts.js";
 
 import type { GoalState } from "./types.js";
@@ -17,12 +19,6 @@ export const DEFAULT_GOAL_CONTINUATION_MAX_TURNS = 3;
 interface GoalRuntimeContext {
 	sessionManager: { getBranch(): Array<{ type: string; customType?: string; data?: unknown }> };
 }
-
-type GoalInputEvent = InputEvent & {
-	streamingBehavior?: "steer" | "followUp";
-	input?: string;
-	prompt?: string;
-};
 
 interface ContextMessage {
 	role?: string;
@@ -44,7 +40,10 @@ interface ContinuationContext extends GoalRuntimeContext {
 
 interface ContinuationAPI {
 	appendEntry(customType: string, data?: unknown): unknown;
-	sendUserMessage(message: string, options?: { deliverAs?: "followUp" | "steer" }): unknown;
+	sendUserMessage(
+		message: string,
+		options?: { deliverAs?: "followUp" | "steer"; expandPromptTemplates?: boolean },
+	): unknown;
 	getFlag?: (name: string) => unknown;
 }
 
@@ -98,17 +97,10 @@ export function registerGoalRuntime(pi: ExtensionAPI): void {
 		default: String(DEFAULT_GOAL_CONTINUATION_MAX_TURNS),
 	});
 
-	pi.on("before_agent_start", async (_event, ctx) => {
+	pi.on("before_agent_start", async (event, ctx) => {
 		const goal = loadGoalState(ctx);
 		if (!isActiveGoal(goal)) return;
-		return {
-			message: {
-				customType: GOAL_CONTEXT_CUSTOM_TYPE,
-				content: renderGoalContext(goal),
-				display: false,
-				details: { goalId: goal.goalId },
-			},
-		};
+		event.systemPromptOptions.sections[GOAL_SYSTEM_PROMPT_SECTION] = renderGoalSystemPromptSection(goal);
 	});
 
 	pi.on("context", async (event, ctx) => {
@@ -127,9 +119,8 @@ export function registerGoalRuntime(pi: ExtensionAPI): void {
 	);
 
 	pi.on("input", async (event, ctx) => {
-		const prompt = getInputText(event as GoalInputEvent);
 		if (continuationState.queuedGoalId || continuationState.runningGoalId) {
-			if (!isContinuationPrompt(prompt)) {
+			if ((event as InputEvent).source !== "extension") {
 				stopGoalContinuation(api, continuationState, "user-interrupt");
 				updateContinuationStatus(ctx, continuationState);
 			}
@@ -266,7 +257,10 @@ export async function maybeQueueGoalContinuation(
 	state.queuedGoalId = goal.goalId;
 	recordGoalContinuation(api, { action: "queued", goalId: goal.goalId, at: now, turnCount });
 	updateContinuationStatus(ctx, state);
-	api.sendUserMessage(renderContinuationPrompt(goal), { deliverAs: "followUp" });
+	api.sendUserMessage(renderContinuationPrompt(goal), {
+		deliverAs: "followUp",
+		expandPromptTemplates: false,
+	});
 	return { queued: true, goalId: goal.goalId };
 }
 
@@ -362,14 +356,6 @@ export function stopGoalContinuation(
 		turnCount: state.turnCounts.get(goalId) ?? 0,
 		reason,
 	});
-}
-
-function getInputText(event: GoalInputEvent): string {
-	return event.text ?? event.input ?? event.prompt ?? "";
-}
-
-function isContinuationPrompt(prompt: string): boolean {
-	return prompt.includes("Continue working toward the active goal.");
 }
 
 function recordGoalContinuation(api: ContinuationAPI, record: GoalContinuationRecord): void {

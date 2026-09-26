@@ -12,11 +12,11 @@ Use these docs when you need more detail:
 
 ## Release facts to keep true
 
-- Release version: `2026.7.18`.
+- Release version: `2026.9.21`.
 - Runtime: Node.js `>=22.19.0`.
-- Pi peers: coding agent `>=0.80.5 <0.81.0`; TUI `>=0.79.3 <0.81.0`.
-- Development validation: Pi packages `^0.80.10`.
-- Package smoke: minimum peers and the 0.80.10 development baseline.
+- Pi peers: coding agent `>=0.86.0 <0.87.0`; TUI `>=0.86.0 <0.87.0`.
+- Development validation: Pi packages `^0.86.1`.
+- Package smoke: minimum peers and the 0.86.1 development baseline.
 - Package contents: `extensions`, `src`, `README.md`, `docs`, and `LICENSE`.
 - Docs links: relative, so they work in GitHub and npm tarballs.
 
@@ -28,7 +28,7 @@ Use these docs when you need more detail:
 - Markdown/text PRD and docs-folder import with workspace realpath checks, symlink escape rejection, size/binary checks, generated/vendor ignores, and directory overflow errors.
 - Import creates a goal when none exists, then merges source docs, constraints, and criteria into an existing active goal without rewriting the objective.
 - Narrow model tools: `get_goal`, `create_goal`, `propose_goal_draft`, `complete_goal`, and `update_goal_progress`.
-- Hidden active-goal context and `session_before_compact` preservation.
+- Transcript-backed active-goal system context and `session_before_compact` preservation.
 - Compact active-goal widget, readable `/goal status`, actionable errors, and concise tool renderers.
 - Opt-in idle continuation behind `--goal-continuation`, finalized and scheduled from Pi's `agent_settled` event.
 

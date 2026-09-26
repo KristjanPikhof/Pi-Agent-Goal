@@ -28,7 +28,9 @@ async function runPackageSmoke() {
 		cwd: repoRoot,
 		maxBuffer: 1024 * 1024 * 8,
 	});
-	const [pack] = JSON.parse(stdout);
+	const packResult = JSON.parse(stdout);
+	const pack = Array.isArray(packResult) ? packResult[0] : Object.values(packResult)[0];
+	if (!pack) throw new Error("Package smoke failed: npm pack returned no package metadata.");
 	const files = new Set(pack.files.map((file) => file.path));
 	const requiredFiles = [
 		"package.json",
@@ -62,18 +64,27 @@ async function runPackageSmoke() {
 async function smokeInstalledPackage(tarballPath, pack, { name, piVersion, piTuiVersion }) {
 	const installDir = join(tmpRoot, `install-${name}`);
 	await mkdir(installDir, { recursive: true });
-	await writeFile(join(installDir, "package.json"), JSON.stringify({ private: true, type: "module" }));
+	await writeFile(
+		join(installDir, "package.json"),
+		JSON.stringify({ private: true, type: "module", allowScripts: {} }),
+	);
 	await execFileAsync(
 		"npm",
 		[
 			"install",
+			"--userconfig=/dev/null",
 			"--ignore-scripts",
 			tarballPath,
 			`@earendil-works/pi-coding-agent@${piVersion}`,
 			`@earendil-works/pi-tui@${piTuiVersion}`,
 			"typebox",
 		],
-		{ cwd: installDir, maxBuffer: 1024 * 1024 * 8, timeout: timeoutMs },
+		{
+			cwd: installDir,
+			maxBuffer: 1024 * 1024 * 8,
+			timeout: timeoutMs,
+			env: withoutInheritedNpmScriptPolicy(),
+		},
 	);
 
 	const installedPackageJsonPath = join(installDir, "node_modules", "pi-agent-goal", "package.json");
@@ -118,6 +129,13 @@ async function smokeInstalledPackage(tarballPath, pack, { name, piVersion, piTui
 	console.log(
 		`smoke:package ${name} ok: ${pack.filename} includes ${pack.entryCount} files and installed entry ${entry} loads with pi ${piVersion} / pi-tui ${piTuiVersion}`,
 	);
+}
+
+function withoutInheritedNpmScriptPolicy() {
+	const env = { ...process.env };
+	delete env.npm_config_allow_scripts;
+	delete env.NPM_CONFIG_ALLOW_SCRIPTS;
+	return env;
 }
 
 function getVersionMatrix(packageJson) {

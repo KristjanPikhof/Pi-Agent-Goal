@@ -1,6 +1,6 @@
 {
 	"name": "pi-agent-goal",
-	"version": "2026.7.18",
+	"version": "2026.9.21",
 	"description": "Pi extension that gives coding agents persistent /goal workflows with branch-aware state, source imports, progress tools, and explicit start handoffs.",
 	"type": "module",
 	"scripts": {
@@ -69,14 +69,14 @@
 		"LICENSE"
 	],
 	"devDependencies": {
-		"@earendil-works/pi-coding-agent": "^0.80.10",
-		"@earendil-works/pi-tui": "^0.80.10",
+		"@earendil-works/pi-coding-agent": "^0.86.1",
+		"@earendil-works/pi-tui": "^0.86.1",
 		"@eslint/js": "^9.39.1",
 		"@types/node": "^24.10.1",
 		"@vitest/coverage-v8": "^4.1.8",
 		"eslint": "^9.39.1",
 		"prettier": "^3.6.2",
-		"typebox": "^1.1.38",
+		"typebox": "^1.3.27",
 		"typescript": "^5.9.3",
 		"typescript-eslint": "^8.46.3",
 		"vitest": "^4.1.8"
@@ -85,9 +85,9 @@
 		"node": ">=22.19.0"
 	},
 	"peerDependencies": {
-		"@earendil-works/pi-coding-agent": ">=0.80.5 <0.81.0",
-		"@earendil-works/pi-tui": ">=0.79.3 <0.81.0",
-		"typebox": "*"
+		"@earendil-works/pi-coding-agent": ">=0.86.0 <0.87.0",
+		"@earendil-works/pi-tui": ">=0.86.0 <0.87.0",
+		"typebox": ">=1.3.7 <2.0.0"
 	},
 	"allowScripts": {
 		"@google/genai@1.52.0": true,

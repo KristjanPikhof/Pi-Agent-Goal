@@ -54,7 +54,10 @@ interface GoalCommandContext extends GoalWorkflowContext {
 }
 
 export interface GoalStartAPI {
-	sendUserMessage(message: string, options?: { deliverAs?: "followUp" | "steer" }): unknown;
+	sendUserMessage(
+		message: string,
+		options?: { deliverAs?: "followUp" | "steer"; expandPromptTemplates?: boolean },
+	): unknown;
 }
 
 export interface GoalProposalReviewResult {
@@ -422,7 +425,10 @@ export async function startActiveGoal(
 		return false;
 	}
 
-	api.sendUserMessage(renderGoalStartPrompt(latest), { deliverAs: "followUp" });
+	api.sendUserMessage(renderGoalStartPrompt(latest), {
+		deliverAs: "followUp",
+		expandPromptTemplates: false,
+	});
 	ctx.ui.notify("Goal start queued.", "info");
 	return true;
 }
